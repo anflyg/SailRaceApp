@@ -142,20 +142,17 @@ button:focus-visible {
 }
 
 .course-header {
-  grid-template-columns: 1fr auto 1fr;
+  grid-template-columns: auto 1fr;
   align-items: center;
   margin-bottom: 12px;
+  gap: 12px;
 }
 
 .wind-status {
-  text-align: center;
+  text-align: left;
   font-size: 1rem;
   font-weight: 700;
   color: var(--text-high);
-}
-
-.wind-button {
-  min-width: 72px;
 }
 
 .course-schematic {
@@ -166,6 +163,19 @@ button:focus-visible {
   border: 1px solid rgba(255, 255, 255, 0.12);
   padding: 18px;
   overflow: hidden;
+}
+
+/* Visible start line between A and B */
+.course-schematic::before {
+  content: '';
+  position: absolute;
+  top: calc(50% - 42px);
+  left: 100px;
+  right: 100px;
+  height: 3px;
+  background: #65d9a5;
+  border-radius: 1.5px;
+  pointer-events: none;
 }
 
 .course-mark,
@@ -235,12 +245,12 @@ button:focus-visible {
 }
 
 .course-mark.start-point:first-of-type {
-  bottom: 24px;
+  top: calc(50% - 42px);
   left: 18px;
 }
 
 .course-mark.start-point:nth-of-type(2) {
-  bottom: 24px;
+  top: calc(50% - 42px);
   right: 18px;
 }
 
@@ -255,12 +265,12 @@ button:focus-visible {
 }
 
 .course-mark.leeward:nth-of-type(5) {
-  bottom: 160px;
+  bottom: 24px;
   left: 18%;
 }
 
 .course-mark.leeward:nth-of-type(6) {
-  bottom: 160px;
+  bottom: 24px;
   right: 18%;
 }
 

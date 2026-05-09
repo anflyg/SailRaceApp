@@ -13,18 +13,25 @@ const defaultCourseState: Record<CoursePointKey, boolean> = {
 
 export function CourseSetupView() {
   const [coursePoints, setCoursePoints] = useState(defaultCourseState)
-  const [windDirection, setWindDirection] = useState(270)
+  const [windDirection, setWindDirection] = useState<number | null>(null)
+  const [demoHeading] = useState(270)
 
   const setPoint = (key: CoursePointKey) => {
     setCoursePoints((current) => ({
       ...current,
-      [key]: true,
+      [key]: !current[key],
     }))
+  }
+
+  // Save current demo heading as wind direction
+  // TODO: Replace with real compass heading from device
+  const setWindFromCurrentHeading = () => {
+    setWindDirection(demoHeading)
   }
 
   const clearCourse = () => {
     setCoursePoints(defaultCourseState)
-    setWindDirection(270)
+    setWindDirection(null)
   }
 
   return (
@@ -32,19 +39,14 @@ export function CourseSetupView() {
       <div className="course-header">
         <button
           type="button"
-          className="secondary-button wind-button"
-          onClick={() => setWindDirection((dir) => (dir + 350) % 360)}
+          className={`primary-button wind-button ${windDirection !== null ? 'set' : 'unset'}`}
+          onClick={setWindFromCurrentHeading}
         >
-          -10°
+          Vind
         </button>
-        <div className="wind-status">Vind {windDirection}°</div>
-        <button
-          type="button"
-          className="secondary-button wind-button"
-          onClick={() => setWindDirection((dir) => (dir + 10) % 360)}
-        >
-          +10°
-        </button>
+        <div className="wind-status">
+          {windDirection !== null ? `${windDirection}°` : 'Ej satt'}
+        </div>
       </div>
 
       <div className="course-schematic">
@@ -53,8 +55,7 @@ export function CourseSetupView() {
           className={`course-mark start-point ${coursePoints.startA ? 'set' : 'unset'}`}
           onClick={() => setPoint('startA')}
         >
-          <span>A</span>
-          <span className="mark-status">{coursePoints.startA ? 'Satt' : 'Ej satt'}</span>
+          A
         </button>
 
         <button
@@ -62,8 +63,7 @@ export function CourseSetupView() {
           className={`course-mark start-point ${coursePoints.startB ? 'set' : 'unset'}`}
           onClick={() => setPoint('startB')}
         >
-          <span>B</span>
-          <span className="mark-status">{coursePoints.startB ? 'Satt' : 'Ej satt'}</span>
+          B
         </button>
 
         <button
@@ -71,8 +71,7 @@ export function CourseSetupView() {
           className={`course-mark windward ${coursePoints.kryss1 ? 'set' : 'unset'}`}
           onClick={() => setPoint('kryss1')}
         >
-          <span>K1</span>
-          <span className="mark-status">{coursePoints.kryss1 ? 'Satt' : 'Ej satt'}</span>
+          K1
         </button>
 
         <button
@@ -80,8 +79,7 @@ export function CourseSetupView() {
           className={`course-mark windward ${coursePoints.kryss2 ? 'set' : 'unset'}`}
           onClick={() => setPoint('kryss2')}
         >
-          <span>K2</span>
-          <span className="mark-status">{coursePoints.kryss2 ? 'Satt' : 'Ej satt'}</span>
+          K2
         </button>
 
         <button
@@ -89,8 +87,7 @@ export function CourseSetupView() {
           className={`course-mark leeward ${coursePoints.lans1 ? 'set' : 'unset'}`}
           onClick={() => setPoint('lans1')}
         >
-          <span>L1</span>
-          <span className="mark-status">{coursePoints.lans1 ? 'Satt' : 'Ej satt'}</span>
+          L1
         </button>
 
         <button
@@ -98,13 +95,15 @@ export function CourseSetupView() {
           className={`course-mark leeward ${coursePoints.lans2 ? 'set' : 'unset'}`}
           onClick={() => setPoint('lans2')}
         >
-          <span>L2</span>
-          <span className="mark-status">{coursePoints.lans2 ? 'Satt' : 'Ej satt'}</span>
+          L2
         </button>
 
         <div
           className="course-arrow"
-          style={{ transform: `translateX(-50%) rotate(${windDirection}deg)` }}
+          style={{
+            transform: `translateX(-50%) rotate(${windDirection ?? 0}deg)`,
+            opacity: windDirection !== null ? 1 : 0.2,
+          }}
         >
           Vind
         </div>
