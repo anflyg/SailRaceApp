@@ -24,15 +24,16 @@ const viewComponents: Record<AppView, ComponentType<any>> = {
 export function AppShell() {
   const [activeView, setActiveView] = useState<AppView>('course')
   const ActiveView = viewComponents[activeView]
+  const compactHeader = activeView !== 'analysis'
 
   return (
-    <div className="app-shell">
-      <header className="app-header">
+    <div className={`app-shell ${activeView}`}>
+      <header className={`app-header ${compactHeader ? 'header-compact' : ''}`}>
         <div>
           <p className="eyebrow">SailRaceApp</p>
           <h1>{viewTitle[activeView]}</h1>
         </div>
-        <p className="subtitle">Svensk testbar grund för seglingsappen. Startar på Bana.</p>
+        <p className="subtitle">Startar på Bana. Klar för vattenläge.</p>
       </header>
 
       <NavigationBar currentView={activeView} onChange={setActiveView} />

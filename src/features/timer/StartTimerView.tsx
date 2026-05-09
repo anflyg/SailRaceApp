@@ -63,19 +63,18 @@ export function StartTimerView({ onFinish }: StartTimerViewProps) {
     () =>
       durations.map((minutes) => ({
         minutes,
-        label: `${minutes} min`,
+        label: `${minutes}`,
       })),
     [],
   )
 
-  const statusLabel =
-    status === 'running' ? 'Kör' : status === 'paused' ? 'Pausad' : 'Redo'
+  const statusLabel = status === 'running' ? 'Kör' : status === 'paused' ? 'Pausad' : 'Redo'
 
   return (
-    <section className="view-section">
+    <section className="view-section timer-view">
       <div className="timer-panel">
         <div
-          className="timer-display interactive"
+          className="timer-display interactive large-timer"
           role="button"
           tabIndex={0}
           onClick={handleDisplayClick}
@@ -90,7 +89,7 @@ export function StartTimerView({ onFinish }: StartTimerViewProps) {
         </p>
       </div>
 
-      <div className="button-grid">
+      <div className="button-grid timer-button-grid">
         {buttonSet.map((button) => (
           <button
             key={button.minutes}
@@ -106,10 +105,7 @@ export function StartTimerView({ onFinish }: StartTimerViewProps) {
         ))}
       </div>
 
-      <p className="timer-help">Tryck i fältet för start/pause. Håll ned för att återställa.</p>
-      <p className="placeholder-note">
-        Timern går till -0:10 och växlar automatiskt till Segling när tiden tar slut.
-      </p>
+      <p className="timer-help">Tryck för start/pause. Håll ned för återställning.</p>
     </section>
   )
 }
