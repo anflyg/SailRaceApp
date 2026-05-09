@@ -178,15 +178,61 @@ button:focus-visible {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-.action-row {
-  display: grid;
-  gap: 12px;
-  grid-template-columns: 1fr 1fr;
-  margin-top: 12px;
+.duration-button {
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-high);
 }
 
-.dashboard-grid {
-  grid-template-columns: 1fr;
+.duration-button.active {
+  background: var(--primary);
+  color: #050a1a;
+}
+
+.timer-help {
+  margin: 12px 0 0;
+  color: var(--text-muted);
+}
+
+.race-dashboard-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.analysis-header {
+  margin-bottom: 18px;
+}
+
+.analysis-view .analysis-panel {
+  display: grid;
+  gap: 16px;
+}
+
+.playback-controls {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.playback-speed {
+  min-width: 76px;
+}
+
+.playback-speed.active {
+  background: var(--primary);
+  color: #050a1a;
+}
+
+@media (max-width: 520px) {
+  .navigation-bar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .button-grid,
+  .action-row {
+    grid-template-columns: 1fr;
+  }
 }
 
 .metric-card {
@@ -221,6 +267,167 @@ button:focus-visible {
   margin: 0;
   font-size: 0.95rem;
   color: var(--text-muted);
+}
+
+.course-view .course-setup-grid {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(260px, 1fr) minmax(220px, 1.1fr);
+}
+
+.course-controls,
+.course-schematic {
+  display: grid;
+  gap: 14px;
+}
+
+.course-card {
+  display: grid;
+  gap: 14px;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 24px;
+}
+
+.course-row {
+  display: grid;
+  gap: 10px;
+}
+
+.course-label {
+  margin: 0 0 4px;
+  font-weight: 700;
+  color: var(--text-high);
+}
+
+.course-value {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+.wind-controls {
+  display: grid;
+  gap: 12px;
+}
+
+.wind-value {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-high);
+  font-weight: 700;
+}
+
+.course-schematic {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 24px;
+  padding: 18px;
+}
+
+.schematic-title {
+  margin: 0 0 12px;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.schematic-canvas {
+  position: relative;
+  min-height: 320px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.08));
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 18px;
+}
+
+.mark {
+  position: absolute;
+  min-width: 52px;
+  min-height: 52px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-weight: 700;
+  color: #050a1a;
+  background: #fff3c4;
+  text-transform: uppercase;
+}
+
+.windward {
+  background: #ff9f1c;
+  color: #050a1a;
+}
+
+.leeward {
+  background: #c77dff;
+  color: #050a1a;
+}
+
+.mark-1 {
+  top: 18%;
+  left: 38%;
+}
+
+.mark-2 {
+  top: 22%;
+  right: 18%;
+}
+
+.mark-3 {
+  bottom: 28%;
+  left: 24%;
+}
+
+.mark-4 {
+  bottom: 24%;
+  right: 20%;
+}
+
+.start-line {
+  position: absolute;
+  bottom: 20px;
+  left: 10%;
+  right: 10%;
+  display: flex;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-radius: 18px;
+  background: #65d9a5;
+  color: #050a1a;
+  font-weight: 700;
+}
+
+.wind-arrow {
+  position: absolute;
+  top: 3%;
+  left: 50%;
+  transform-origin: center center;
+  width: 56px;
+  height: 56px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #ffea6a;
+  color: #050a1a;
+  font-weight: 700;
+  box-shadow: 0 0 0 6px rgba(255, 234, 106, 0.18);
+}
+
+.clear-button {
+  min-height: 58px;
+}
+
+.timer-display.interactive {
+  cursor: pointer;
+}
+
+@media (max-width: 920px) {
+  .course-view .course-setup-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 520px) {

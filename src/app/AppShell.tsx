@@ -8,13 +8,13 @@ import { RaceAnalysisView } from '../features/analysis/RaceAnalysisView'
 import type { AppView } from '../types'
 
 const viewTitle: Record<AppView, string> = {
-  course: 'Course setup',
-  timer: 'Start timer',
-  race: 'Race dashboard',
-  analysis: 'Race analysis',
+  course: 'Bana',
+  timer: 'Start',
+  race: 'Segling',
+  analysis: 'Analys',
 }
 
-const viewComponents: Record<AppView, ComponentType> = {
+const viewComponents: Record<AppView, ComponentType<any>> = {
   course: CourseSetupView,
   timer: StartTimerView,
   race: RaceDashboardView,
@@ -32,13 +32,13 @@ export function AppShell() {
           <p className="eyebrow">SailRaceApp</p>
           <h1>{viewTitle[activeView]}</h1>
         </div>
-        <p className="subtitle">Mobile-first sailing race foundation for iPhone 12 and newer.</p>
+        <p className="subtitle">Svensk testbar grund för seglingsappen. Startar på Bana.</p>
       </header>
 
       <NavigationBar currentView={activeView} onChange={setActiveView} />
 
       <main className="app-panel">
-        <ActiveView />
+        <ActiveView onFinish={() => setActiveView('race')} />
       </main>
     </div>
   )

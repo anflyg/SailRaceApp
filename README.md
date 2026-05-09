@@ -43,9 +43,20 @@ SailRaceApp is a mobile-first sailing race app foundation built with React, Type
 
 ## Notes
 
-- Xcode is required to run the app on an iPhone, but browser testing works with `npm run dev`.
-- The first setup provides a shell with four main views: Course setup, Start timer, Race dashboard and Race analysis.
-- GPS, heading, wake lock, race recording and replay are added as placeholder services for future work.
+- Xcode krävs senare för iPhone/native-test, men webbläsartest fungerar i dagsläget med `npm run dev`.
+- Den här versionen är testbar i webbläsaren och använder React + TypeScript + Capacitor utan iOS-native-sensorintegration.
+- Appen innehåller fyra huvudvyer: Bana, Start, Segling och Analys.
+- GPS, kompass, accelerometer, magnetometer och raceinspelning är för närvarande placeholder-tjänster.
+
+## Browser-testbara funktioner
+
+- Bana-vyn kan sätta och rensa falska banpunkter.
+- Vindriktning kan ändras med +10° / -10° och wrappar mellan 0–359°.
+- Start-vyn har valbara 5/4/3/2/1 min och ett stort klickbart tidtagarfält.
+- Tidtagaren togglar start/pause på klick och återställs vid långt tryck.
+- Tidtagaren går till -0:10 och växlar därefter automatiskt till Segling.
+- Segling visar stora värden för Fart, Riktning och VMG.
+- Analys visar markerade uppspelningsknappar och svensk placeholder-text.
 
 ## Known limitations
 

@@ -1,7 +1,9 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useCountdown } from '../../hooks/useCountdown'
 
-const durations = [5, 4, 3, 2, 1]
+type Duration = 5 | 4 | 3 | 2 | 1
+
+const durations: Duration[] = [5, 4, 3, 2, 1]
 
 function formatTime(seconds: number) {
   const sign = seconds < 0 ? '-' : ''
@@ -11,12 +13,51 @@ function formatTime(seconds: number) {
   return `${sign}${minutes}:${secs.toString().padStart(2, '0')}`
 }
 
-export function StartTimerView() {
-  const { seconds, status, toggle, reset } = useCountdown(300)
+interface StartTimerViewProps {
+  onFinish?: () => void
+}
 
-  const actionLabel = status === 'running' ? 'Pause' : 'Start'
-  const subtitle = status === 'running' ? 'Counting down' : 'Ready'
-  const statusClass = status === 'running' ? 'status-running' : 'status-paused'
+export function StartTimerView({ onFinish }: StartTimerViewProps) {
+  const [selectedMinutes, setSelectedMinutes] = useState<Duration>(5)
+  const { seconds, status, toggle, pause, reset } = useCountdown(selectedMinutes * 60)
+  const longPressRef = useRef<number | null>(null)
+  const longPressTriggered = useRef(false)
+
+  useEffect(() => {
+    reset(selectedMinutes * 60)
+  }, [selectedMinutes, reset])
+
+  useEffect(() => {
+    if (seconds <= -10 && status === 'running') {
+      pause()
+      onFinish?.()
+    }
+  }, [seconds, status, pause, onFinish])
+
+  const handleDisplayPointerDown = () => {
+    longPressTriggered.current = false
+    if (longPressRef.current) {
+      window.clearTimeout(longPressRef.current)
+    }
+
+    longPressRef.current = window.setTimeout(() => {
+      longPressTriggered.current = true
+      reset(selectedMinutes * 60)
+    }, 500)
+  }
+
+  const handleDisplayPointerUp = () => {
+    if (longPressRef.current) {
+      window.clearTimeout(longPressRef.current)
+      longPressRef.current = null
+    }
+  }
+
+  const handleDisplayClick = () => {
+    if (!longPressTriggered.current) {
+      toggle()
+    }
+  }
 
   const buttonSet = useMemo(
     () =>
@@ -27,13 +68,26 @@ export function StartTimerView() {
     [],
   )
 
+  const statusLabel =
+    status === 'running' ? 'Kör' : status === 'paused' ? 'Pausad' : 'Redo'
+
   return (
     <section className="view-section">
       <div className="timer-panel">
-        <div className="timer-display">
+        <div
+          className="timer-display interactive"
+          role="button"
+          tabIndex={0}
+          onClick={handleDisplayClick}
+          onPointerDown={handleDisplayPointerDown}
+          onPointerUp={handleDisplayPointerUp}
+          onPointerLeave={handleDisplayPointerUp}
+        >
           <span>{formatTime(seconds)}</span>
         </div>
-        <p className={`timer-status ${statusClass}`}>{subtitle}</p>
+        <p className={`timer-status ${status === 'running' ? 'status-running' : 'status-paused'}`}>
+          {statusLabel}
+        </p>
       </div>
 
       <div className="button-grid">
@@ -41,8 +95,9 @@ export function StartTimerView() {
           <button
             key={button.minutes}
             type="button"
-            className="secondary-button"
+            className={`duration-button ${selectedMinutes === button.minutes ? 'active' : ''}`}
             onClick={() => {
+              setSelectedMinutes(button.minutes)
               reset(button.minutes * 60)
             }}
           >
@@ -51,16 +106,9 @@ export function StartTimerView() {
         ))}
       </div>
 
-      <div className="action-row">
-        <button type="button" className="primary-button" onClick={toggle}>
-          {actionLabel}
-        </button>
-        <button type="button" className="secondary-button" onClick={() => reset(300)}>
-          Reset
-        </button>
-      </div>
+      <p className="timer-help">Tryck i fältet för start/pause. Håll ned för att återställa.</p>
       <p className="placeholder-note">
-        Countdown continues to -0:10 as a placeholder for later automatic transitions into Race dashboard.
+        Timern går till -0:10 och växlar automatiskt till Segling när tiden tar slut.
       </p>
     </section>
   )

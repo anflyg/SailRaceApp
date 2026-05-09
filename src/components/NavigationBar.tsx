@@ -6,10 +6,10 @@ interface NavigationBarProps {
 }
 
 const viewItems: Array<{ view: AppView; label: string }> = [
-  { view: 'course', label: 'Course' },
-  { view: 'timer', label: 'Timer' },
-  { view: 'race', label: 'Race' },
-  { view: 'analysis', label: 'Analysis' },
+  { view: 'course', label: 'Bana' },
+  { view: 'timer', label: 'Start' },
+  { view: 'race', label: 'Segling' },
+  { view: 'analysis', label: 'Analys' },
 ]
 
 export function NavigationBar({ currentView, onChange }: NavigationBarProps) {
