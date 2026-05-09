@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { NavigationBar } from '../components/NavigationBar'
 import { CourseSetupView } from '../features/course/CourseSetupView'
 import { StartTimerView } from '../features/timer/StartTimerView'
@@ -37,28 +37,13 @@ const defaultCourseState: CourseState = {
 export function AppShell() {
   const [activeView, setActiveView] = useState<AppView>('course')
   const [course, setCourse] = useState<CourseState>(defaultCourseState)
-  const coursePointUpdates = useRef<Record<CoursePointKey, number>>({
-    startA: 0,
-    startB: 0,
-    kryss1: 0,
-    kryss2: 0,
-    lans1: 0,
-    lans2: 0,
-  })
 
-  const setOrUpdateCoursePoint = (key: CoursePointKey) => {
-    const updateCount = coursePointUpdates.current[key] + 1
-    const demoOffset = updateCount * 0.00008
-    coursePointUpdates.current[key] = updateCount
-
+  const toggleCoursePoint = (key: CoursePointKey) => {
     setCourse((current) => ({
       ...current,
       points: {
         ...current.points,
-        [key]: {
-          latitude: demoCoursePoints[key].latitude + demoOffset,
-          longitude: demoCoursePoints[key].longitude + demoOffset,
-        },
+        [key]: current.points[key] ? null : demoCoursePoints[key],
       },
     }))
   }
@@ -72,21 +57,13 @@ export function AppShell() {
 
   const clearCourse = () => {
     setCourse(defaultCourseState)
-    coursePointUpdates.current = {
-      startA: 0,
-      startB: 0,
-      kryss1: 0,
-      kryss2: 0,
-      lans1: 0,
-      lans2: 0,
-    }
   }
 
   const activeViewContent = {
     course: (
       <CourseSetupView
         course={course}
-        onSetCoursePoint={setOrUpdateCoursePoint}
+        onToggleCoursePoint={toggleCoursePoint}
         onSetWindHeading={setWindHeading}
         onClearCourse={clearCourse}
       />

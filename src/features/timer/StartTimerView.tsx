@@ -67,12 +67,17 @@ export function StartTimerView({ onFinish }: StartTimerViewProps) {
       })),
     [],
   )
+  const timerStateClass = status !== 'running'
+    ? 'timer-idle'
+    : seconds < 0
+      ? 'timer-negative'
+      : 'timer-running'
 
   return (
     <section className="view-section timer-view">
       <div className="timer-panel">
         <div
-          className="timer-display interactive large-timer"
+          className={`timer-display interactive large-timer ${timerStateClass}`}
           role="button"
           tabIndex={0}
           onClick={handleDisplayClick}
