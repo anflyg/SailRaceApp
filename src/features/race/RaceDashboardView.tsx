@@ -37,9 +37,12 @@ export function RaceDashboardView({ course, boatPosition }: RaceDashboardViewPro
     : null
   const referenceHeading = useTargetVmc && targetBearing !== null
     ? targetBearing
-    : course.windHeadingDegrees ?? 0
-  const velocityMadeGood = calculateVelocityMadeGood(fart, riktning, referenceHeading)
-  const velocityLabel = useTargetVmc ? 'VMC mål' : 'VMG vind'
+    : course.windHeadingDegrees
+  const velocityMadeGood = referenceHeading !== null
+    ? calculateVelocityMadeGood(fart, riktning, referenceHeading)
+    : null
+  const velocityLabel = useTargetVmc ? 'VMC mål' : course.windHeadingDegrees !== null ? 'VMG vind' : 'VMG ej satt'
+  const velocityValue = velocityMadeGood !== null ? formatSignedKnots(velocityMadeGood) : '--'
 
   return (
     <section className="view-section race-view">
@@ -56,7 +59,7 @@ export function RaceDashboardView({ course, boatPosition }: RaceDashboardViewPro
 
         <div className="metric-box velocity-made-good" aria-label={velocityLabel}>
           <span className="metric-value-row">
-            <span className="metric-value">{formatSignedKnots(velocityMadeGood)}</span>
+            <span className="metric-value">{velocityValue}</span>
             <span className="metric-context-label">{velocityLabel}</span>
           </span>
           <span className="metric-label">VMG/VMC</span>
