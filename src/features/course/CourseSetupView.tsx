@@ -1,116 +1,97 @@
-import { useState } from 'react'
+import { getCourseAxisHeading, normalizeDegrees } from '../../domain/navigation'
+import type { CoursePointKey, CourseState } from '../../types'
 
-type CoursePointKey = 'startA' | 'startB' | 'kryss1' | 'kryss2' | 'lans1' | 'lans2'
-
-const defaultCourseState: Record<CoursePointKey, boolean> = {
-  startA: false,
-  startB: false,
-  kryss1: false,
-  kryss2: false,
-  lans1: false,
-  lans2: false,
+interface CourseSetupViewProps {
+  course: CourseState
+  onTogglePoint: (key: CoursePointKey) => void
+  onSetWindHeading: (headingDegrees: number) => void
+  onClearCourse: () => void
 }
 
-// Normalize angle to 0-359 range
-function normalizeDegrees(angle: number): number {
-  return ((angle % 360) + 360) % 360
+function getWindArrowRotation(windHeadingDegrees: number | null, courseAxisHeading: number | null): number {
+  if (windHeadingDegrees === null) {
+    return 0
+  }
+
+  return normalizeDegrees(windHeadingDegrees - (courseAxisHeading ?? 0))
 }
 
-// Calculate wind angle relative to course coordinate system
-function getRelativeWindAngle(windHeading: number, courseAxisHeading: number): number {
-  return normalizeDegrees(windHeading - courseAxisHeading)
-}
-
-export function CourseSetupView() {
-  const [coursePoints, setCoursePoints] = useState(defaultCourseState)
-  const [windCompassHeading, setWindCompassHeading] = useState<number | null>(null)
-  
+export function CourseSetupView({
+  course,
+  onTogglePoint,
+  onSetWindHeading,
+  onClearCourse,
+}: CourseSetupViewProps) {
   // Demo current compass heading (50 degrees)
   const currentCompassHeading = 50
-  
-  // TODO: Calculate from L1 -> K1 GPS coordinates when real coordinates available
-  const courseAxisHeading = 40
-
-  const setPoint = (key: CoursePointKey) => {
-    setCoursePoints((current) => ({
-      ...current,
-      [key]: !current[key],
-    }))
-  }
 
   // Save current compass heading as wind direction
   // TODO: Replace with real compass heading from device
   const setWindFromCurrentHeading = () => {
-    setWindCompassHeading(currentCompassHeading)
+    onSetWindHeading(normalizeDegrees(currentCompassHeading))
   }
 
-  const clearCourse = () => {
-    setCoursePoints(defaultCourseState)
-    setWindCompassHeading(null)
-  }
-
-  const relativeWindAngle = windCompassHeading !== null 
-    ? getRelativeWindAngle(windCompassHeading, courseAxisHeading)
-    : 0
+  const courseAxisHeading = getCourseAxisHeading(course)
+  const windArrowRotation = getWindArrowRotation(course.windHeadingDegrees, courseAxisHeading)
 
   return (
     <section className="view-section course-view">
       <div className="course-schematic">
         <button
           type="button"
-          className={`course-mark start-point ${coursePoints.startA ? 'set' : 'unset'}`}
-          onClick={() => setPoint('startA')}
+          className={`course-mark start-point ${course.points.startA ? 'set' : 'unset'}`}
+          onClick={() => onTogglePoint('startA')}
         >
           A
         </button>
 
         <button
           type="button"
-          className={`course-mark start-point ${coursePoints.startB ? 'set' : 'unset'}`}
-          onClick={() => setPoint('startB')}
+          className={`course-mark start-point ${course.points.startB ? 'set' : 'unset'}`}
+          onClick={() => onTogglePoint('startB')}
         >
           B
         </button>
 
         <button
           type="button"
-          className={`course-mark windward ${coursePoints.kryss1 ? 'set' : 'unset'}`}
-          onClick={() => setPoint('kryss1')}
+          className={`course-mark windward ${course.points.kryss1 ? 'set' : 'unset'}`}
+          onClick={() => onTogglePoint('kryss1')}
         >
           K1
         </button>
 
         <button
           type="button"
-          className={`course-mark windward ${coursePoints.kryss2 ? 'set' : 'unset'}`}
-          onClick={() => setPoint('kryss2')}
+          className={`course-mark windward ${course.points.kryss2 ? 'set' : 'unset'}`}
+          onClick={() => onTogglePoint('kryss2')}
         >
           K2
         </button>
 
         <button
           type="button"
-          className={`course-mark leeward ${coursePoints.lans1 ? 'set' : 'unset'}`}
-          onClick={() => setPoint('lans1')}
+          className={`course-mark leeward ${course.points.lans1 ? 'set' : 'unset'}`}
+          onClick={() => onTogglePoint('lans1')}
         >
           L1
         </button>
 
         <button
           type="button"
-          className={`course-mark leeward ${coursePoints.lans2 ? 'set' : 'unset'}`}
-          onClick={() => setPoint('lans2')}
+          className={`course-mark leeward ${course.points.lans2 ? 'set' : 'unset'}`}
+          onClick={() => onTogglePoint('lans2')}
         >
           L2
         </button>
 
         <button
           type="button"
-          className={`wind-arrow-button ${windCompassHeading !== null ? 'set' : 'unset'}`}
+          className={`wind-arrow-button ${course.windHeadingDegrees !== null ? 'set' : 'unset'}`}
           onClick={setWindFromCurrentHeading}
           aria-label="Vind"
           style={{
-            transform: `translateX(-50%) rotate(${relativeWindAngle}deg)`,
+            transform: `translateX(-50%) rotate(${windArrowRotation}deg)`,
           }}
         >
           ▲
@@ -118,7 +99,7 @@ export function CourseSetupView() {
       </div>
 
       <div className="course-footer">
-        <button type="button" className="primary-button clear-button" onClick={clearCourse}>
+        <button type="button" className="primary-button clear-button" onClick={onClearCourse}>
           Rensa bana
         </button>
       </div>

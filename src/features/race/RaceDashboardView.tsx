@@ -1,14 +1,45 @@
+import {
+  calculateBearingDegrees,
+  calculateVelocityMadeGood,
+  hasPrimaryCourse,
+  normalizeDegrees,
+} from '../../domain/navigation'
+import type { CourseState, GeoPoint } from '../../types'
+
 // Format knots value: clamp to 19.9 and use one decimal with comma
 function formatKnots(value: number): string {
   const clamped = Math.max(0, Math.min(value, 19.9))
   return clamped.toFixed(1).replace('.', ',')
 }
 
-export function RaceDashboardView() {
+function formatSignedKnots(value: number): string {
+  const clamped = Math.max(-19.9, Math.min(value, 19.9))
+  return clamped.toFixed(1).replace('.', ',')
+}
+
+function formatDegrees(value: number): string {
+  const rounded = Math.round(normalizeDegrees(value)) % 360
+  return `${rounded.toString().padStart(3, '0')}°`
+}
+
+interface RaceDashboardViewProps {
+  course: CourseState
+  boatPosition: GeoPoint
+}
+
+export function RaceDashboardView({ course, boatPosition }: RaceDashboardViewProps) {
   // Demo values for now
   const fart = 6.3
   const riktning = 97
-  const vmg = 6.7
+  const useTargetVmc = hasPrimaryCourse(course)
+  const targetBearing = course.points.kryss1
+    ? calculateBearingDegrees(boatPosition, course.points.kryss1)
+    : null
+  const referenceHeading = useTargetVmc && targetBearing !== null
+    ? targetBearing
+    : course.windHeadingDegrees ?? 0
+  const velocityMadeGood = calculateVelocityMadeGood(fart, riktning, referenceHeading)
+  const velocityLabel = useTargetVmc ? 'VMC mål' : 'VMG vind'
 
   return (
     <section className="view-section race-view">
@@ -19,13 +50,16 @@ export function RaceDashboardView() {
         </div>
 
         <div className="metric-box" aria-label="Riktning">
-          <span className="metric-value">{riktning.toString().padStart(3, '0')}°</span>
+          <span className="metric-value">{formatDegrees(riktning)}</span>
           <span className="metric-label">Riktning</span>
         </div>
 
-        <div className="metric-box" aria-label="VMG">
-          <span className="metric-value">{formatKnots(vmg)}</span>
-          <span className="metric-label">VMG</span>
+        <div className="metric-box velocity-made-good" aria-label={velocityLabel}>
+          <span className="metric-value-row">
+            <span className="metric-value">{formatSignedKnots(velocityMadeGood)}</span>
+            <span className="metric-context-label">{velocityLabel}</span>
+          </span>
+          <span className="metric-label">VMG/VMC</span>
         </div>
       </div>
     </section>
