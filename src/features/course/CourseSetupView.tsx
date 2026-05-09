@@ -3,7 +3,7 @@ import type { CoursePointKey, CourseState } from '../../types'
 
 interface CourseSetupViewProps {
   course: CourseState
-  onTogglePoint: (key: CoursePointKey) => void
+  onSetCoursePoint: (key: CoursePointKey) => void
   onSetWindHeading: (headingDegrees: number) => void
   onClearCourse: () => void
 }
@@ -18,7 +18,7 @@ function getWindArrowRotation(windHeadingDegrees: number | null, courseAxisHeadi
 
 export function CourseSetupView({
   course,
-  onTogglePoint,
+  onSetCoursePoint,
   onSetWindHeading,
   onClearCourse,
 }: CourseSetupViewProps) {
@@ -40,7 +40,7 @@ export function CourseSetupView({
         <button
           type="button"
           className={`course-mark start-point ${course.points.startA ? 'set' : 'unset'}`}
-          onClick={() => onTogglePoint('startA')}
+          onClick={() => onSetCoursePoint('startA')}
         >
           A
         </button>
@@ -48,7 +48,7 @@ export function CourseSetupView({
         <button
           type="button"
           className={`course-mark start-point ${course.points.startB ? 'set' : 'unset'}`}
-          onClick={() => onTogglePoint('startB')}
+          onClick={() => onSetCoursePoint('startB')}
         >
           B
         </button>
@@ -56,7 +56,7 @@ export function CourseSetupView({
         <button
           type="button"
           className={`course-mark windward ${course.points.kryss1 ? 'set' : 'unset'}`}
-          onClick={() => onTogglePoint('kryss1')}
+          onClick={() => onSetCoursePoint('kryss1')}
         >
           K1
         </button>
@@ -64,7 +64,7 @@ export function CourseSetupView({
         <button
           type="button"
           className={`course-mark windward ${course.points.kryss2 ? 'set' : 'unset'}`}
-          onClick={() => onTogglePoint('kryss2')}
+          onClick={() => onSetCoursePoint('kryss2')}
         >
           K2
         </button>
@@ -72,7 +72,7 @@ export function CourseSetupView({
         <button
           type="button"
           className={`course-mark leeward ${course.points.lans1 ? 'set' : 'unset'}`}
-          onClick={() => onTogglePoint('lans1')}
+          onClick={() => onSetCoursePoint('lans1')}
         >
           L1
         </button>
@@ -80,7 +80,7 @@ export function CourseSetupView({
         <button
           type="button"
           className={`course-mark leeward ${course.points.lans2 ? 'set' : 'unset'}`}
-          onClick={() => onTogglePoint('lans2')}
+          onClick={() => onSetCoursePoint('lans2')}
         >
           L2
         </button>

@@ -1,17 +1,10 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { NavigationBar } from '../components/NavigationBar'
 import { CourseSetupView } from '../features/course/CourseSetupView'
 import { StartTimerView } from '../features/timer/StartTimerView'
 import { RaceDashboardView } from '../features/race/RaceDashboardView'
 import { RaceAnalysisView } from '../features/analysis/RaceAnalysisView'
 import type { AppView, CoursePointKey, CoursePointState, CourseState, GeoPoint } from '../types'
-
-const viewTitle: Record<AppView, string> = {
-  course: 'Bana',
-  timer: 'Start',
-  race: 'Segling',
-  analysis: 'Analys',
-}
 
 const emptyCoursePoints: CoursePointState = {
   startA: null,
@@ -44,14 +37,28 @@ const defaultCourseState: CourseState = {
 export function AppShell() {
   const [activeView, setActiveView] = useState<AppView>('course')
   const [course, setCourse] = useState<CourseState>(defaultCourseState)
-  const compactHeader = activeView !== 'analysis'
+  const coursePointUpdates = useRef<Record<CoursePointKey, number>>({
+    startA: 0,
+    startB: 0,
+    kryss1: 0,
+    kryss2: 0,
+    lans1: 0,
+    lans2: 0,
+  })
 
-  const toggleCoursePoint = (key: CoursePointKey) => {
+  const setOrUpdateCoursePoint = (key: CoursePointKey) => {
+    const updateCount = coursePointUpdates.current[key] + 1
+    const demoOffset = updateCount * 0.00008
+    coursePointUpdates.current[key] = updateCount
+
     setCourse((current) => ({
       ...current,
       points: {
         ...current.points,
-        [key]: current.points[key] ? null : demoCoursePoints[key],
+        [key]: {
+          latitude: demoCoursePoints[key].latitude + demoOffset,
+          longitude: demoCoursePoints[key].longitude + demoOffset,
+        },
       },
     }))
   }
@@ -65,13 +72,21 @@ export function AppShell() {
 
   const clearCourse = () => {
     setCourse(defaultCourseState)
+    coursePointUpdates.current = {
+      startA: 0,
+      startB: 0,
+      kryss1: 0,
+      kryss2: 0,
+      lans1: 0,
+      lans2: 0,
+    }
   }
 
   const activeViewContent = {
     course: (
       <CourseSetupView
         course={course}
-        onTogglePoint={toggleCoursePoint}
+        onSetCoursePoint={setOrUpdateCoursePoint}
         onSetWindHeading={setWindHeading}
         onClearCourse={clearCourse}
       />
@@ -83,14 +98,6 @@ export function AppShell() {
 
   return (
     <div className={`app-shell ${activeView}`}>
-      <header className={`app-header ${compactHeader ? 'header-compact' : ''}`}>
-        <div>
-          <p className="eyebrow">SailRaceApp</p>
-          <h1>{viewTitle[activeView]}</h1>
-        </div>
-        <p className="subtitle">Startar på Bana. Klar för vattenläge.</p>
-      </header>
-
       <NavigationBar currentView={activeView} onChange={setActiveView} />
 
       <main className="app-panel">

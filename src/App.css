@@ -10,6 +10,7 @@ body,
 #root,
 .app-shell {
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 body {
@@ -23,47 +24,19 @@ button {
 
 .app-shell {
   max-width: 520px;
+  height: 100vh;
+  height: 100dvh;
   margin: 0 auto;
-  padding: 10px 10px 18px;
+  padding: 10px;
   display: grid;
-  grid-template-rows: auto auto 1fr;
-}
-
-.app-header {
-  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 8px;
-  margin-bottom: 8px;
-}
-
-.header-compact {
-  margin-bottom: 4px;
-}
-
-.eyebrow {
-  text-transform: uppercase;
-  letter-spacing: 0.18em;
-  font-size: 0.75rem;
-  margin: 0;
-  color: var(--accent);
-}
-
-h1 {
-  margin: 0;
-  font-size: clamp(2rem, 5vw, 2.4rem);
-  line-height: 1.05;
-}
-
-.subtitle {
-  margin: 0;
-  color: var(--text-muted);
-  font-size: 0.92rem;
 }
 
 .navigation-bar {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
-  margin-bottom: 8px;
 }
 
 .nav-button {
@@ -93,6 +66,7 @@ h1 {
 .app-panel {
   display: grid;
   gap: 10px;
+  min-height: 0;
 }
 
 .view-section {
@@ -102,10 +76,16 @@ h1 {
   padding: 16px;
 }
 
-.course-view .view-section,
-.timer-view .view-section,
-.race-view .view-section {
+.view-section.course-view,
+.view-section.timer-view,
+.view-section.race-view {
   padding: 12px;
+}
+
+.view-section.course-view {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
 }
 
 .primary-button,
@@ -142,15 +122,20 @@ button:focus-visible {
 }
 
 .course-footer {
-  margin-top: 10px;
+  display: grid;
+  gap: 10px;
+  flex: 0 0 auto;
 }
 
 .course-mark,
 .course-arrow {
   position: absolute;
+  z-index: 1;
   display: grid;
   place-items: center;
   border-radius: 50%;
+  width: 84px;
+  height: 84px;
   min-width: 84px;
   min-height: 84px;
   padding: 12px;
@@ -244,6 +229,7 @@ button:focus-visible {
 /* Wind arrow button - positioned at top center of schematic */
 .wind-arrow-button {
   position: absolute;
+  z-index: 1;
   top: 24px;
   left: 50%;
   width: 80px;
@@ -280,36 +266,35 @@ button:focus-visible {
   opacity: 0.95;
 }
 
-.course-footer {
-  margin-top: 10px;
-}
-
 .clear-button {
   min-height: 62px;
 }
 
 .course-schematic {
   position: relative;
-  min-height: 420px;
+  flex: 1 1 auto;
+  min-height: 0;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.1));
   border-radius: 28px;
   border: 1px solid rgba(255, 255, 255, 0.12);
   padding: 18px;
   overflow: hidden;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 /* Visible start line between A and B */
 .course-schematic::before {
   content: '';
   position: absolute;
-  top: calc(50% - 42px);
-  left: 100px;
-  right: 100px;
+  top: 50%;
+  left: 60px;
+  right: 60px;
   height: 3px;
   background: #65d9a5;
   border-radius: 1.5px;
+  transform: translateY(-50%);
   pointer-events: none;
+  z-index: 0;
 }
 
 .large-timer {
@@ -412,34 +397,78 @@ button:focus-visible {
 
 @media (max-width: 920px) {
   .course-schematic {
-    min-height: 340px;
+    min-height: 0;
   }
 }
 
 @media (max-width: 520px) {
   .app-shell {
-    padding: 8px 8px 14px;
+    padding: 8px;
   }
 
   .navigation-bar {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .nav-button {
+    min-height: 52px;
+    padding: 12px 6px;
+    border-radius: 14px;
   }
 
   .course-schematic {
-    min-height: 320px;
+    min-height: 0;
     padding: 14px;
     margin-bottom: 10px;
   }
 
-  .course-mark,
-  .wind-arrow-button {
+  .course-mark {
+    width: 68px;
+    height: 68px;
     min-width: 68px;
     min-height: 68px;
+  }
+
+  .course-mark.start-point:first-of-type {
+    top: calc(50% - 34px);
+    left: 14px;
+  }
+
+  .course-mark.start-point:nth-of-type(2) {
+    top: calc(50% - 34px);
+    right: 14px;
+  }
+
+  .course-mark.windward:nth-of-type(3) {
+    top: 18px;
+    left: 16px;
+  }
+
+  .course-mark.windward:nth-of-type(4) {
+    top: 18px;
+    right: 16px;
+  }
+
+  .course-mark.leeward:nth-of-type(5) {
+    bottom: 18px;
+    left: 18%;
+  }
+
+  .course-mark.leeward:nth-of-type(6) {
+    bottom: 18px;
+    right: 18%;
+  }
+
+  .course-schematic::before {
+    left: 48px;
+    right: 48px;
   }
 
   .wind-arrow-button {
     width: 68px;
     height: 68px;
+    min-width: 68px;
+    min-height: 68px;
     font-size: 2rem;
   }
 
