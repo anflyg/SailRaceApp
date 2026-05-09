@@ -11,10 +11,25 @@ const defaultCourseState: Record<CoursePointKey, boolean> = {
   lans2: false,
 }
 
+// Normalize angle to 0-359 range
+function normalizeDegrees(angle: number): number {
+  return ((angle % 360) + 360) % 360
+}
+
+// Calculate wind angle relative to course coordinate system
+function getRelativeWindAngle(windHeading: number, courseAxisHeading: number): number {
+  return normalizeDegrees(windHeading - courseAxisHeading)
+}
+
 export function CourseSetupView() {
   const [coursePoints, setCoursePoints] = useState(defaultCourseState)
-  const [windDirection, setWindDirection] = useState<number | null>(null)
-  const [demoHeading] = useState(270)
+  const [windCompassHeading, setWindCompassHeading] = useState<number | null>(null)
+  
+  // Demo current compass heading (50 degrees)
+  const currentCompassHeading = 50
+  
+  // TODO: Calculate from L1 -> K1 GPS coordinates when real coordinates available
+  const courseAxisHeading = 40
 
   const setPoint = (key: CoursePointKey) => {
     setCoursePoints((current) => ({
@@ -23,32 +38,23 @@ export function CourseSetupView() {
     }))
   }
 
-  // Save current demo heading as wind direction
+  // Save current compass heading as wind direction
   // TODO: Replace with real compass heading from device
   const setWindFromCurrentHeading = () => {
-    setWindDirection(demoHeading)
+    setWindCompassHeading(currentCompassHeading)
   }
 
   const clearCourse = () => {
     setCoursePoints(defaultCourseState)
-    setWindDirection(null)
+    setWindCompassHeading(null)
   }
+
+  const relativeWindAngle = windCompassHeading !== null 
+    ? getRelativeWindAngle(windCompassHeading, courseAxisHeading)
+    : 0
 
   return (
     <section className="view-section course-view">
-      <div className="course-header">
-        <button
-          type="button"
-          className={`primary-button wind-button ${windDirection !== null ? 'set' : 'unset'}`}
-          onClick={setWindFromCurrentHeading}
-        >
-          Vind
-        </button>
-        <div className="wind-status">
-          {windDirection !== null ? `${windDirection}°` : 'Ej satt'}
-        </div>
-      </div>
-
       <div className="course-schematic">
         <button
           type="button"
@@ -98,15 +104,17 @@ export function CourseSetupView() {
           L2
         </button>
 
-        <div
-          className="course-arrow"
+        <button
+          type="button"
+          className={`wind-arrow-button ${windCompassHeading !== null ? 'set' : 'unset'}`}
+          onClick={setWindFromCurrentHeading}
+          aria-label="Vind"
           style={{
-            transform: `translateX(-50%) rotate(${windDirection ?? 0}deg)`,
-            opacity: windDirection !== null ? 1 : 0.2,
+            transform: `translateX(-50%) rotate(${relativeWindAngle}deg)`,
           }}
         >
-          Vind
-        </div>
+          ▲
+        </button>
       </div>
 
       <div className="course-footer">

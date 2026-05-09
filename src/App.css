@@ -141,41 +141,8 @@ button:focus-visible {
   gap: 10px;
 }
 
-.course-header {
-  grid-template-columns: auto 1fr;
-  align-items: center;
-  margin-bottom: 12px;
-  gap: 12px;
-}
-
-.wind-status {
-  text-align: left;
-  font-size: 1rem;
-  font-weight: 700;
-  color: var(--text-high);
-}
-
-.course-schematic {
-  position: relative;
-  min-height: 420px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.1));
-  border-radius: 28px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  padding: 18px;
-  overflow: hidden;
-}
-
-/* Visible start line between A and B */
-.course-schematic::before {
-  content: '';
-  position: absolute;
-  top: calc(50% - 42px);
-  left: 100px;
-  right: 100px;
-  height: 3px;
-  background: #65d9a5;
-  border-radius: 1.5px;
-  pointer-events: none;
+.course-footer {
+  margin-top: 10px;
 }
 
 .course-mark,
@@ -274,14 +241,43 @@ button:focus-visible {
   right: 18%;
 }
 
-.course-arrow {
-  top: 14px;
+/* Wind arrow button - positioned at top center of schematic */
+.wind-arrow-button {
+  position: absolute;
+  top: 24px;
   left: 50%;
-  transform: translateX(-50%) rotate(0deg);
-  width: 90px;
-  height: 90px;
-  background: #ffea6a;
-  box-shadow: 0 0 0 8px rgba(255, 234, 106, 0.18);
+  width: 80px;
+  height: 80px;
+  min-width: 80px;
+  min-height: 80px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  background: rgba(255, 234, 106, 0.2);
+  color: #ffea6a;
+  font-size: 2.5rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.wind-arrow-button.unset {
+  opacity: 0.3;
+  border-style: dashed;
+}
+
+.wind-arrow-button.set {
+  opacity: 1;
+  background: rgba(255, 234, 106, 0.5);
+  border-style: solid;
+  border-color: #ffea6a;
+}
+
+.wind-arrow-button:hover,
+.wind-arrow-button:focus-visible {
+  opacity: 0.95;
 }
 
 .course-footer {
@@ -292,63 +288,96 @@ button:focus-visible {
   min-height: 62px;
 }
 
+.course-schematic {
+  position: relative;
+  min-height: 420px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.1));
+  border-radius: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 18px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+/* Visible start line between A and B */
+.course-schematic::before {
+  content: '';
+  position: absolute;
+  top: calc(50% - 42px);
+  left: 100px;
+  right: 100px;
+  height: 3px;
+  background: #65d9a5;
+  border-radius: 1.5px;
+  pointer-events: none;
+}
+
 .large-timer {
   background: rgba(255, 255, 255, 0.12);
   border-radius: 32px;
-  padding: 30px 16px;
-  font-size: clamp(4rem, 12vw, 6.5rem);
-  min-height: 220px;
+  padding: 40px 16px;
+  font-size: clamp(5rem, 20vw, 8rem);
+  min-height: 280px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 16px;
 }
 
 .timer-panel {
   display: grid;
-  gap: 10px;
+  gap: 0;
   text-align: center;
-}
-
-.timer-status {
-  font-size: 1rem;
 }
 
 .timer-button-grid {
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 10px;
-  margin-top: 6px;
+  gap: 12px;
+  margin-top: 0;
 }
 
 .duration-button {
-  min-height: 74px;
-  font-size: 1.35rem;
+  min-height: 100px;
+  font-size: 2rem;
+  font-weight: 700;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-high);
+  transition: all 0.15s ease;
 }
 
-.timer-help {
-  margin: 10px 0 0;
-  font-size: 0.95rem;
+.duration-button.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #050a1a;
 }
 
 .race-grid {
   display: grid;
-  gap: 10px;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .metric-box {
   display: grid;
-  gap: 10px;
+  gap: 12px;
   justify-items: center;
-  padding: 24px 16px;
+  padding: 32px 16px;
   border-radius: 28px;
   background: rgba(255, 255, 255, 0.12);
 }
 
 .metric-box .metric-value {
-  font-size: clamp(4rem, 13vw, 6rem);
+  font-size: clamp(3rem, 18vw, 5.5rem);
   line-height: 1;
+  font-weight: 700;
 }
 
 .metric-box .metric-label {
   color: var(--text-muted);
-  font-size: 1rem;
+  font-size: 0.9rem;
   letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
 .analysis-panel {
@@ -371,27 +400,55 @@ button:focus-visible {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .course-header {
-    grid-template-columns: 1fr 1fr 1fr;
-  }
-
   .course-schematic {
     min-height: 320px;
     padding: 14px;
+    margin-bottom: 10px;
   }
 
   .course-mark,
-  .course-arrow {
+  .wind-arrow-button {
     min-width: 68px;
     min-height: 68px;
   }
 
+  .wind-arrow-button {
+    width: 68px;
+    height: 68px;
+    font-size: 2rem;
+  }
+
   .large-timer {
-    min-height: 190px;
-    font-size: clamp(3.5rem, 13vw, 5.5rem);
+    min-height: 220px;
+    font-size: clamp(4rem, 18vw, 6.5rem);
+    padding: 30px 12px;
+    margin-bottom: 12px;
   }
 
   .timer-button-grid {
     grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .duration-button {
+    min-height: 80px;
+    font-size: 1.5rem;
+  }
+
+  .race-grid {
+    gap: 10px;
+  }
+
+  .metric-box {
+    padding: 24px 12px;
+    gap: 10px;
+  }
+
+  .metric-box .metric-value {
+    font-size: clamp(2.5rem, 15vw, 4.5rem);
+  }
+
+  .metric-box .metric-label {
+    font-size: 0.85rem;
   }
 }

@@ -68,8 +68,6 @@ export function StartTimerView({ onFinish }: StartTimerViewProps) {
     [],
   )
 
-  const statusLabel = status === 'running' ? 'Kör' : status === 'paused' ? 'Pausad' : 'Redo'
-
   return (
     <section className="view-section timer-view">
       <div className="timer-panel">
@@ -84,9 +82,6 @@ export function StartTimerView({ onFinish }: StartTimerViewProps) {
         >
           <span>{formatTime(seconds)}</span>
         </div>
-        <p className={`timer-status ${status === 'running' ? 'status-running' : 'status-paused'}`}>
-          {statusLabel}
-        </p>
       </div>
 
       <div className="button-grid timer-button-grid">
@@ -104,8 +99,6 @@ export function StartTimerView({ onFinish }: StartTimerViewProps) {
           </button>
         ))}
       </div>
-
-      <p className="timer-help">Tryck för start/pause. Håll ned för återställning.</p>
     </section>
   )
 }
