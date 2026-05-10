@@ -5,7 +5,7 @@ import type { CoursePointKey, CourseState } from '../../types'
 interface CourseSetupViewProps {
   course: CourseState
   onToggleCoursePoint: (key: CoursePointKey) => void
-  onSetWindHeading: (headingDegrees: number) => void
+  onToggleWindHeading: (headingDegrees: number) => void
   onClearCourse: () => void
 }
 
@@ -20,7 +20,7 @@ function getWindArrowRotation(windHeadingDegrees: number | null, courseAxisHeadi
 export function CourseSetupView({
   course,
   onToggleCoursePoint,
-  onSetWindHeading,
+  onToggleWindHeading,
   onClearCourse,
 }: CourseSetupViewProps) {
   // Demo current compass heading (50 degrees)
@@ -29,7 +29,7 @@ export function CourseSetupView({
   // Save current compass heading as wind direction
   // TODO: Replace with real compass heading from device
   const setWindFromCurrentHeading = () => {
-    onSetWindHeading(normalizeDegrees(currentCompassHeading))
+    onToggleWindHeading(normalizeDegrees(currentCompassHeading))
   }
 
   const courseAxisHeading = getCourseAxisHeading(course)

@@ -48,10 +48,10 @@ export function AppShell() {
     }))
   }
 
-  const setWindHeading = (headingDegrees: number) => {
+  const toggleWindHeading = (headingDegrees: number) => {
     setCourse((current) => ({
       ...current,
-      windHeadingDegrees: headingDegrees,
+      windHeadingDegrees: current.windHeadingDegrees === null ? headingDegrees : null,
     }))
   }
 
@@ -64,7 +64,7 @@ export function AppShell() {
       <CourseSetupView
         course={course}
         onToggleCoursePoint={toggleCoursePoint}
-        onSetWindHeading={setWindHeading}
+        onToggleWindHeading={toggleWindHeading}
         onClearCourse={clearCourse}
       />
     ),

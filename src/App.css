@@ -383,10 +383,10 @@ button:focus-visible {
 .metric-box {
   display: grid;
   align-content: center;
-  gap: 10px;
+  gap: 6px;
   justify-items: center;
   min-height: 0;
-  padding: 20px 16px;
+  padding: 14px 12px;
   border-radius: 22px;
   background: rgba(255, 255, 255, 0.12);
 }
@@ -422,7 +422,7 @@ button:focus-visible {
 }
 
 .metric-box .metric-value {
-  font-size: clamp(4.2rem, 15dvh, 7rem);
+  font-size: clamp(5.4rem, 20dvh, 9rem);
   line-height: 0.95;
   font-weight: 800;
   letter-spacing: 0;
@@ -451,7 +451,7 @@ button:focus-visible {
 
 .metric-box .metric-label {
   color: var(--text-muted);
-  font-size: clamp(1rem, 3dvh, 1.35rem);
+  font-size: clamp(0.95rem, 2.2dvh, 1.25rem);
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -565,16 +565,16 @@ button:focus-visible {
   }
 
   .metric-box {
-    padding: 18px 12px;
-    gap: 10px;
+    padding: 12px 10px;
+    gap: 6px;
   }
 
   .metric-box .metric-value {
-    font-size: clamp(4rem, 20vw, 5.2rem);
+    font-size: clamp(5rem, 25vw, 6.8rem);
   }
 
   .metric-box .metric-label {
-    font-size: 1rem;
+    font-size: 0.95rem;
   }
 
   .metric-value-row {
