@@ -234,12 +234,12 @@ button:focus-visible {
 
 .course-mark.windward:nth-of-type(3) {
   top: 24px;
-  left: 20px;
+  right: 20px;
 }
 
 .course-mark.windward:nth-of-type(4) {
   top: 24px;
-  right: 20px;
+  left: 20px;
 }
 
 .course-mark.leeward:nth-of-type(5) {
@@ -325,16 +325,16 @@ button:focus-visible {
 
 .large-timer {
   border-radius: 24px;
-  padding: 24px 10px;
+  padding: 22px 4px;
   width: 100%;
   min-height: clamp(320px, 50dvh, 460px);
   display: grid;
   place-items: center;
   margin: 0;
-  font-size: clamp(6.6rem, min(30vw, 18dvh), 10rem);
+  font-size: clamp(7.2rem, min(36vw, 20dvh), 10.5rem);
   font-weight: 800;
   font-variant-numeric: tabular-nums;
-  line-height: 0.9;
+  line-height: 0.88;
   letter-spacing: 0;
   color: #f7fff8;
   text-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
@@ -547,12 +547,12 @@ button:focus-visible {
 
   .course-mark.windward:nth-of-type(3) {
     top: 18px;
-    left: 16px;
+    right: 16px;
   }
 
   .course-mark.windward:nth-of-type(4) {
     top: 18px;
-    right: 16px;
+    left: 16px;
   }
 
   .course-mark.leeward:nth-of-type(5) {
@@ -580,8 +580,8 @@ button:focus-visible {
 
   .large-timer {
     min-height: clamp(310px, 50dvh, 400px);
-    padding: 22px 8px;
-    font-size: clamp(6.5rem, min(31vw, 18dvh), 8.6rem);
+    padding: 20px 2px;
+    font-size: clamp(7rem, min(36vw, 19dvh), 9.5rem);
   }
 
   .timer-button-grid {
