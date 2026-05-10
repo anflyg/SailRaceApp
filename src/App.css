@@ -88,6 +88,10 @@ button {
   flex-direction: column;
 }
 
+.view-section.race-view {
+  min-height: 0;
+}
+
 .primary-button,
 .secondary-button {
   min-height: 58px;
@@ -370,27 +374,58 @@ button:focus-visible {
 
 .race-grid {
   display: grid;
-  gap: 12px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+  height: 100%;
 }
 
 .metric-box {
   display: grid;
-  gap: 12px;
+  align-content: center;
+  gap: 10px;
   justify-items: center;
-  padding: 32px 16px;
-  border-radius: 28px;
+  min-height: 0;
+  padding: 20px 16px;
+  border-radius: 22px;
   background: rgba(255, 255, 255, 0.12);
 }
 
 .metric-box.velocity-made-good {
-  grid-column: 1 / -1;
+  color: #fffaf2;
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+
+.metric-box.velocity-made-good.can-toggle {
+  cursor: pointer;
+}
+
+.metric-box.velocity-made-good:focus-visible {
+  outline: 3px solid rgba(255, 255, 255, 0.45);
+  outline-offset: -5px;
+}
+
+.velocity-mode-vmg {
+  background: #064b34;
+  border: 1px solid rgba(101, 217, 165, 0.45);
+}
+
+.velocity-mode-vmc {
+  background: #6b3a06;
+  border: 1px solid rgba(255, 184, 77, 0.5);
+}
+
+.velocity-mode-unset {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px dashed rgba(255, 255, 255, 0.18);
+  color: rgba(247, 247, 247, 0.78);
 }
 
 .metric-box .metric-value {
-  font-size: clamp(3rem, 18vw, 5.5rem);
-  line-height: 1;
-  font-weight: 700;
+  font-size: clamp(4.2rem, 15dvh, 7rem);
+  line-height: 0.95;
+  font-weight: 800;
+  letter-spacing: 0;
 }
 
 .metric-value-row {
@@ -416,9 +451,14 @@ button:focus-visible {
 
 .metric-box .metric-label {
   color: var(--text-muted);
-  font-size: 0.9rem;
+  font-size: clamp(1rem, 3dvh, 1.35rem);
+  font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
+}
+
+.velocity-made-good .metric-label {
+  color: rgba(255, 250, 242, 0.86);
 }
 
 .analysis-panel {
@@ -525,16 +565,16 @@ button:focus-visible {
   }
 
   .metric-box {
-    padding: 24px 12px;
+    padding: 18px 12px;
     gap: 10px;
   }
 
   .metric-box .metric-value {
-    font-size: clamp(2.5rem, 15vw, 4.5rem);
+    font-size: clamp(4rem, 20vw, 5.2rem);
   }
 
   .metric-box .metric-label {
-    font-size: 0.85rem;
+    font-size: 1rem;
   }
 
   .metric-value-row {

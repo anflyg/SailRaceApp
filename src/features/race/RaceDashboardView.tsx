@@ -1,10 +1,13 @@
+import { useState } from 'react'
+import { normalizeDegrees } from '../../domain/angles'
 import {
   calculateBearingDegrees,
   calculateVelocityMadeGood,
   hasPrimaryCourse,
-  normalizeDegrees,
 } from '../../domain/navigation'
 import type { CourseState, GeoPoint } from '../../types'
+
+type VelocityMode = 'vmg' | 'vmc'
 
 // Format knots value: clamp to 19.9 and use one decimal with comma
 function formatKnots(value: number): string {
@@ -28,21 +31,51 @@ interface RaceDashboardViewProps {
 }
 
 export function RaceDashboardView({ course, boatPosition }: RaceDashboardViewProps) {
+  const [activeVelocityMode, setActiveVelocityMode] = useState<VelocityMode>('vmc')
   // Demo values for now
   const fart = 6.3
   const riktning = 97
-  const useTargetVmc = hasPrimaryCourse(course)
+  const hasWindVmg = course.windHeadingDegrees !== null
   const targetBearing = course.points.kryss1
     ? calculateBearingDegrees(boatPosition, course.points.kryss1)
     : null
-  const referenceHeading = useTargetVmc && targetBearing !== null
+  const hasTargetVmc = hasPrimaryCourse(course) && targetBearing !== null
+  const canToggleVelocityMode = hasWindVmg && hasTargetVmc
+
+  const selectedVelocityMode: VelocityMode | null = hasTargetVmc && activeVelocityMode === 'vmc'
+    ? 'vmc'
+    : hasWindVmg
+      ? 'vmg'
+      : hasTargetVmc
+        ? 'vmc'
+        : null
+  const referenceHeading = selectedVelocityMode === 'vmc'
     ? targetBearing
-    : course.windHeadingDegrees
-  const velocityMadeGood = referenceHeading !== null
+    : selectedVelocityMode === 'vmg'
+      ? course.windHeadingDegrees
+      : null
+  const velocityMadeGood = referenceHeading !== null && referenceHeading !== undefined
     ? calculateVelocityMadeGood(fart, riktning, referenceHeading)
     : null
-  const velocityLabel = useTargetVmc ? 'VMC mål' : course.windHeadingDegrees !== null ? 'VMG vind' : 'VMG ej satt'
+  const velocityLabel = selectedVelocityMode === 'vmc'
+    ? 'VMC mål'
+    : selectedVelocityMode === 'vmg'
+      ? 'VMG vind'
+      : 'Ej satt'
   const velocityValue = velocityMadeGood !== null ? formatSignedKnots(velocityMadeGood) : '--'
+  const velocityClassName = selectedVelocityMode === 'vmc'
+    ? 'velocity-mode-vmc'
+    : selectedVelocityMode === 'vmg'
+      ? 'velocity-mode-vmg'
+      : 'velocity-mode-unset'
+
+  const toggleVelocityMode = () => {
+    if (!canToggleVelocityMode) {
+      return
+    }
+
+    setActiveVelocityMode((current) => (current === 'vmc' ? 'vmg' : 'vmc'))
+  }
 
   return (
     <section className="view-section race-view">
@@ -57,12 +90,21 @@ export function RaceDashboardView({ course, boatPosition }: RaceDashboardViewPro
           <span className="metric-label">Riktning</span>
         </div>
 
-        <div className="metric-box velocity-made-good" aria-label={velocityLabel}>
-          <span className="metric-value-row">
-            <span className="metric-value">{velocityValue}</span>
-            <span className="metric-context-label">{velocityLabel}</span>
-          </span>
-          <span className="metric-label">VMG/VMC</span>
+        <div
+          className={`metric-box velocity-made-good ${velocityClassName} ${canToggleVelocityMode ? 'can-toggle' : ''}`}
+          aria-label={velocityLabel}
+          role={canToggleVelocityMode ? 'button' : undefined}
+          tabIndex={canToggleVelocityMode ? 0 : undefined}
+          onClick={toggleVelocityMode}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault()
+              toggleVelocityMode()
+            }
+          }}
+        >
+          <span className="metric-value">{velocityValue}</span>
+          <span className="metric-label">{velocityLabel}</span>
         </div>
       </div>
     </section>

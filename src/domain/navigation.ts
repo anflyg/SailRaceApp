@@ -1,8 +1,5 @@
+import { normalizeDegrees } from './angles'
 import type { CourseState, GeoPoint } from '../types'
-
-export function normalizeDegrees(angle: number): number {
-  return ((angle % 360) + 360) % 360
-}
 
 function toRadians(degrees: number): number {
   return (degrees * Math.PI) / 180

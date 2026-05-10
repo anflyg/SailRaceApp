@@ -1,4 +1,5 @@
-import { getCourseAxisHeading, normalizeDegrees } from '../../domain/navigation'
+import { normalizeDegrees } from '../../domain/angles'
+import { getCourseAxisHeading } from '../../domain/navigation'
 import type { CoursePointKey, CourseState } from '../../types'
 
 interface CourseSetupViewProps {

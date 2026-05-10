@@ -47,6 +47,7 @@ SailRaceApp is a mobile-first sailing race app foundation built with React, Type
 - Den här versionen är testbar i webbläsaren och använder React + TypeScript + Capacitor utan iOS-native-sensorintegration.
 - Appen innehåller fyra huvudvyer: Bana, Start, Segling och Analys.
 - GPS, kompass, accelerometer, magnetometer och raceinspelning är för närvarande placeholder-tjänster.
+- Sensorarkitektur för kommande iPhone-implementation finns dokumenterad i `docs/sensors.md`.
 
 ## Browser-testbara funktioner
 
