@@ -7,6 +7,7 @@ interface CourseSetupViewProps {
   onToggleCoursePoint: (key: CoursePointKey) => void
   onToggleWindHeading: (headingDegrees: number) => void
   onClearCourse: () => void
+  gpsStatusMessage: string | null
 }
 
 function getWindArrowRotation(windHeadingDegrees: number | null, courseAxisHeading: number | null): number {
@@ -22,6 +23,7 @@ export function CourseSetupView({
   onToggleCoursePoint,
   onToggleWindHeading,
   onClearCourse,
+  gpsStatusMessage,
 }: CourseSetupViewProps) {
   // Demo current compass heading (50 degrees)
   const currentCompassHeading = 50
@@ -100,6 +102,11 @@ export function CourseSetupView({
       </div>
 
       <div className="course-footer">
+        {gpsStatusMessage ? (
+          <p className="course-status" role="status">
+            {gpsStatusMessage}
+          </p>
+        ) : null}
         <button type="button" className="primary-button clear-button" onClick={onClearCourse}>
           Rensa bana
         </button>

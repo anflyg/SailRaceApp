@@ -44,15 +44,15 @@ SailRaceApp is a mobile-first sailing race app foundation built with React, Type
 ## Notes
 
 - Xcode krävs senare för iPhone/native-test, men webbläsartest fungerar i dagsläget med `npm run dev`.
-- Den här versionen är testbar i webbläsaren och använder React + TypeScript + Capacitor. Live GPS används i Segling, men Core Motion-baserad vind/heading återstår.
+- Den här versionen är testbar i webbläsaren och använder React + TypeScript + Capacitor. Live GPS används i Bana och Segling, men Core Motion-baserad vind/heading återstår.
 - Appen innehåller fyra huvudvyer: Bana, Start, Segling och Analys.
-- Live GPS används i Segling för fart, position och course over ground när data finns.
+- Live GPS används i Bana för banpunkter och i Segling för fart, position och course over ground när data finns.
 - Kompass, accelerometer, magnetometer och raceinspelning är för närvarande placeholder-tjänster.
 - Sensorarkitektur för kommande iPhone-implementation finns dokumenterad i `docs/sensors.md`.
 
 ## Browser-testbara funktioner
 
-- Bana-vyn kan sätta och rensa falska banpunkter.
+- Bana-vyn kan sätta och rensa banpunkter från live GPS när position finns.
 - Vindriktning kan ändras med +10° / -10° och wrappar mellan 0–359°.
 - Start-vyn har valbara 5/4/3/2/1 min och ett stort klickbart tidtagarfält.
 - Tidtagaren togglar start/pause på klick och återställs vid långt tryck.
@@ -62,14 +62,13 @@ SailRaceApp is a mobile-first sailing race app foundation built with React, Type
 
 ## Known limitations
 
-- GPS används i Segling, men banpunkter sätts fortfarande från demodata.
+- GPS används i Bana och Segling, men vind/heading är ännu inte Core Motion-baserat.
 - No compass/Core Motion integration yet.
 - Race replay is currently placeholder-only.
 - Wake lock is prepared as a service stub but not wired to the UI.
 
 ## Next planned steps
 
-- Use live GPS for setting course marks in Bana.
 - Add Capacitor-native heading/Core Motion support.
 - Implement screen wake lock and keep-awake behavior.
 - Wire real race recording and replay.

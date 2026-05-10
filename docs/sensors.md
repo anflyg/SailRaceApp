@@ -22,6 +22,9 @@ heading APIs or raw magnetometer vectors are not robust enough for wind capture.
   - GPS course over ground is shown as Riktning only when speed is at least 1.5 knots.
   - VMG/VMC calculations use live GPS speed/course when both are available and reliable.
   - VMC bearing-to-target uses the live GPS position when K1/L1 are set.
+- Step 2 live GPS integration is implemented for the Bana view:
+  - Course marks A/B/K1/K2/L1/L2 are saved from current live GPS latitude/longitude.
+  - If GPS position is unavailable, no fake coordinate is saved and the point remains unset.
 
 Reason: when the boat is moving, GPS course is stable and directly reflects over-ground motion.
 
@@ -41,7 +44,7 @@ Reason: low-speed GPS course is noisy; mast rake, bend, and heel require tilt-aw
 Current TypeScript code defines:
 
 - sensor reading interfaces (`src/services/sensors/sensorTypes.ts`)
-- live GPS hook for the active sailing view (`src/hooks/useLiveGps.ts`), enabled only while Segling is active
+- live GPS hook (`src/hooks/useLiveGps.ts`), enabled while Bana or Segling is active
 - heading math helpers (`src/domain/angles.ts`)
 - mock service (`src/services/sensors/mockSensorService.ts`)
 

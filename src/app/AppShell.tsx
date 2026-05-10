@@ -23,15 +23,6 @@ const emptyCoursePoints: CoursePointState = {
   lans2: null,
 }
 
-const demoCoursePoints: Record<CoursePointKey, GeoPoint> = {
-  startA: { latitude: 59.3257, longitude: 18.0672 },
-  startB: { latitude: 59.3253, longitude: 18.0707 },
-  kryss1: { latitude: 59.3317, longitude: 18.0766 },
-  kryss2: { latitude: 59.3313, longitude: 18.0788 },
-  lans1: { latitude: 59.3239, longitude: 18.0645 },
-  lans2: { latitude: 59.3235, longitude: 18.067 },
-}
-
 const defaultCourseState: CourseState = {
   points: emptyCoursePoints,
   windHeadingDegrees: null,
@@ -41,14 +32,46 @@ export function AppShell() {
   const [activeView, setActiveView] = useState<AppView>('course')
   const [course, setCourse] = useState<CourseState>(defaultCourseState)
   const [selectedCountdownMinutes, setSelectedCountdownMinutes] = useState<CountdownDuration>(5)
-  const liveGps = useLiveGps(activeView === 'race')
+  const [courseGpsStatus, setCourseGpsStatus] = useState<string | null>(null)
+  const liveGps = useLiveGps(activeView === 'course' || activeView === 'race')
+
+  const getLiveGpsPosition = (): GeoPoint | null => {
+    if (liveGps.latitude === null || liveGps.longitude === null) {
+      return null
+    }
+
+    return {
+      latitude: liveGps.latitude,
+      longitude: liveGps.longitude,
+    }
+  }
 
   const toggleCoursePoint = (key: CoursePointKey) => {
+    if (course.points[key]) {
+      setCourseGpsStatus(null)
+      setCourse((current) => ({
+        ...current,
+        points: {
+          ...current.points,
+          [key]: null,
+        },
+      }))
+      return
+    }
+
+    const gpsPosition = getLiveGpsPosition()
+
+    if (!gpsPosition) {
+      setCourseGpsStatus('GPS-position saknas')
+      return
+    }
+
+    setCourseGpsStatus(null)
     setCourse((current) => ({
       ...current,
       points: {
         ...current.points,
-        [key]: current.points[key] ? null : demoCoursePoints[key],
+        [key]: gpsPosition,
       },
     }))
   }
@@ -61,6 +84,7 @@ export function AppShell() {
   }
 
   const clearCourse = () => {
+    setCourseGpsStatus(null)
     setCourse(defaultCourseState)
   }
 
@@ -71,6 +95,7 @@ export function AppShell() {
         onToggleCoursePoint={toggleCoursePoint}
         onToggleWindHeading={toggleWindHeading}
         onClearCourse={clearCourse}
+        gpsStatusMessage={courseGpsStatus}
       />
     ),
     timer: (
