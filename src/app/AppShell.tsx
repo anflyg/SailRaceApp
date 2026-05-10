@@ -4,7 +4,14 @@ import { CourseSetupView } from '../features/course/CourseSetupView'
 import { StartTimerView } from '../features/timer/StartTimerView'
 import { RaceDashboardView } from '../features/race/RaceDashboardView'
 import { RaceAnalysisView } from '../features/analysis/RaceAnalysisView'
-import type { AppView, CoursePointKey, CoursePointState, CourseState, GeoPoint } from '../types'
+import type {
+  AppView,
+  CountdownDuration,
+  CoursePointKey,
+  CoursePointState,
+  CourseState,
+  GeoPoint,
+} from '../types'
 
 const emptyCoursePoints: CoursePointState = {
   startA: null,
@@ -37,6 +44,7 @@ const defaultCourseState: CourseState = {
 export function AppShell() {
   const [activeView, setActiveView] = useState<AppView>('course')
   const [course, setCourse] = useState<CourseState>(defaultCourseState)
+  const [selectedCountdownMinutes, setSelectedCountdownMinutes] = useState<CountdownDuration>(5)
 
   const toggleCoursePoint = (key: CoursePointKey) => {
     setCourse((current) => ({
@@ -68,7 +76,13 @@ export function AppShell() {
         onClearCourse={clearCourse}
       />
     ),
-    timer: <StartTimerView onFinish={() => setActiveView('race')} />,
+    timer: (
+      <StartTimerView
+        selectedMinutes={selectedCountdownMinutes}
+        onSelectedMinutesChange={setSelectedCountdownMinutes}
+        onFinish={() => setActiveView('race')}
+      />
+    ),
     race: <RaceDashboardView course={course} boatPosition={demoBoatPosition} />,
     analysis: <RaceAnalysisView />,
   }[activeView]

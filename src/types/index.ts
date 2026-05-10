@@ -1,5 +1,7 @@
 export type AppView = 'course' | 'timer' | 'race' | 'analysis'
 
+export type CountdownDuration = 5 | 4 | 3 | 2 | 1
+
 export interface GeoPoint {
   latitude: number
   longitude: number

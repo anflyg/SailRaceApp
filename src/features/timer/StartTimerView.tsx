@@ -1,24 +1,27 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useCountdown } from '../../hooks/useCountdown'
+import type { CountdownDuration } from '../../types'
 
-type Duration = 5 | 4 | 3 | 2 | 1
-
-const durations: Duration[] = [5, 4, 3, 2, 1]
+const durations: CountdownDuration[] = [5, 4, 3, 2, 1]
 
 function formatTime(seconds: number) {
-  const sign = seconds < 0 ? '-' : ''
   const positive = Math.abs(seconds)
   const minutes = Math.floor(positive / 60)
   const secs = positive % 60
-  return `${sign}${minutes}:${secs.toString().padStart(2, '0')}`
+  return `${minutes}:${secs.toString().padStart(2, '0')}`
 }
 
 interface StartTimerViewProps {
+  selectedMinutes: CountdownDuration
+  onSelectedMinutesChange: (minutes: CountdownDuration) => void
   onFinish?: () => void
 }
 
-export function StartTimerView({ onFinish }: StartTimerViewProps) {
-  const [selectedMinutes, setSelectedMinutes] = useState<Duration>(5)
+export function StartTimerView({
+  selectedMinutes,
+  onSelectedMinutesChange,
+  onFinish,
+}: StartTimerViewProps) {
   const { seconds, status, toggle, pause, reset } = useCountdown(selectedMinutes * 60)
   const longPressRef = useRef<number | null>(null)
   const longPressTriggered = useRef(false)
@@ -96,7 +99,7 @@ export function StartTimerView({ onFinish }: StartTimerViewProps) {
             type="button"
             className={`duration-button ${selectedMinutes === button.minutes ? 'active' : ''}`}
             onClick={() => {
-              setSelectedMinutes(button.minutes)
+              onSelectedMinutesChange(button.minutes)
               reset(button.minutes * 60)
             }}
           >
