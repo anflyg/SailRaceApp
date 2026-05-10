@@ -44,9 +44,10 @@ SailRaceApp is a mobile-first sailing race app foundation built with React, Type
 ## Notes
 
 - Xcode krävs senare för iPhone/native-test, men webbläsartest fungerar i dagsläget med `npm run dev`.
-- Den här versionen är testbar i webbläsaren och använder React + TypeScript + Capacitor utan iOS-native-sensorintegration.
+- Den här versionen är testbar i webbläsaren och använder React + TypeScript + Capacitor. Live GPS används i Segling, men Core Motion-baserad vind/heading återstår.
 - Appen innehåller fyra huvudvyer: Bana, Start, Segling och Analys.
-- GPS, kompass, accelerometer, magnetometer och raceinspelning är för närvarande placeholder-tjänster.
+- Live GPS används i Segling för fart, position och course over ground när data finns.
+- Kompass, accelerometer, magnetometer och raceinspelning är för närvarande placeholder-tjänster.
 - Sensorarkitektur för kommande iPhone-implementation finns dokumenterad i `docs/sensors.md`.
 
 ## Browser-testbara funktioner
@@ -56,18 +57,20 @@ SailRaceApp is a mobile-first sailing race app foundation built with React, Type
 - Start-vyn har valbara 5/4/3/2/1 min och ett stort klickbart tidtagarfält.
 - Tidtagaren togglar start/pause på klick och återställs vid långt tryck.
 - Tidtagaren går till -0:10 och växlar därefter automatiskt till Segling.
-- Segling visar stora värden för Fart, Riktning och VMG.
+- Segling visar stora värden för Fart, Riktning och VMG/VMC. Live GPS används när webbläsaren eller iPhone tillhandahåller data; annars visas `--`.
 - Analys visar markerade uppspelningsknappar och svensk placeholder-text.
 
 ## Known limitations
 
-- No real GPS or compass integration yet.
+- GPS används i Segling, men banpunkter sätts fortfarande från demodata.
+- No compass/Core Motion integration yet.
 - Race replay is currently placeholder-only.
 - Wake lock is prepared as a service stub but not wired to the UI.
 
 ## Next planned steps
 
-- Add Capacitor-native GPS and heading support.
+- Use live GPS for setting course marks in Bana.
+- Add Capacitor-native heading/Core Motion support.
 - Implement screen wake lock and keep-awake behavior.
 - Wire real race recording and replay.
 - Add race data persistence and analysis graphs.

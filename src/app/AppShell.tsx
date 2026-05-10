@@ -4,6 +4,7 @@ import { CourseSetupView } from '../features/course/CourseSetupView'
 import { StartTimerView } from '../features/timer/StartTimerView'
 import { RaceDashboardView } from '../features/race/RaceDashboardView'
 import { RaceAnalysisView } from '../features/analysis/RaceAnalysisView'
+import { useLiveGps } from '../hooks/useLiveGps'
 import type {
   AppView,
   CountdownDuration,
@@ -20,11 +21,6 @@ const emptyCoursePoints: CoursePointState = {
   kryss2: null,
   lans1: null,
   lans2: null,
-}
-
-const demoBoatPosition: GeoPoint = {
-  latitude: 59.327,
-  longitude: 18.071,
 }
 
 const demoCoursePoints: Record<CoursePointKey, GeoPoint> = {
@@ -45,6 +41,7 @@ export function AppShell() {
   const [activeView, setActiveView] = useState<AppView>('course')
   const [course, setCourse] = useState<CourseState>(defaultCourseState)
   const [selectedCountdownMinutes, setSelectedCountdownMinutes] = useState<CountdownDuration>(5)
+  const liveGps = useLiveGps(activeView === 'race')
 
   const toggleCoursePoint = (key: CoursePointKey) => {
     setCourse((current) => ({
@@ -83,7 +80,7 @@ export function AppShell() {
         onFinish={() => setActiveView('race')}
       />
     ),
-    race: <RaceDashboardView course={course} boatPosition={demoBoatPosition} />,
+    race: <RaceDashboardView course={course} gps={liveGps} />,
     analysis: <RaceAnalysisView />,
   }[activeView]
 

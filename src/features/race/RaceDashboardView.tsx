@@ -5,7 +5,7 @@ import {
   calculateVelocityMadeGood,
   hasPrimaryCourse,
 } from '../../domain/navigation'
-import type { CourseState, GeoPoint } from '../../types'
+import type { CourseState, GeoPoint, LiveGpsReading } from '../../types'
 
 type VelocityMode = 'vmg' | 'vmc'
 
@@ -27,19 +27,31 @@ function formatDegrees(value: number): string {
 
 interface RaceDashboardViewProps {
   course: CourseState
-  boatPosition: GeoPoint
+  gps: LiveGpsReading
 }
 
-export function RaceDashboardView({ course, boatPosition }: RaceDashboardViewProps) {
+function getGpsPosition(gps: LiveGpsReading): GeoPoint | null {
+  if (gps.latitude === null || gps.longitude === null) {
+    return null
+  }
+
+  return {
+    latitude: gps.latitude,
+    longitude: gps.longitude,
+  }
+}
+
+export function RaceDashboardView({ course, gps }: RaceDashboardViewProps) {
   const [activeVelocityMode, setActiveVelocityMode] = useState<VelocityMode>('vmc')
-  // Demo values for now
-  const fart = 6.3
-  const riktning = 97
+  const speedKnots = gps.speedKnots
+  const courseHeading = gps.courseReliable ? gps.courseDegrees : null
+  const boatPosition = getGpsPosition(gps)
+  const targetMark = course.points.kryss1
   const hasWindVmg = course.windHeadingDegrees !== null
-  const targetBearing = course.points.kryss1
-    ? calculateBearingDegrees(boatPosition, course.points.kryss1)
+  const targetBearing = targetMark && boatPosition
+    ? calculateBearingDegrees(boatPosition, targetMark)
     : null
-  const hasTargetVmc = hasPrimaryCourse(course) && targetBearing !== null
+  const hasTargetVmc = hasPrimaryCourse(course)
   const canToggleVelocityMode = hasWindVmg && hasTargetVmc
 
   const selectedVelocityMode: VelocityMode | null = hasTargetVmc && activeVelocityMode === 'vmc'
@@ -54,8 +66,8 @@ export function RaceDashboardView({ course, boatPosition }: RaceDashboardViewPro
     : selectedVelocityMode === 'vmg'
       ? course.windHeadingDegrees
       : null
-  const velocityMadeGood = referenceHeading !== null && referenceHeading !== undefined
-    ? calculateVelocityMadeGood(fart, riktning, referenceHeading)
+  const velocityMadeGood = speedKnots !== null && courseHeading !== null && referenceHeading !== null
+    ? calculateVelocityMadeGood(speedKnots, courseHeading, referenceHeading)
     : null
   const velocityLabel = selectedVelocityMode === 'vmc'
     ? 'VMC mål'
@@ -81,12 +93,12 @@ export function RaceDashboardView({ course, boatPosition }: RaceDashboardViewPro
     <section className="view-section race-view">
       <div className="race-grid">
         <div className="metric-box" aria-label="Fart">
-          <span className="metric-value">{formatKnots(fart)}</span>
+          <span className="metric-value">{speedKnots !== null ? formatKnots(speedKnots) : '--'}</span>
           <span className="metric-label">Fart</span>
         </div>
 
         <div className="metric-box" aria-label="Riktning">
-          <span className="metric-value">{formatDegrees(riktning)}</span>
+          <span className="metric-value">{courseHeading !== null ? formatDegrees(courseHeading) : '--'}</span>
           <span className="metric-label">Riktning</span>
         </div>
 
