@@ -32,12 +32,27 @@ Reason: when the boat is moving, GPS course is stable and directly reflects over
 
 - Do not rely on GPS course.
 - GPS course is not used for wind setting.
-- Use fused device orientation from iOS Core Motion (future native implementation).
+- Step 3 Core Motion wind capture is implemented for iOS through a small
+  Capacitor-native `WindHeading` plugin.
+- Use fused device orientation from iOS Core Motion.
 - Compute heading from the phone back-facing vector projected to the horizontal plane.
 - The back-facing vector maps to boat bow heading by mount design.
-- Sample multiple readings during a short window (about 1-3 seconds) and average.
+- The app samples for 2 seconds at about 10 Hz and requires at least 5 valid
+  samples.
+- Samples are averaged with circular averaging so headings around 0/359 degrees
+  are handled correctly.
+- The native plugin prefers Core Motion `xTrueNorthZVertical`.
+- If true north is unavailable it falls back to `xMagneticNorthZVertical`.
+- Magnetic fallback is documented but not declination-corrected yet.
 
 Reason: low-speed GPS course is noisy; mast rake, bend, and heel require tilt-aware fused attitude.
+
+Browser/dev fallback is separated from the iOS path:
+
+- In a non-native browser build the wind measurement service returns a mock
+  averaged heading so UI work can continue.
+- On native iOS, if the Core Motion plugin or north reference is unavailable,
+  the app reports failure and does not save a fake wind heading.
 
 ## Implementation Boundary
 
@@ -45,7 +60,12 @@ Current TypeScript code defines:
 
 - sensor reading interfaces (`src/services/sensors/sensorTypes.ts`)
 - live GPS hook (`src/hooks/useLiveGps.ts`), enabled while Bana or Segling is active
+- wind heading hook (`src/hooks/useWindHeadingMeasurement.ts`)
+- wind heading service boundary (`src/services/sensors/windHeadingService.ts`)
 - heading math helpers (`src/domain/angles.ts`)
 - mock service (`src/services/sensors/mockSensorService.ts`)
+- iOS `WindHeadingPlugin` registered from `AppDelegate.swift`
 
-Native iOS/Core Motion integration is intentionally deferred for a later task.
+Core Motion `CMDeviceMotion` itself does not require an extra Info.plist usage
+description for this implementation. Location permission remains separate and is
+used for GPS.

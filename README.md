@@ -43,17 +43,17 @@ SailRaceApp is a mobile-first sailing race app foundation built with React, Type
 
 ## Notes
 
-- Xcode krävs senare för iPhone/native-test, men webbläsartest fungerar i dagsläget med `npm run dev`.
-- Den här versionen är testbar i webbläsaren och använder React + TypeScript + Capacitor. Live GPS används i Bana och Segling, men Core Motion-baserad vind/heading återstår.
+- Xcode krävs för iPhone/native-test, men webbläsartest fungerar med `npm run dev`.
+- Den här versionen är testbar i webbläsaren och använder React + TypeScript + Capacitor. Live GPS används i Bana och Segling, och iOS använder Core Motion för vindmätning i Bana.
 - Appen innehåller fyra huvudvyer: Bana, Start, Segling och Analys.
 - Live GPS används i Bana för banpunkter och i Segling för fart, position och course over ground när data finns.
-- Kompass, accelerometer, magnetometer och raceinspelning är för närvarande placeholder-tjänster.
-- Sensorarkitektur för kommande iPhone-implementation finns dokumenterad i `docs/sensors.md`.
+- Core Motion-vindmätning använder telefonens bakåtriktade vektor och cirkulärt medelvärde över flera samples.
+- Sensorarkitektur och native-strategi finns dokumenterad i `docs/sensors.md`.
 
 ## Browser-testbara funktioner
 
 - Bana-vyn kan sätta och rensa banpunkter från live GPS när position finns.
-- Vindriktning kan ändras med +10° / -10° och wrappar mellan 0–359°.
+- Vindpilen kan sätta vind via mockmätning i browser/dev och via Core Motion på iOS.
 - Start-vyn har valbara 5/4/3/2/1 min och ett stort klickbart tidtagarfält.
 - Tidtagaren togglar start/pause på klick och återställs vid långt tryck.
 - Tidtagaren går till -0:10 och växlar därefter automatiskt till Segling.
@@ -62,14 +62,14 @@ SailRaceApp is a mobile-first sailing race app foundation built with React, Type
 
 ## Known limitations
 
-- GPS används i Bana och Segling, men vind/heading är ännu inte Core Motion-baserat.
-- No compass/Core Motion integration yet.
+- Core Motion-heading behöver verifieras och kalibreras i den faktiska mastmonteringen.
+- Magnetisk nordfallback är inte deklinationskorrigerad ännu.
 - Race replay is currently placeholder-only.
 - Wake lock is prepared as a service stub but not wired to the UI.
 
 ## Next planned steps
 
-- Add Capacitor-native heading/Core Motion support.
+- Verify Core Motion heading on a real mounted iPhone.
 - Implement screen wake lock and keep-awake behavior.
 - Wire real race recording and replay.
 - Add race data persistence and analysis graphs.

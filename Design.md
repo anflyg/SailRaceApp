@@ -53,12 +53,15 @@ Nuvarande beteende:
 - När en punkt sätts sparas aktuell live GPS-position som punktens latitud/longitud.
 - Om GPS-position saknas sätts ingen fejkad koordinat och punkten förblir ej satt.
 - En kort statusrad visar `GPS-position saknas` när användaren försöker sätta en punkt utan tillgänglig GPS-position.
-- Vindpilen togglar vind satt/ej satt.
+- När vind är ej satt startar tryck på vindpilen en Core Motion-baserad
+  vindmätning på iOS.
+- När vind redan är satt rensar tryck på vindpilen vindriktningen.
+- Under vindmätning visas kort status, till exempel `Mäter vind...`.
 - `Rensa bana` rensar alla banpunkter och vindriktning.
 - När K1 och L1 finns beräknas banaxeln som bäringen från L1 till K1.
 - Vindpilen ritas relativt banaxeln när banaxeln finns. Om banaxeln saknas visas pilen relativt verklig nord.
 
-Banpunkterna sparas i React-state och kommer från live GPS. Vindriktning är fortfarande mockad/demo tills Core Motion-implementationen finns.
+Banpunkterna sparas i React-state och kommer från live GPS. Vindriktning mäts på iOS från telefonens bakåtriktade vektor via Core Motion. I webbläsarutveckling används en tydligt separerad mockmätning.
 
 ### Start
 
@@ -112,7 +115,7 @@ Färgkodning:
 - VMC mål använder mörkorange bakgrund.
 - Ej satt använder grå/dimmad bakgrund.
 
-Segling använder nu live GPS för fart, position och course over ground. Course over ground används bara när GPS-farten är minst `1.5` knop. GPS-kurs används inte för att sätta vind; Core Motion-baserad vindmätning är fortfarande en framtida uppgift.
+Segling använder nu live GPS för fart, position och course over ground. Course over ground används bara när GPS-farten är minst `1.5` knop. GPS-kurs används inte för att sätta vind; vind sätts från Core Motion-mätning i Bana.
 
 ### Analys
 
@@ -153,6 +156,7 @@ Nuvarande React-state:
 - `AppShell` äger banstate: banpunkter och vindriktning.
 - `AppShell` äger vald startlängd som session-only state.
 - `CourseSetupView` renderar banan och anropar callbacks för att toggla punkter, vind och rensa bana.
+- `CourseSetupView` använder `useWindHeadingMeasurement` när vindpilen trycks och vind inte redan är satt.
 - `StartTimerView` äger countdownens sekunder/status via `useCountdown`.
 - `RaceDashboardView` får banstate och live GPS-data som props.
 - Live GPS-watch startas när Bana eller Segling är aktiv.
@@ -162,7 +166,6 @@ Det finns ingen permanent lagring ännu. Vald startlängd sparas inte i `localSt
 
 Troliga framtida ändringar:
 
-- Vindriktning sätts från Core Motion-baserad mätning.
 - Raceinspelning läggs till och sparar tidsserie med position, fart, riktning, vind, VMG/VMC och events.
 - Analysvyn läser inspelad data och visar replay.
 
@@ -221,7 +224,7 @@ Segling använder live GPS där data finns:
 - GPS-position används för VMC-bäring till K1 när K1/L1 är satta.
 - Om GPS-data saknas eller är opålitlig visas `--`.
 
-Bana använder live GPS-position för banpunkter. Core Motion-baserad vindmätning återstår.
+Bana använder live GPS-position för banpunkter. Vind sätts via Core Motion-baserad mätning på iOS och via separat mockmätning i browser/dev.
 
 ## 7. Sensorstrategi
 
@@ -240,6 +243,7 @@ Strategi under segling:
 - Använd GPS course over ground för båtriktning när farten är tillräckligt hög för att kursen ska vara stabil.
 - Steg 1 av riktig sensorintegration är implementerat: Segling använder live GPS för fart, position och course over ground.
 - Steg 2 är implementerat: Bana använder live GPS-position när banpunkter sätts.
+- Steg 3 är implementerat: Bana kan sätta vind från iOS Core Motion när vindpilen trycks.
 - GPS-kurs räknas som pålitlig först från `1.5` knop.
 - VMG/VMC använder live GPS-fart och pålitlig GPS-kurs när relevant referens finns.
 - VMC använder live GPS-position för bäring till K1 när primär bana finns.
@@ -248,19 +252,27 @@ Strategi för att sätta vind vid låg fart eller baninställning:
 
 - Lita inte på GPS-kurs.
 - GPS-kurs används inte för vindinställning.
-- Använd i framtiden iOS Core Motion med fused attitude.
+- Använd iOS Core Motion med fused attitude.
 - Beräkna horisontell heading för telefonens bakåtriktade vektor.
 - Eftersom telefonens baksida pekar mot fören motsvarar den vektorn båtens framåtriktning.
-- Ta flera samples under ungefär 1-3 sekunder och gör cirkulärt medelvärde.
+- Ta samples under 2 sekunder med ungefär 10 Hz och kräv minst 5 giltiga samples.
+- Gör cirkulärt medelvärde med `averageAnglesDegrees`.
+- Föredra Core Motion-referensen `xTrueNorthZVertical`.
+- Använd `xMagneticNorthZVertical` som dokumenterad fallback om true north saknas.
+- Magnetisk fallback är inte deklinationskorrigerad ännu.
 - Undvik rå magnetometer direkt om det går.
 
 Nuvarande status:
 
 - `sensorTypes.ts` definierar interface för GPS-position, GPS-fart, GPS-kurs, båtens framåtriktning och vindheading.
 - `useLiveGps.ts` startar en live GPS-watch via Capacitor Geolocation när Bana eller Segling är aktiv och exponerar status, fel, position, fart, kurs och kursens tillförlitlighet.
+- `useWindHeadingMeasurement.ts` exponerar status, fel och en `measureWindHeading`-funktion för Bana.
+- `windHeadingService.ts` samplar native-heading över tid, gör cirkulärt medelvärde och har en separat browser/mock-fallback.
 - `mockSensorService.ts` innehåller mockade sensorvärden och visar tänkt form för framtida implementation.
+- `AppDelegate.swift` registrerar en Capacitor-plugin `WindHeading` som använder `CMDeviceMotion`.
 - `geolocationService.ts`, `headingService.ts`, `wakeLockService.ts` och `raceRecordingService.ts` är stubs/TODO.
-- Riktig iOS/Core Motion-integration är inte implementerad.
+
+Om Core Motion, pluginen eller nordreferens saknas på native iOS sätts ingen fejkad vind. UI:t visar en kort felstatus och vind förblir ej satt.
 
 ## 8. iOS / Capacitor
 
@@ -278,6 +290,8 @@ Viktiga iOS-beslut:
 - Safe area hanteras i CSS.
 - Webbändringar syns inte i Xcode förrän appen har byggts och Capacitor har synkat eller kopierat `dist` till iOS-projektet.
 - Under utveckling deployas appen direkt från Xcode till ansluten iPhone.
+- `WindHeadingPlugin` är en liten lokal Capacitor-plugin för iOS som registreras från `AppDelegate.swift`.
+- Core Motion-baserad vindmätning kräver ingen extra Info.plist-rad i denna implementation.
 
 Standardflöde efter webbändringar:
 
@@ -304,6 +318,7 @@ Klart eller delvis klart:
 - iPhone porträttorientering är satt i iOS-konfiguration.
 - iOS har `NSLocationWhenInUseUsageDescription` för GPS-behörighet.
 - Bana kan toggla banpunkter från live GPS-position och vind.
+- Bana kan sätta vind via iOS Core Motion och rensa vind genom att trycka på vindpilen igen.
 - Bana ritar startlinje och märken visuellt.
 - Start har valbar nedräkning, start/paus, långt tryck för reset och automatisk växling till Segling.
 - Start visar post-startperiod utan minustecken.
@@ -315,7 +330,8 @@ Klart eller delvis klart:
 
 Inte klart:
 
-- Core Motion-baserad heading/vindmätning.
+- Testad kalibrering av Core Motion-heading på flera fysiska monteringar.
+- Deklinationskorrigering när magnetisk nordfallback används.
 - Wake lock kopplad till UI/livscykel.
 - Raceinspelning och lokal persistens.
 - Analys/replay med riktig data.
@@ -336,14 +352,13 @@ Ingen separat produkt-specifikationsfil utöver README, `docs/sensors.md` och de
 
 ## 11. Rekommenderade nästa utvecklingssteg
 
-1. Implementera Core Motion-baserad båtframåtriktning enligt sensorstrategin.
-2. Implementera vindmätning med 1-3 sekunders sampling och cirkulärt medelvärde.
-3. Lägg till tydlig sensorstatus utan att störa huvudvyerna.
-4. Koppla `wakeLockService` till aktiv seglings-/startperiod.
-5. Lägg till raceinspelning som tidsserie.
-6. Bygg Analys som replayvy baserad på inspelad data.
-7. Lägg till aktivt ben och målval för VMC.
-8. Lägg till fokuserade tester för vinkelberäkningar, VMG/VMC-regler och timerbeteende.
+1. Verifiera Core Motion-heading på fysisk iPhone i den faktiska mastmonteringen.
+2. Kalibrera eller korrigera magnetisk fallback om true north saknas.
+3. Koppla `wakeLockService` till aktiv seglings-/startperiod.
+4. Lägg till raceinspelning som tidsserie.
+5. Bygg Analys som replayvy baserad på inspelad data.
+6. Lägg till aktivt ben och målval för VMC.
+7. Lägg till fokuserade tester för vinkelberäkningar, VMG/VMC-regler och timerbeteende.
 
 ## 12. Verifiering för framtida ändringar
 
@@ -369,5 +384,6 @@ Manuell iPhone-verifiering bör kontrollera:
 - Viktiga knappar ligger ovanför hemindikatorn.
 - Appen roterar inte till landskap på iPhone.
 - Bana kan sätta och rensa punkter.
+- Bana kan mäta vind med vindpilen, visa kort status och rensa vind med nästa tryck.
 - Start kan starta, pausa, återställa och växla till Segling vid intern -0:10.
 - Segling visar läsbara instrumentvärden och VMG/VMC-växling fungerar när både vind och primär bana finns.

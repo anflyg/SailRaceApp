@@ -1,5 +1,6 @@
 import UIKit
 import Capacitor
+import CoreMotion
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -46,4 +47,113 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         return ApplicationDelegateProxy.shared.application(application, continue: userActivity, restorationHandler: restorationHandler)
     }
 
+}
+
+@objc(AppBridgeViewController)
+class AppBridgeViewController: CAPBridgeViewController {
+    override open func capacitorDidLoad() {
+        super.capacitorDidLoad()
+        bridge?.registerPluginInstance(WindHeadingPlugin())
+    }
+}
+
+@objc(WindHeadingPlugin)
+public class WindHeadingPlugin: CAPPlugin, CAPBridgedPlugin {
+    public let identifier = "WindHeadingPlugin"
+    public let jsName = "WindHeading"
+    public let pluginMethods: [CAPPluginMethod] = [
+        CAPPluginMethod(name: "getBackVectorHeading", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "stopBackVectorHeading", returnType: CAPPluginReturnPromise)
+    ]
+
+    private let motionManager = CMMotionManager()
+    private var activeReferenceFrame: CMAttitudeReferenceFrame?
+
+    @objc func getBackVectorHeading(_ call: CAPPluginCall) {
+        guard motionManager.isDeviceMotionAvailable else {
+            call.unavailable("Core Motion är inte tillgängligt.")
+            return
+        }
+
+        guard let selectedReferenceFrame = preferredReferenceFrame() else {
+            call.unavailable("Nordreferens är inte tillgänglig.")
+            return
+        }
+
+        startDeviceMotionUpdatesIfNeeded(using: selectedReferenceFrame.frame)
+
+        guard let motion = motionManager.deviceMotion else {
+            call.resolve([
+                "valid": false,
+                "headingDegrees": NSNull(),
+                "referenceFrame": selectedReferenceFrame.name
+            ])
+            return
+        }
+
+        guard let headingDegrees = backVectorHeadingDegrees(from: motion.attitude.rotationMatrix) else {
+            call.resolve([
+                "valid": false,
+                "headingDegrees": NSNull(),
+                "referenceFrame": selectedReferenceFrame.name
+            ])
+            return
+        }
+
+        call.resolve([
+            "valid": true,
+            "headingDegrees": headingDegrees,
+            "referenceFrame": selectedReferenceFrame.name
+        ])
+    }
+
+    @objc func stopBackVectorHeading(_ call: CAPPluginCall) {
+        motionManager.stopDeviceMotionUpdates()
+        activeReferenceFrame = nil
+        call.resolve()
+    }
+
+    private func preferredReferenceFrame() -> (frame: CMAttitudeReferenceFrame, name: String)? {
+        let availableReferenceFrames = CMMotionManager.availableAttitudeReferenceFrames()
+
+        if availableReferenceFrames.contains(.xTrueNorthZVertical) {
+            return (.xTrueNorthZVertical, "true-north")
+        }
+
+        if availableReferenceFrames.contains(.xMagneticNorthZVertical) {
+            return (.xMagneticNorthZVertical, "magnetic-north")
+        }
+
+        return nil
+    }
+
+    private func startDeviceMotionUpdatesIfNeeded(using referenceFrame: CMAttitudeReferenceFrame) {
+        if motionManager.isDeviceMotionActive && activeReferenceFrame == referenceFrame {
+            return
+        }
+
+        motionManager.stopDeviceMotionUpdates()
+        motionManager.deviceMotionUpdateInterval = 1.0 / 30.0
+        motionManager.startDeviceMotionUpdates(using: referenceFrame)
+        activeReferenceFrame = referenceFrame
+    }
+
+    private func backVectorHeadingDegrees(from rotationMatrix: CMRotationMatrix) -> Double? {
+        let northComponent = -rotationMatrix.m13
+        let westComponent = -rotationMatrix.m23
+        let horizontalMagnitude = sqrt(
+            northComponent * northComponent + westComponent * westComponent
+        )
+
+        guard horizontalMagnitude > 0.05 else {
+            return nil
+        }
+
+        // In XTrueNorthZVertical/XMagneticNorthZVertical the X axis is north and
+        // Z is vertical. The horizontal Y axis is west, so invert it for a
+        // clockwise heading from north.
+        let radians = atan2(-westComponent, northComponent)
+        let degrees = radians * 180 / Double.pi
+        return fmod(degrees + 360, 360)
+    }
 }

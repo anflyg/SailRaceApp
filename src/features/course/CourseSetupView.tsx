@@ -1,5 +1,6 @@
 import { normalizeDegrees } from '../../domain/angles'
 import { getCourseAxisHeading } from '../../domain/navigation'
+import { useWindHeadingMeasurement } from '../../hooks/useWindHeadingMeasurement'
 import type { CoursePointKey, CourseState } from '../../types'
 
 interface CourseSetupViewProps {
@@ -25,17 +26,43 @@ export function CourseSetupView({
   onClearCourse,
   gpsStatusMessage,
 }: CourseSetupViewProps) {
-  // Demo current compass heading (50 degrees)
-  const currentCompassHeading = 50
-
-  // Save current compass heading as wind direction
-  // TODO: Replace with real compass heading from device
-  const setWindFromCurrentHeading = () => {
-    onToggleWindHeading(normalizeDegrees(currentCompassHeading))
-  }
+  const {
+    status: windMeasurementStatus,
+    measureWindHeading,
+    resetWindHeadingMeasurement,
+  } = useWindHeadingMeasurement()
 
   const courseAxisHeading = getCourseAxisHeading(course)
   const windArrowRotation = getWindArrowRotation(course.windHeadingDegrees, courseAxisHeading)
+  const isMeasuringWind = windMeasurementStatus === 'measuring'
+
+  const handleWindArrowClick = async () => {
+    if (course.windHeadingDegrees !== null) {
+      resetWindHeadingMeasurement()
+      onToggleWindHeading(0)
+      return
+    }
+
+    const measuredHeading = await measureWindHeading()
+
+    if (measuredHeading !== null) {
+      onToggleWindHeading(normalizeDegrees(measuredHeading))
+    }
+  }
+
+  const handleClearCourse = () => {
+    resetWindHeadingMeasurement()
+    onClearCourse()
+  }
+
+  const windStatusMessage = {
+    measuring: 'Mäter vind...',
+    success: 'Vind satt',
+    error: 'Kunde inte mäta vind',
+    unavailable: 'Kunde inte mäta vind',
+    idle: null,
+  }[windMeasurementStatus]
+  const statusMessage = windStatusMessage ?? gpsStatusMessage
 
   return (
     <section className="view-section course-view">
@@ -90,8 +117,9 @@ export function CourseSetupView({
 
         <button
           type="button"
-          className={`wind-arrow-button ${course.windHeadingDegrees !== null ? 'set' : 'unset'}`}
-          onClick={setWindFromCurrentHeading}
+          className={`wind-arrow-button ${course.windHeadingDegrees !== null ? 'set' : 'unset'} ${isMeasuringWind ? 'measuring' : ''}`}
+          onClick={handleWindArrowClick}
+          disabled={isMeasuringWind}
           aria-label="Vind"
           style={{
             transform: `translateX(-50%) rotate(${windArrowRotation}deg)`,
@@ -102,12 +130,12 @@ export function CourseSetupView({
       </div>
 
       <div className="course-footer">
-        {gpsStatusMessage ? (
+        {statusMessage ? (
           <p className="course-status" role="status">
-            {gpsStatusMessage}
+            {statusMessage}
           </p>
         ) : null}
-        <button type="button" className="primary-button clear-button" onClick={onClearCourse}>
+        <button type="button" className="primary-button clear-button" onClick={handleClearCourse}>
           Rensa bana
         </button>
       </div>

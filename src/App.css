@@ -297,6 +297,12 @@ button:focus-visible {
   border-color: #ffea6a;
 }
 
+.wind-arrow-button.measuring {
+  opacity: 1;
+  background: rgba(255, 234, 106, 0.34);
+  border-color: var(--accent);
+}
+
 .wind-arrow-button:hover,
 .wind-arrow-button:focus-visible {
   opacity: 0.95;
