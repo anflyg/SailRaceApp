@@ -37,7 +37,22 @@ npm run cap:open:ios
 
 ## 3. Huvudvyer
 
-Appen har fyra huvudvyer i navigeringen: Bana, Start, Segling och Analys.
+Appen har fem huvudvyer i navigeringen: Setup, Bana, Start, Segling och Analys.
+
+### Setup
+
+Syftet med Setup är att visa sensorstatus och kalibrera nolläge för heel/pitch.
+
+Nuvarande beteende:
+
+- Visar GPS-accuracy med `OK`, `GPS OSÄKER` eller `GPS SAKNAS`.
+- Visar filtrerad fart i knop.
+- Visar filtrerad COG när den är användbar.
+- Visar Motion/Heading som `OK` bara när native sensor/plugin faktiskt ger data.
+- Visar `H —` och `P —` innan kalibrering.
+- Knappen `Kalibrera nolläge` sparar aktuell heel/pitch som runtime-nolläge.
+- Efter kalibrering visar Setup relativ H/P, till exempel `H +0°` och `P +0°`.
+- Kalibrering sparas inte permanent och återställs vid apprestart/reload.
 
 ### Bana
 
@@ -46,13 +61,19 @@ Syftet med Bana är att sätta banpunkter, sätta vindriktning och skapa en banr
 Nuvarande beteende:
 
 - A och B är startlinjens punkter.
-- K1 och K2 är kryssmärken.
-- L1 och L2 är länsmärken.
-- K1 visas visuellt uppe till höger och K2 uppe till vänster, men K1 är fortfarande datanyckeln `kryss1` och K2 är `kryss2`.
+- K1 är primärt kryssmärke.
+- L1 är primärt länsmärke.
+- K2 och L2 är borttagna ur UI och datamodell.
+- K1 visas centrerat upptill, L1 centrerat nedtill, A till vänster och B till höger.
 - Tryck på en punkt togglar den mellan satt och ej satt.
-- När en punkt sätts sparas aktuell live GPS-position som punktens latitud/longitud.
+- När en punkt sätts sparas aktuell live GPS-position som punktens latitud/longitud samt GPS-accuracy vid sättning.
+- Punktkvalitet är `good` när accuracy är högst 5 meter och `poor` när accuracy är sämre än 5 meter.
+- Ej satta punkter visas grå, good-punkter gröna och poor-punkter gula.
+- Gula punkter används fortfarande i beräkningar.
+- Startlinjen är grå om A eller B saknas, grön om båda är good och gul om någon av A/B är poor.
 - Om GPS-position saknas sätts ingen fejkad koordinat och punkten förblir ej satt.
 - En kort statusrad visar `GPS-position saknas` när användaren försöker sätta en punkt utan tillgänglig GPS-position.
+- Bana visar aktuell GPS-accuracy längst ner med `GPS SAKNAS` eller `GPS OSÄKER` vid behov.
 - När vind är ej satt startar tryck på vindpilen en Core Motion-baserad
   vindmätning på iOS.
 - När vind redan är satt rensar tryck på vindpilen vindriktningen.
@@ -77,6 +98,12 @@ Nuvarande beteende:
 - När timern passerar 0:00 fortsätter den internt till -0:10.
 - Den negativa perioden visas utan minustecken. Röd bakgrund räcker som signal för post-starttid.
 - Vid intern tid -0:10 pausas timern och appen växlar automatiskt till Segling.
+- När timern är stoppad eller pausad visas minutknapparna.
+- När timern kör döljs minutknapparna och Start visar TTL, BURN, GPS och eventuell status.
+- TTL beräknas mot startlinjesegmentet A-B från aktuell GPS-position, filtrerad GPS-fart och filtrerad COG.
+- BURN beräknas som `countdownSeconds - TTL`, där plus betyder tidig och minus betyder sen.
+- TTL/BURN visas bara när GPS finns, A/B finns, aktuell GPS-accuracy är högst 5 meter, filtrerad fart är minst 1 knop och rörelsevektorn skär A-B-segmentet framför båten.
+- Statusprioritet är `GPS SAKNAS`, `SAKNAR LINJE`, `GPS OSÄKER`, `FÖR LÅG FART`, `UTANFÖR LINJEN`, `LINJE OSÄKER`.
 
 Bakgrundsstater:
 
@@ -94,7 +121,7 @@ Nuvarande beteende:
 
 - Visar Fart.
 - Visar Riktning.
-- Visar VMG eller VMC.
+- Visar VMG Vind eller VMG Bana.
 - Värdena är mycket stora och fyller större delen av skärmen.
 - Fart visas med en decimal och svensk decimalcomma.
 - Riktning visas som tre siffror och gradtecken, till exempel `097°`.
@@ -102,20 +129,22 @@ Nuvarande beteende:
 - Riktning hämtas från GPS course over ground endast när kursen är pålitlig.
 - Om GPS-fart eller pålitlig GPS-kurs saknas visas `--` i stället för demovärden.
 
-VMG/VMC-läge:
+VMG-läge:
 
-- Om vind finns men ingen primär bana finns visas `VMG vind`.
-- Om K1 och L1 finns men ingen vind finns visas `VMC mål`.
-- Om både vind och primär bana finns kan användaren trycka på VMG/VMC-rutan för att växla mellan `VMG vind` och `VMC mål`.
+- Om vind finns men ingen primär bana finns visas `VMG Vind`.
+- Om K1 och L1 finns men ingen vind finns visas `VMG Bana`.
+- Om både vind och primär bana finns kan användaren trycka på VMG-rutan för att växla mellan `VMG Vind` och `VMG Bana`.
 - Om varken vind eller primär bana finns visas `Ej satt` och `--`.
+- H/P visas kompakt längst ner, till exempel `H +8°   P -2°`.
+- Om H/P inte är kalibrerat visas `H —   P —`.
 
 Färgkodning:
 
-- VMG vind använder mörkgrön bakgrund.
-- VMC mål använder mörkorange bakgrund.
+- VMG Vind använder mörkgrön bakgrund.
+- VMG Bana använder mörkorange bakgrund.
 - Ej satt använder grå/dimmad bakgrund.
 
-Segling använder nu live GPS för fart, position och course over ground. Course over ground används bara när GPS-farten är minst `1.5` knop. GPS-kurs används inte för att sätta vind; vind sätts från Core Motion-mätning i Bana.
+Segling använder filtrerad live GPS för fart, riktning och VMG-beräkningar. Course over ground används bara när filtrerad GPS-fart är minst `1.5` knop. GPS-kurs används inte för att sätta vind; vind sätts från Core Motion-mätning i Bana.
 
 ### Analys
 
@@ -155,18 +184,23 @@ Nuvarande React-state:
 - `AppShell` äger aktiv vy.
 - `AppShell` äger banstate: banpunkter och vindriktning.
 - `AppShell` äger vald startlängd som session-only state.
+- `AppShell` äger runtime-kalibrering för heel/pitch.
+- `SetupView` visar sensorstatus och kalibrerar heel/pitch.
 - `CourseSetupView` renderar banan och anropar callbacks för att toggla punkter, vind och rensa bana.
 - `CourseSetupView` använder `useWindHeadingMeasurement` när vindpilen trycks och vind inte redan är satt.
 - `StartTimerView` äger countdownens sekunder/status via `useCountdown`.
-- `RaceDashboardView` får banstate och live GPS-data som props.
-- Live GPS-watch startas när Bana eller Segling är aktiv.
-- Bana använder live GPS-position när användaren sätter A, B, K1, K2, L1 och L2.
+- `StartTimerView` får banstate, live GPS och filtrerad GPS för TTL/BURN.
+- `RaceDashboardView` får banstate, filtrerad GPS-data och H/P som props.
+- Live GPS-watch startas när Setup, Bana, Start eller Segling är aktiv.
+- Bana använder live GPS-position när användaren sätter A, B, K1 och L1.
+- `useFilteredGps` håller ungefär 3 sekunders glidande medelvärde för speed over ground och course over ground.
+- `useDeviceAttitude` läser Core Motion-attitude via native plugin när Setup eller Segling är aktiv.
 
-Det finns ingen permanent lagring ännu. Vald startlängd sparas inte i `localStorage` och återställs till 5 minuter vid apprestart. Banpunkter och vindriktning är också bara React-minne.
+Det finns ingen permanent lagring ännu. Vald startlängd sparas inte i `localStorage` och återställs till 5 minuter vid apprestart. Banpunkter, vindriktning och H/P-kalibrering är också bara React-minne.
 
 Troliga framtida ändringar:
 
-- Raceinspelning läggs till och sparar tidsserie med position, fart, riktning, vind, VMG/VMC och events.
+- Raceinspelning läggs till och sparar tidsserie med position, fart, riktning, vind, VMG och events.
 - Analysvyn läser inspelad data och visar replay.
 
 ## 6. Beräkningar
@@ -195,9 +229,9 @@ relativ vindvinkel = vindriktning - banaxelns heading
 
 Om banaxeln saknas används `0` som referens, vilket gör att pilen visas relativt verklig nord.
 
-### VMG
+### VMG Vind
 
-VMG vind beräknas som:
+VMG Vind beräknas som:
 
 ```text
 fart * cos(vinkeln mellan båtens kurs och vindriktningen)
@@ -205,23 +239,44 @@ fart * cos(vinkeln mellan båtens kurs och vindriktningen)
 
 VMG används när vindriktning finns.
 
-### VMC
+### VMG Bana
 
-VMC mål beräknas som:
+VMG Bana är nuvarande VMC mot banmål och beräknas som:
 
 ```text
 fart * cos(vinkeln mellan båtens kurs och bäringen till mål)
 ```
 
-Nuvarande mål är K1 när K1 och L1 är satta. Framtida arbete bör stödja aktivt ben och målval, till exempel K1 på kryss och L1 på läns.
+Nuvarande mål är K1 när K1 och L1 är satta. Aktiv växling mellan K1 och L1 är inte implementerad i denna etapp.
+
+### TTL/BURN
+
+TTL, Time To Line, beräknas med lokal meterprojektion nära aktuell GPS-position:
+
+- P är båtens aktuella GPS-position.
+- A-B är startlinjesegmentet.
+- Rörelsevektorn kommer från filtrerad GPS COG.
+- Farten kommer från filtrerad GPS SOG.
+- Ray från P måste skära segmentet A-B framför båten.
+
+Om rayen är parallell, skär bakom båten eller skär utanför segmentet visas `TTL —` och status `UTANFÖR LINJEN`.
+
+BURN beräknas som:
+
+```text
+nedräkningstid - TTL
+```
+
+Positiv BURN betyder att båten är tidig och behöver bränna tid.
 
 ### Nuvarande datakällor
 
 Segling använder live GPS där data finns:
 
 - GPS-fart konverteras från meter per sekund till knop.
-- GPS course over ground används bara för Riktning och VMG/VMC när kursen finns, är icke-negativ och farten är minst `1.5` knop.
-- GPS-position används för VMC-bäring till K1 när K1/L1 är satta.
+- GPS speed/course filtreras över ungefär 3 sekunder innan de används för Segling och TTL/BURN.
+- GPS course over ground används bara för Riktning och VMG när kursen finns, är icke-negativ och filtrerad fart är minst `1.5` knop.
+- GPS-position används för VMG Bana-bäring till K1 när K1/L1 är satta.
 - Om GPS-data saknas eller är opålitlig visas `--`.
 
 Bana använder live GPS-position för banpunkter. Vind sätts via Core Motion-baserad mätning på iOS och via separat mockmätning i browser/dev.
@@ -244,9 +299,11 @@ Strategi under segling:
 - Steg 1 av riktig sensorintegration är implementerat: Segling använder live GPS för fart, position och course over ground.
 - Steg 2 är implementerat: Bana använder live GPS-position när banpunkter sätts.
 - Steg 3 är implementerat: Bana kan sätta vind från iOS Core Motion när vindpilen trycks.
+- GPS-accuracy högst 5 meter räknas som bra för punktkvalitet och TTL/BURN.
+- Speed/course filtreras över ungefär 3 sekunder för lugnare instrumentvärden.
 - GPS-kurs räknas som pålitlig först från `1.5` knop.
-- VMG/VMC använder live GPS-fart och pålitlig GPS-kurs när relevant referens finns.
-- VMC använder live GPS-position för bäring till K1 när primär bana finns.
+- VMG Vind/VMG Bana använder live GPS-fart och pålitlig GPS-kurs när relevant referens finns.
+- VMG Bana använder live GPS-position för bäring till K1 när primär bana finns.
 
 Strategi för att sätta vind vid låg fart eller baninställning:
 
@@ -266,8 +323,11 @@ Nuvarande status:
 
 - `sensorTypes.ts` definierar interface för GPS-position, GPS-fart, GPS-kurs, båtens framåtriktning och vindheading.
 - `useLiveGps.ts` startar en live GPS-watch via Capacitor Geolocation när Bana eller Segling är aktiv och exponerar status, fel, position, fart, kurs och kursens tillförlitlighet.
+- `useFilteredGps.ts` filtrerar speed over ground och course over ground över ungefär 3 sekunder.
+- `useDeviceAttitude.ts` läser heel/pitch och headingstatus för Setup/Segling.
 - `useWindHeadingMeasurement.ts` exponerar status, fel och en `measureWindHeading`-funktion för Bana.
 - `windHeadingService.ts` samplar native-heading över tid, gör cirkulärt medelvärde och har en separat browser/mock-fallback.
+- `startLine.ts` innehåller TTL/BURN-geometri för startlinjesegmentet A-B.
 - `mockSensorService.ts` innehåller mockade sensorvärden och visar tänkt form för framtida implementation.
 - `AppDelegate.swift` registrerar en Capacitor-plugin `WindHeading` som använder `CMDeviceMotion`.
 - `geolocationService.ts`, `headingService.ts`, `wakeLockService.ts` och `raceRecordingService.ts` är stubs/TODO.
@@ -291,6 +351,7 @@ Viktiga iOS-beslut:
 - Webbändringar syns inte i Xcode förrän appen har byggts och Capacitor har synkat eller kopierat `dist` till iOS-projektet.
 - Under utveckling deployas appen direkt från Xcode till ansluten iPhone.
 - `WindHeadingPlugin` är en liten lokal Capacitor-plugin för iOS som registreras från `AppDelegate.swift`.
+- Samma plugin exponerar även aktuell device attitude för runtime H/P-kalibrering.
 - Core Motion-baserad vindmätning kräver ingen extra Info.plist-rad i denna implementation.
 
 Standardflöde efter webbändringar:
@@ -311,31 +372,35 @@ npm run dev
 
 Klart eller delvis klart:
 
-- React/Vite/TypeScript-app med fyra huvudvyer.
+- React/Vite/TypeScript-app med fem huvudvyer.
 - Capacitor/iOS-projekt finns.
-- Navigering mellan Bana, Start, Segling och Analys.
+- Navigering mellan Setup, Bana, Start, Segling och Analys.
 - iPhone safe area respekteras i CSS.
 - iPhone porträttorientering är satt i iOS-konfiguration.
 - iOS har `NSLocationWhenInUseUsageDescription` för GPS-behörighet.
-- Bana kan toggla banpunkter från live GPS-position och vind.
+- Bana kan toggla A/B/K1/L1 från live GPS-position och vind.
+- Bana visar punktkvalitet och startlinjekvalitet.
 - Bana kan sätta vind via iOS Core Motion och rensa vind genom att trycka på vindpilen igen.
 - Bana ritar startlinje och märken visuellt.
 - Start har valbar nedräkning, start/paus, långt tryck för reset och automatisk växling till Segling.
+- Start visar TTL/BURN/GPS när timern kör.
 - Start visar post-startperiod utan minustecken.
 - Vald startlängd lever under aktuell appsession.
-- Segling visar stora instrumentvärden och VMG/VMC-växling.
+- Segling visar stora instrumentvärden och VMG Vind/VMG Bana-växling.
+- Segling visar H/P kompakt när nolläge är kalibrerat.
 - Segling använder live GPS för fart, position och course over ground när data finns.
-- Grundläggande matematik för bearing, VMG/VMC och vinklar finns.
+- Grundläggande matematik för bearing, VMG och vinklar finns.
 - Sensorstrategi är dokumenterad.
 
 Inte klart:
 
 - Testad kalibrering av Core Motion-heading på flera fysiska monteringar.
+- Testad mapping av H/P mot faktisk mastmontering och båtens rörelser.
 - Deklinationskorrigering när magnetisk nordfallback används.
 - Wake lock kopplad till UI/livscykel.
 - Raceinspelning och lokal persistens.
 - Analys/replay med riktig data.
-- Aktivt ben/aktivt mål för VMC.
+- Aktivt ben/aktivt mål för VMG Bana.
 - Felhantering för sensorbehörigheter och dålig signalkvalitet.
 
 ## 10. Kända designbeslut och begränsningar
@@ -343,8 +408,8 @@ Inte klart:
 - Appen prioriterar iPhone porträtt framför desktoplayout.
 - Browserläget ska fortsätta fungera för snabb UI-testning.
 - Bana, Start och Segling ska inte fyllas med hjälpinstruktioner; de ska fungera som verktygsytor.
-- K1/L1 är nuvarande primära banreferens. K2/L2 finns i UI men används inte ännu i beräkningarna.
-- VMG/VMC-matematiken ska inte ändras utan separat uppgift och tydlig testning.
+- K1/L1 är nuvarande primära banreferens. K2/L2 är borttagna i denna förenklade banmodell.
+- VMG-matematiken ska inte ändras utan separat uppgift och tydlig testning.
 - Sensorarkitekturen ska byggas stegvis och inte blandas in i rena UI-uppgifter.
 - Permanent lagring ska införas separat. Nuvarande session-state är medvetet flyktigt.
 
@@ -357,8 +422,8 @@ Ingen separat produkt-specifikationsfil utöver README, `docs/sensors.md` och de
 3. Koppla `wakeLockService` till aktiv seglings-/startperiod.
 4. Lägg till raceinspelning som tidsserie.
 5. Bygg Analys som replayvy baserad på inspelad data.
-6. Lägg till aktivt ben och målval för VMC.
-7. Lägg till fokuserade tester för vinkelberäkningar, VMG/VMC-regler och timerbeteende.
+6. Lägg till aktivt ben och målval för VMG Bana.
+7. Lägg till fokuserade tester för vinkelberäkningar, VMG-regler, TTL/BURN och timerbeteende.
 
 ## 12. Verifiering för framtida ändringar
 
@@ -385,5 +450,7 @@ Manuell iPhone-verifiering bör kontrollera:
 - Appen roterar inte till landskap på iPhone.
 - Bana kan sätta och rensa punkter.
 - Bana kan mäta vind med vindpilen, visa kort status och rensa vind med nästa tryck.
+- Bana visar bara A, B, K1 och L1.
+- Start visar minutknappar när timern inte kör och TTL/BURN/GPS när timern kör.
 - Start kan starta, pausa, återställa och växla till Segling vid intern -0:10.
-- Segling visar läsbara instrumentvärden och VMG/VMC-växling fungerar när både vind och primär bana finns.
+- Segling visar läsbara instrumentvärden, H/P och VMG-växling fungerar när både vind och primär bana finns.

@@ -20,11 +20,14 @@ heading APIs or raw magnetometer vectors are not robust enough for wind capture.
 - Step 1 live GPS integration is implemented for the Segling view:
   - GPS speed is converted from meters per second to knots and shown as Fart when available.
   - GPS course over ground is shown as Riktning only when speed is at least 1.5 knots.
-  - VMG/VMC calculations use live GPS speed/course when both are available and reliable.
-  - VMC bearing-to-target uses the live GPS position when K1/L1 are set.
+  - VMG Vind and VMG Bana calculations use filtered live GPS speed/course when both are available and reliable.
+  - VMG Bana bearing-to-target uses the live GPS position when K1/L1 are set.
 - Step 2 live GPS integration is implemented for the Bana view:
-  - Course marks A/B/K1/K2/L1/L2 are saved from current live GPS latitude/longitude.
+  - Course marks A/B/K1/L1 are saved from current live GPS latitude/longitude.
+  - Each course mark stores GPS accuracy at set time and is marked good/poor.
   - If GPS position is unavailable, no fake coordinate is saved and the point remains unset.
+- Start uses current GPS accuracy plus filtered speed/course over ground for TTL/BURN.
+- GPS speed and course are smoothed over about 3 seconds. Course smoothing uses circular averaging.
 
 Reason: when the boat is moving, GPS course is stable and directly reflects over-ground motion.
 
@@ -59,12 +62,15 @@ Browser/dev fallback is separated from the iOS path:
 Current TypeScript code defines:
 
 - sensor reading interfaces (`src/services/sensors/sensorTypes.ts`)
-- live GPS hook (`src/hooks/useLiveGps.ts`), enabled while Bana or Segling is active
+- live GPS hook (`src/hooks/useLiveGps.ts`), enabled while Setup, Bana, Start or Segling is active
 - wind heading hook (`src/hooks/useWindHeadingMeasurement.ts`)
 - wind heading service boundary (`src/services/sensors/windHeadingService.ts`)
 - heading math helpers (`src/domain/angles.ts`)
 - mock service (`src/services/sensors/mockSensorService.ts`)
 - iOS `WindHeadingPlugin` registered from `AppDelegate.swift`
+- device attitude hook (`src/hooks/useDeviceAttitude.ts`) for runtime H/P calibration
+- filtered GPS hook (`src/hooks/useFilteredGps.ts`) for calmer speed/course values
+- start line geometry helpers (`src/domain/startLine.ts`) for TTL/BURN
 
 Core Motion `CMDeviceMotion` itself does not require an extra Info.plist usage
 description for this implementation. Location permission remains separate and is
