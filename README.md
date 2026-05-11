@@ -49,7 +49,7 @@ SailRaceApp is a mobile-first sailing race app foundation built with React, Type
 - Live GPS används i Bana för A/B/K1/L1 och i Segling för fart, position och course over ground när data finns.
 - Start visar TTL/BURN/GPS när timern kör och minutknappar när timern är stoppad eller pausad.
 - Setup visar GPS-, fart-, COG-, motion- och headingstatus samt runtime-kalibrering för R/S.
-- R/rullning visas positivt när styrbordssidan höjs; S/stampning visas positivt när fören höjs.
+- R/rullning visas positivt när styrbordssidan höjs; S/stampning visas positivt när fören höjs. Värdena beräknas från Core Motions gravitationsvektor så yaw/heading inte ska påverka R/S nämnvärt.
 - Core Motion-vindmätning använder telefonens bakåtriktade vektor och cirkulärt medelvärde över flera samples.
 - Sensorarkitektur och native-strategi finns dokumenterad i `docs/sensors.md`.
 

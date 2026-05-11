@@ -132,7 +132,7 @@ public class WindHeadingPlugin: CAPPlugin, CAPBridgedPlugin {
         let headingAvailable = selectedReferenceFrame.hasHeading &&
             backVectorHeadingDegrees(from: motion.attitude.rotationMatrix) != nil
 
-        let boatAttitude = boatAttitudeDegrees(from: motion.attitude.rotationMatrix)
+        let boatAttitude = boatAttitudeDegrees(from: motion.gravity)
 
         call.resolve([
             "valid": true,
@@ -217,23 +217,23 @@ public class WindHeadingPlugin: CAPPlugin, CAPBridgedPlugin {
         return fmod(degrees + 360, 360)
     }
 
-    private func boatAttitudeDegrees(from rotationMatrix: CMRotationMatrix) -> (
+    private func boatAttitudeDegrees(from gravity: CMAcceleration) -> (
         rollDegrees: Double,
         pitchDegrees: Double
     ) {
         // Device mount:
         // - device +X/right edge points to starboard
         // - device -Z/back side points to bow
-        // - reference Z is vertical
+        // - CMDeviceMotion.gravity is expressed in device coordinates and points down
         //
         // R/rullning is positive when starboard rises.
         // S/stampning is positive when the bow rises.
-        let starboardVerticalComponent = clampedUnitValue(rotationMatrix.m31)
-        let bowVerticalComponent = clampedUnitValue(-rotationMatrix.m33)
+        let starboardUpComponent = clampedUnitValue(-gravity.x)
+        let bowUpComponent = clampedUnitValue(gravity.z)
 
         return (
-            rollDegrees: radiansToDegrees(asin(starboardVerticalComponent)),
-            pitchDegrees: radiansToDegrees(asin(bowVerticalComponent))
+            rollDegrees: radiansToDegrees(asin(starboardUpComponent)),
+            pitchDegrees: radiansToDegrees(asin(bowUpComponent))
         )
     }
 

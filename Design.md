@@ -199,7 +199,7 @@ Nuvarande React-state:
 - Bana använder live GPS-position när användaren sätter A, B, K1 och L1.
 - `useFilteredGps` håller ungefär 3 sekunders glidande medelvärde för speed over ground och course over ground.
 - `useDeviceAttitude` läser Core Motion-attitude via native plugin när Setup eller Segling är aktiv.
-- Native R/S beräknas från telefonens monterade båt-axlar, inte direkt från rå `CMAttitude.roll`/`CMAttitude.pitch`.
+- Native R/S beräknas från Core Motions gravitationsvektor projicerad på telefonens monterade båt-axlar, inte direkt från rå `CMAttitude.roll`/`CMAttitude.pitch`.
 
 Det finns ingen permanent lagring ännu. Vald startlängd sparas inte i `localStorage` och återställs till 5 minuter vid apprestart. Banpunkter, vindriktning och R/S-kalibrering är också bara React-minne.
 

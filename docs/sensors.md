@@ -65,8 +65,8 @@ Browser/dev fallback is separated from the iOS path:
 
 The iPhone is mounted in portrait with the back side toward the bow and the
 screen toward the stern. The app does not use raw `CMAttitude.roll` and
-`CMAttitude.pitch` directly for display. Instead it maps Core Motion's rotation
-matrix to boat axes:
+`CMAttitude.pitch` directly for display. Instead it maps Core Motion's
+gravity vector to the mounted boat axes:
 
 - device right edge / +X = starboard
 - device back side / -Z = bow
@@ -74,9 +74,9 @@ matrix to boat axes:
 - S/stampning is positive when the bow rises
 
 Yaw/heading is rotation around the vertical axis and is not used as an R/S
-source. Because R/S is computed from the vertical components of the starboard and
-bow axes, yawing the phone around its vertical axis should not materially change
-R/S after calibration.
+source. Because R/S is computed from the gravity vector's projection onto the
+starboard and bow axes, yawing the phone around its vertical axis should not
+materially change R/S after calibration.
 
 Setup stores the current R/S as a runtime zero point. Segling then shows values
 relative to that calibration. The calibration is not persisted across app
