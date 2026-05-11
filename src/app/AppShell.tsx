@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { NavigationBar } from '../components/NavigationBar'
 import { SetupView } from '../features/setup/SetupView'
 import { CourseSetupView } from '../features/course/CourseSetupView'
@@ -36,12 +36,27 @@ export function AppShell() {
   const [activeView, setActiveView] = useState<AppView>('setup')
   const [course, setCourse] = useState<CourseState>(defaultCourseState)
   const [selectedCountdownMinutes, setSelectedCountdownMinutes] = useState<CountdownDuration>(5)
+  const [isStartTimerRunning, setIsStartTimerRunning] = useState(false)
   const [courseGpsStatus, setCourseGpsStatus] = useState<string | null>(null)
   const [rollPitchCalibration, setRollPitchCalibration] = useState<RollPitchCalibration | null>(null)
   const liveGps = useLiveGps(activeView !== 'analysis')
   const filteredGps = useFilteredGps(liveGps)
   const deviceAttitude = useDeviceAttitude(activeView === 'setup' || activeView === 'race')
   const rollPitch = calculateRollPitchRelativeToCalibration(deviceAttitude, rollPitchCalibration)
+  const isNavigationLocked = isStartTimerRunning
+
+  const handleManualViewChange = useCallback((nextView: AppView) => {
+    if (isNavigationLocked && nextView !== activeView) {
+      return
+    }
+
+    setActiveView(nextView)
+  }, [activeView, isNavigationLocked])
+
+  const handleTimerFinish = useCallback(() => {
+    setIsStartTimerRunning(false)
+    setActiveView('race')
+  }, [])
 
   const getLiveGpsPosition = (): CoursePoint | null => {
     if (liveGps.latitude === null || liveGps.longitude === null) {
@@ -142,7 +157,8 @@ export function AppShell() {
         gps={liveGps}
         filteredGps={filteredGps}
         onSelectedMinutesChange={setSelectedCountdownMinutes}
-        onFinish={() => setActiveView('race')}
+        onRunningChange={setIsStartTimerRunning}
+        onFinish={handleTimerFinish}
       />
     ),
     race: <RaceDashboardView course={course} gps={filteredGps} rollPitch={rollPitch} />,
@@ -151,7 +167,11 @@ export function AppShell() {
 
   return (
     <div className={`app-shell ${activeView}`}>
-      <NavigationBar currentView={activeView} onChange={setActiveView} />
+      <NavigationBar
+        currentView={activeView}
+        isLocked={isNavigationLocked}
+        onChange={handleManualViewChange}
+      />
 
       <main className="app-panel">
         {activeViewContent}

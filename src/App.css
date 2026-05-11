@@ -84,6 +84,12 @@ button {
   color: #050a1a;
 }
 
+.nav-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+  transform: none;
+}
+
 .app-panel {
   display: grid;
   gap: 10px;

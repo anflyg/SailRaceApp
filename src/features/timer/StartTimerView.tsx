@@ -19,6 +19,7 @@ interface StartTimerViewProps {
   gps: LiveGpsReading
   filteredGps: FilteredGpsReading
   onSelectedMinutesChange: (minutes: CountdownDuration) => void
+  onRunningChange?: (isRunning: boolean) => void
   onFinish?: () => void
 }
 
@@ -59,6 +60,7 @@ export function StartTimerView({
   gps,
   filteredGps,
   onSelectedMinutesChange,
+  onRunningChange,
   onFinish,
 }: StartTimerViewProps) {
   const { seconds, status, toggle, pause, reset } = useCountdown(selectedMinutes * 60)
@@ -68,6 +70,14 @@ export function StartTimerView({
   useEffect(() => {
     reset(selectedMinutes * 60)
   }, [selectedMinutes, reset])
+
+  useEffect(() => {
+    onRunningChange?.(status === 'running')
+
+    return () => {
+      onRunningChange?.(false)
+    }
+  }, [status, onRunningChange])
 
   useEffect(() => {
     if (seconds <= -10 && status === 'running') {
@@ -84,6 +94,7 @@ export function StartTimerView({
 
     longPressRef.current = window.setTimeout(() => {
       longPressTriggered.current = true
+      onRunningChange?.(false)
       reset(selectedMinutes * 60)
     }, 500)
   }
@@ -97,6 +108,7 @@ export function StartTimerView({
 
   const handleDisplayClick = () => {
     if (!longPressTriggered.current) {
+      onRunningChange?.(status !== 'running')
       toggle()
     }
   }

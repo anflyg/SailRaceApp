@@ -2,6 +2,7 @@ import type { AppView } from '../types'
 
 interface NavigationBarProps {
   currentView: AppView
+  isLocked?: boolean
   onChange: (view: AppView) => void
 }
 
@@ -13,19 +14,25 @@ const viewItems: Array<{ view: AppView; label: string }> = [
   { view: 'analysis', label: 'Analys' },
 ]
 
-export function NavigationBar({ currentView, onChange }: NavigationBarProps) {
+export function NavigationBar({ currentView, isLocked = false, onChange }: NavigationBarProps) {
   return (
     <nav className="navigation-bar" aria-label="Primary navigation">
-      {viewItems.map((item) => (
-        <button
-          key={item.view}
-          type="button"
-          className={`nav-button ${currentView === item.view ? 'active' : ''}`}
-          onClick={() => onChange(item.view)}
-        >
-          {item.label}
-        </button>
-      ))}
+      {viewItems.map((item) => {
+        const isActive = currentView === item.view
+        const isDisabled = isLocked && !isActive
+
+        return (
+          <button
+            key={item.view}
+            type="button"
+            className={`nav-button ${isActive ? 'active' : ''}`}
+            onClick={() => onChange(item.view)}
+            disabled={isDisabled}
+          >
+            {item.label}
+          </button>
+        )
+      })}
     </nav>
   )
 }
