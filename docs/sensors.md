@@ -28,6 +28,10 @@ heading APIs or raw magnetometer vectors are not robust enough for wind capture.
   - If GPS position is unavailable, no fake coordinate is saved and the point remains unset.
 - Start uses current GPS accuracy plus filtered speed/course over ground for TTL/BURN.
 - GPS speed and course are smoothed over about 3 seconds. Course smoothing uses circular averaging.
+- Segling keeps a 1.5 knot threshold for reliable COG because it drives displayed
+  direction and VMG values continuously.
+- TTL/BURN intentionally uses a lower 1.0 knot threshold so start-line timing can
+  appear earlier during slow pre-start movement.
 
 Reason: when the boat is moving, GPS course is stable and directly reflects over-ground motion.
 
@@ -56,6 +60,22 @@ Browser/dev fallback is separated from the iOS path:
   averaged heading so UI work can continue.
 - On native iOS, if the Core Motion plugin or north reference is unavailable,
   the app reports failure and does not save a fake wind heading.
+
+### Heel/Pitch attitude
+
+The iPhone is mounted in portrait with the back side toward the bow and the
+screen toward the stern. The app does not use raw `CMAttitude.roll/pitch`
+directly for display. Instead it maps Core Motion's rotation matrix to boat
+axes:
+
+- device right edge / +X = starboard
+- device back side / -Z = bow
+- H/heel is positive when the starboard side rises
+- P/pitch is positive when the bow rises
+
+Setup stores the current H/P as a runtime zero point. Segling then shows values
+relative to that calibration. The calibration is not persisted across app
+restart/reload.
 
 ## Implementation Boundary
 

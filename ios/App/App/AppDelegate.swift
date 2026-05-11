@@ -132,12 +132,14 @@ public class WindHeadingPlugin: CAPPlugin, CAPBridgedPlugin {
         let headingAvailable = selectedReferenceFrame.hasHeading &&
             backVectorHeadingDegrees(from: motion.attitude.rotationMatrix) != nil
 
+        let boatAttitude = boatAttitudeDegrees(from: motion.attitude.rotationMatrix)
+
         call.resolve([
             "valid": true,
             "motionAvailable": true,
             "headingAvailable": headingAvailable,
-            "heelDegrees": radiansToDegrees(motion.attitude.roll),
-            "pitchDegrees": radiansToDegrees(motion.attitude.pitch),
+            "heelDegrees": boatAttitude.heelDegrees,
+            "pitchDegrees": boatAttitude.pitchDegrees,
             "referenceFrame": selectedReferenceFrame.name,
             "timestamp": Date().timeIntervalSince1970 * 1000
         ])
@@ -213,6 +215,30 @@ public class WindHeadingPlugin: CAPPlugin, CAPBridgedPlugin {
         let radians = atan2(-westComponent, northComponent)
         let degrees = radians * 180 / Double.pi
         return fmod(degrees + 360, 360)
+    }
+
+    private func boatAttitudeDegrees(from rotationMatrix: CMRotationMatrix) -> (
+        heelDegrees: Double,
+        pitchDegrees: Double
+    ) {
+        // Device mount:
+        // - device +X/right edge points to starboard
+        // - device -Z/back side points to bow
+        // - reference Z is vertical
+        //
+        // H/heel is positive when starboard rises.
+        // P/pitch is positive when the bow rises.
+        let starboardVerticalComponent = clampedUnitValue(rotationMatrix.m31)
+        let bowVerticalComponent = clampedUnitValue(-rotationMatrix.m33)
+
+        return (
+            heelDegrees: radiansToDegrees(asin(starboardVerticalComponent)),
+            pitchDegrees: radiansToDegrees(asin(bowVerticalComponent))
+        )
+    }
+
+    private func clampedUnitValue(_ value: Double) -> Double {
+        return min(1, max(-1, value))
     }
 
     private func radiansToDegrees(_ radians: Double) -> Double {

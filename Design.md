@@ -53,6 +53,8 @@ Nuvarande beteende:
 - Knappen `Kalibrera nolläge` sparar aktuell heel/pitch som runtime-nolläge.
 - Efter kalibrering visar Setup relativ H/P, till exempel `H +0°` och `P +0°`.
 - Kalibrering sparas inte permanent och återställs vid apprestart/reload.
+- H/heel är positivt när styrbordssidan höjs jämfört med kalibreringen.
+- P/pitch är positivt när fören höjs jämfört med kalibreringen.
 
 ### Bana
 
@@ -103,6 +105,7 @@ Nuvarande beteende:
 - TTL beräknas mot startlinjesegmentet A-B från aktuell GPS-position, filtrerad GPS-fart och filtrerad COG.
 - BURN beräknas som `countdownSeconds - TTL`, där plus betyder tidig och minus betyder sen.
 - TTL/BURN visas bara när GPS finns, A/B finns, aktuell GPS-accuracy är högst 5 meter, filtrerad fart är minst 1 knop och rörelsevektorn skär A-B-segmentet framför båten.
+- TTL/BURN använder medvetet lägre farttröskel än Segling: 1,0 knop för att fungera tidigt i startmanövern.
 - Statusprioritet är `GPS SAKNAS`, `SAKNAR LINJE`, `GPS OSÄKER`, `FÖR LÅG FART`, `UTANFÖR LINJEN`, `LINJE OSÄKER`.
 
 Bakgrundsstater:
@@ -144,7 +147,7 @@ Färgkodning:
 - VMG Bana använder mörkorange bakgrund.
 - Ej satt använder grå/dimmad bakgrund.
 
-Segling använder filtrerad live GPS för fart, riktning och VMG-beräkningar. Course over ground används bara när filtrerad GPS-fart är minst `1.5` knop. GPS-kurs används inte för att sätta vind; vind sätts från Core Motion-mätning i Bana.
+Segling använder filtrerad live GPS för fart, riktning och VMG-beräkningar. Course over ground används bara när filtrerad GPS-fart är minst `1.5` knop. Den högre tröskeln än TTL är avsiktlig eftersom Segling visar riktning och VMG kontinuerligt och behöver stabilare COG. GPS-kurs används inte för att sätta vind; vind sätts från Core Motion-mätning i Bana.
 
 ### Analys
 
@@ -195,6 +198,7 @@ Nuvarande React-state:
 - Bana använder live GPS-position när användaren sätter A, B, K1 och L1.
 - `useFilteredGps` håller ungefär 3 sekunders glidande medelvärde för speed over ground och course over ground.
 - `useDeviceAttitude` läser Core Motion-attitude via native plugin när Setup eller Segling är aktiv.
+- Native H/P beräknas från telefonens monterade båt-axlar, inte direkt från rå `roll`/`pitch`.
 
 Det finns ingen permanent lagring ännu. Vald startlängd sparas inte i `localStorage` och återställs till 5 minuter vid apprestart. Banpunkter, vindriktning och H/P-kalibrering är också bara React-minne.
 
@@ -301,6 +305,7 @@ Strategi under segling:
 - Steg 3 är implementerat: Bana kan sätta vind från iOS Core Motion när vindpilen trycks.
 - GPS-accuracy högst 5 meter räknas som bra för punktkvalitet och TTL/BURN.
 - Speed/course filtreras över ungefär 3 sekunder för lugnare instrumentvärden.
+- Segling kräver minst `1.5` knop för pålitlig COG, medan TTL/BURN kräver minst `1.0` knop.
 - GPS-kurs räknas som pålitlig först från `1.5` knop.
 - VMG Vind/VMG Bana använder live GPS-fart och pålitlig GPS-kurs när relevant referens finns.
 - VMG Bana använder live GPS-position för bäring till K1 när primär bana finns.
@@ -352,6 +357,7 @@ Viktiga iOS-beslut:
 - Under utveckling deployas appen direkt från Xcode till ansluten iPhone.
 - `WindHeadingPlugin` är en liten lokal Capacitor-plugin för iOS som registreras från `AppDelegate.swift`.
 - Samma plugin exponerar även aktuell device attitude för runtime H/P-kalibrering.
+- Device attitude mappas till båtens axlar: telefonens högerkant är styrbord och telefonens baksida är fören.
 - Core Motion-baserad vindmätning kräver ingen extra Info.plist-rad i denna implementation.
 
 Standardflöde efter webbändringar:
