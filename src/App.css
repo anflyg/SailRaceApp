@@ -409,9 +409,9 @@ button:focus-visible {
 
 .large-timer {
   border-radius: 24px;
-  padding: 22px 4px;
+  padding: clamp(10px, 2dvh, 16px) 4px;
   width: 100%;
-  min-height: clamp(320px, 50dvh, 460px);
+  min-height: clamp(190px, 32dvh, 280px);
   display: grid;
   place-items: center;
   margin: 0;
@@ -448,6 +448,7 @@ button:focus-visible {
 
 .timer-panel {
   display: grid;
+  flex: 0 0 auto;
   width: 100%;
   min-width: 0;
   text-align: center;
@@ -460,6 +461,14 @@ button:focus-visible {
   gap: clamp(10px, 2dvh, 18px);
 }
 
+.timer-view.timer-running-layout .timer-panel {
+  flex: 0 0 clamp(190px, 32dvh, 280px);
+}
+
+.timer-view.timer-running-layout .large-timer {
+  min-height: 100%;
+}
+
 .timer-button-grid {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -469,34 +478,61 @@ button:focus-visible {
 
 .start-run-panel {
   display: grid;
-  gap: 10px;
+  flex: 1 1 auto;
+  align-content: center;
+  gap: clamp(8px, 1.4dvh, 12px);
   width: 100%;
-  padding: 12px;
-  border-radius: 20px;
+  min-height: 0;
+  padding: clamp(10px, 1.8dvh, 16px) clamp(14px, 4vw, 22px);
+  border-radius: 18px;
   background: rgba(255, 255, 255, 0.08);
 }
 
 .start-metric-row {
   display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: baseline;
-  gap: 14px;
+  grid-template-columns: minmax(88px, 0.72fr) minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(12px, 4vw, 22px);
+  min-height: clamp(74px, 11dvh, 104px);
+  padding: 0 clamp(2px, 1.5vw, 8px);
   color: var(--text-high);
-  font-size: clamp(1.35rem, 5vw, 2.2rem);
   font-weight: 900;
   font-variant-numeric: tabular-nums;
 }
 
 .start-metric-row span {
   color: var(--text-muted);
+  font-size: clamp(1.8rem, min(8vw, 5dvh), 2.7rem);
   letter-spacing: 0.08em;
+}
+
+.start-metric-row strong {
+  min-width: 0;
+  justify-self: end;
+  overflow: hidden;
+  font-size: clamp(2.6rem, min(13vw, 8dvh), 4.25rem);
+  line-height: 0.9;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.start-metric-row:nth-of-type(3) {
+  min-height: clamp(62px, 9dvh, 88px);
+}
+
+.start-metric-row:nth-of-type(3) span {
+  font-size: clamp(1.55rem, min(7vw, 4.4dvh), 2.25rem);
+}
+
+.start-metric-row:nth-of-type(3) strong {
+  font-size: clamp(2rem, min(10vw, 6.2dvh), 3.1rem);
 }
 
 .start-status {
   margin: 0;
-  min-height: 28px;
+  min-height: clamp(32px, 5dvh, 48px);
   color: var(--accent);
-  font-size: clamp(1.05rem, 4vw, 1.5rem);
+  font-size: clamp(1.3rem, min(6vw, 4.2dvh), 1.9rem);
   font-weight: 900;
   text-align: center;
 }
@@ -704,9 +740,13 @@ button:focus-visible {
   }
 
   .large-timer {
-    min-height: clamp(310px, 50dvh, 400px);
-    padding: 20px 2px;
+    min-height: clamp(180px, 31dvh, 240px);
+    padding: clamp(8px, 1.6dvh, 12px) 2px;
     font-size: clamp(7rem, min(36vw, 19dvh), 9.5rem);
+  }
+
+  .timer-view.timer-running-layout .timer-panel {
+    flex-basis: clamp(180px, 31dvh, 240px);
   }
 
   .timer-button-grid {

@@ -126,7 +126,7 @@ export function StartTimerView({
   const isTimerRunning = status === 'running'
 
   return (
-    <section className="view-section timer-view">
+    <section className={`view-section timer-view ${isTimerRunning ? 'timer-running-layout' : 'timer-paused-layout'}`}>
       <div className="timer-panel">
         <div
           className={`timer-display interactive large-timer ${timerStateClass}`}
