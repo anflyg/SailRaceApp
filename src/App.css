@@ -55,17 +55,18 @@ button {
 
 .navigation-bar {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 7px;
 }
 
 .nav-button {
   appearance: none;
   border: 1px solid var(--border);
   border-radius: 16px;
-  padding: 14px 12px;
+  padding: 13px 8px;
   background: var(--surface-muted);
   color: var(--text-high);
+  font-size: clamp(0.76rem, 2.4vw, 0.95rem);
   font-weight: 700;
   min-height: 56px;
   transition: transform 0.15s ease, background 0.2s ease;
@@ -99,7 +100,8 @@ button {
 
 .view-section.course-view,
 .view-section.timer-view,
-.view-section.race-view {
+.view-section.race-view,
+.view-section.setup-view {
   padding: 12px;
   overflow: hidden;
 }
@@ -112,6 +114,81 @@ button {
 
 .view-section.race-view {
   min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.view-section.setup-view {
+  display: grid;
+  min-height: 0;
+  align-content: start;
+  gap: 14px;
+}
+
+.setup-title {
+  margin: 0;
+  color: var(--text-high);
+  font-size: clamp(2rem, 8vw, 3.1rem);
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.setup-status-grid {
+  display: grid;
+  grid-template-columns: minmax(76px, 0.7fr) minmax(82px, 1fr) minmax(86px, 0.9fr);
+  gap: 10px 12px;
+  align-items: center;
+  padding: 14px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: clamp(1rem, 4.5vw, 1.4rem);
+  font-weight: 800;
+}
+
+.setup-status-grid span:nth-child(3n + 2) {
+  color: var(--text-high);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.setup-status-grid span:nth-child(3n + 3) {
+  color: var(--accent);
+  text-align: right;
+  font-size: 0.9em;
+}
+
+.setup-calibration-panel {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.setup-heel-pitch {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  color: var(--text-high);
+  font-size: clamp(2rem, 10vw, 3.4rem);
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.setup-calibration-status {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.setup-calibration-status.calibrated {
+  color: #65d9a5;
+}
+
+.setup-calibrate-button:disabled {
+  opacity: 0.45;
 }
 
 .primary-button,
@@ -163,6 +240,22 @@ button:focus-visible {
   text-align: center;
 }
 
+.course-gps-status {
+  display: flex;
+  min-height: 24px;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--text-high);
+  font-size: 0.95rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.course-gps-status span:last-child {
+  color: var(--accent);
+}
+
 .course-mark,
 .course-arrow {
   position: absolute;
@@ -187,86 +280,53 @@ button:focus-visible {
 }
 
 .course-mark.unset {
-  opacity: 0.35;
+  opacity: 0.58;
   border-style: dashed;
+  color: rgba(247, 247, 247, 0.86);
+  background: rgba(255, 255, 255, 0.14);
 }
 
-.course-mark.set {
+.course-mark.good,
+.course-mark.poor {
   opacity: 1;
   border-style: solid;
 }
 
-.course-mark.start-point {
-  background: #65d9a5;
-}
-
-.course-mark.windward {
-  background: #ff9f1c;
-}
-
-.course-mark.leeward {
-  background: #c77dff;
-}
-
-.course-mark.start-point.unset {
-  background: rgba(101, 217, 165, 0.35);
-}
-
-.course-mark.windward.unset {
-  background: rgba(255, 159, 28, 0.32);
-}
-
-.course-mark.leeward.unset {
-  background: rgba(199, 125, 255, 0.32);
-}
-
-.course-mark.start-point.set {
+.course-mark.good {
   background: #3ec285;
 }
 
-.course-mark.windward.set {
-  background: #ffb84d;
+.course-mark.poor {
+  background: #f3c743;
 }
 
-.course-mark.leeward.set {
-  background: #cf8dff;
-}
-
-.course-mark.start-point:first-of-type {
+.course-mark.start-a {
   top: calc(50% - 42px);
   left: 18px;
 }
 
-.course-mark.start-point:nth-of-type(2) {
+.course-mark.start-b {
   top: calc(50% - 42px);
   right: 18px;
 }
 
-.course-mark.windward:nth-of-type(3) {
+.course-mark.windward {
   top: 24px;
-  right: 20px;
+  left: 50%;
+  transform: translateX(-50%);
 }
 
-.course-mark.windward:nth-of-type(4) {
-  top: 24px;
-  left: 20px;
-}
-
-.course-mark.leeward:nth-of-type(5) {
+.course-mark.leeward {
   bottom: 24px;
-  left: 18%;
-}
-
-.course-mark.leeward:nth-of-type(6) {
-  bottom: 24px;
-  right: 18%;
+  left: 50%;
+  transform: translateX(-50%);
 }
 
 /* Wind arrow button - positioned at top center of schematic */
 .wind-arrow-button {
   position: absolute;
   z-index: 1;
-  top: 24px;
+  top: 116px;
   left: 50%;
   width: 80px;
   height: 80px;
@@ -332,11 +392,19 @@ button:focus-visible {
   left: 60px;
   right: 60px;
   height: 3px;
-  background: #65d9a5;
+  background: rgba(255, 255, 255, 0.24);
   border-radius: 1.5px;
   transform: translateY(-50%);
   pointer-events: none;
   z-index: 0;
+}
+
+.course-schematic.start-line-good::before {
+  background: #3ec285;
+}
+
+.course-schematic.start-line-poor::before {
+  background: #f3c743;
 }
 
 .large-timer {
@@ -399,6 +467,40 @@ button:focus-visible {
   width: 100%;
 }
 
+.start-run-panel {
+  display: grid;
+  gap: 10px;
+  width: 100%;
+  padding: 12px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.start-metric-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  gap: 14px;
+  color: var(--text-high);
+  font-size: clamp(1.35rem, 5vw, 2.2rem);
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.start-metric-row span {
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+}
+
+.start-status {
+  margin: 0;
+  min-height: 28px;
+  color: var(--accent);
+  font-size: clamp(1.05rem, 4vw, 1.5rem);
+  font-weight: 900;
+  text-align: center;
+}
+
 .duration-button {
   min-height: clamp(88px, 15dvh, 116px);
   font-size: clamp(2.35rem, 8vw, 3.6rem);
@@ -420,9 +522,10 @@ button:focus-visible {
 .race-grid {
   display: grid;
   grid-template-rows: repeat(3, minmax(0, 1fr));
+  flex: 1 1 auto;
+  min-height: 0;
   gap: 10px;
   width: 100%;
-  height: 100%;
 }
 
 .metric-box {
@@ -511,6 +614,22 @@ button:focus-visible {
   color: rgba(255, 250, 242, 0.86);
 }
 
+.heel-pitch-strip {
+  display: flex;
+  flex: 0 0 auto;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  padding: 8px 10px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-high);
+  font-size: clamp(1.25rem, 5vw, 1.8rem);
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
 .analysis-panel {
   display: grid;
   gap: 12px;
@@ -534,8 +653,9 @@ button:focus-visible {
 
   .nav-button {
     min-height: 52px;
-    padding: 12px 6px;
+    padding: 11px 3px;
     border-radius: 14px;
+    font-size: clamp(0.68rem, 2.55vw, 0.82rem);
   }
 
   .course-schematic {
@@ -551,34 +671,22 @@ button:focus-visible {
     min-height: 68px;
   }
 
-  .course-mark.start-point:first-of-type {
+  .course-mark.start-a {
     top: calc(50% - 34px);
     left: 14px;
   }
 
-  .course-mark.start-point:nth-of-type(2) {
+  .course-mark.start-b {
     top: calc(50% - 34px);
     right: 14px;
   }
 
-  .course-mark.windward:nth-of-type(3) {
+  .course-mark.windward {
     top: 18px;
-    right: 16px;
   }
 
-  .course-mark.windward:nth-of-type(4) {
-    top: 18px;
-    left: 16px;
-  }
-
-  .course-mark.leeward:nth-of-type(5) {
+  .course-mark.leeward {
     bottom: 18px;
-    left: 18%;
-  }
-
-  .course-mark.leeward:nth-of-type(6) {
-    bottom: 18px;
-    right: 18%;
   }
 
   .course-schematic::before {
@@ -587,6 +695,7 @@ button:focus-visible {
   }
 
   .wind-arrow-button {
+    top: 94px;
     width: 68px;
     height: 68px;
     min-width: 68px;
@@ -611,6 +720,16 @@ button:focus-visible {
     font-size: clamp(2.1rem, 10vw, 3rem);
   }
 
+  .setup-status-grid {
+    grid-template-columns: minmax(64px, 0.65fr) minmax(74px, 1fr) minmax(78px, 0.95fr);
+    gap: 9px 8px;
+    padding: 12px;
+  }
+
+  .setup-heel-pitch {
+    font-size: clamp(1.8rem, 9vw, 2.8rem);
+  }
+
   .race-grid {
     gap: 10px;
   }
@@ -626,6 +745,11 @@ button:focus-visible {
 
   .metric-box .metric-label {
     font-size: clamp(0.78rem, 2dvh, 0.95rem);
+  }
+
+  .heel-pitch-strip {
+    min-height: 40px;
+    gap: 18px;
   }
 
   .metric-value-row {

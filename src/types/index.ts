@@ -1,4 +1,4 @@
-export type AppView = 'course' | 'timer' | 'race' | 'analysis'
+export type AppView = 'setup' | 'course' | 'timer' | 'race' | 'analysis'
 
 export type CountdownDuration = 5 | 4 | 3 | 2 | 1
 
@@ -21,13 +21,46 @@ export interface LiveGpsReading {
   timestamp: number | null
 }
 
-export type CoursePointKey = 'startA' | 'startB' | 'kryss1' | 'kryss2' | 'lans1' | 'lans2'
+export interface FilteredGpsReading extends LiveGpsReading {
+  sampleCount: number
+}
 
-export type CoursePointState = Record<CoursePointKey, GeoPoint | null>
+export type CoursePointQuality = 'unset' | 'good' | 'poor'
+
+export interface CoursePoint extends GeoPoint {
+  accuracyAtSet?: number
+  quality: Exclude<CoursePointQuality, 'unset'>
+}
+
+export type CoursePointKey = 'startA' | 'startB' | 'kryss1' | 'lans1'
+
+export type CoursePointState = Record<CoursePointKey, CoursePoint | null>
 
 export interface CourseState {
   points: CoursePointState
   windHeadingDegrees: number | null
+}
+
+export type DeviceAttitudeStatus = 'idle' | 'watching' | 'error' | 'unavailable'
+
+export interface DeviceAttitudeReading {
+  status: DeviceAttitudeStatus
+  error: string | null
+  heelDegrees: number | null
+  pitchDegrees: number | null
+  motionAvailable: boolean
+  headingAvailable: boolean
+  timestamp: number | null
+}
+
+export interface HeelPitchCalibration {
+  heelDegrees: number
+  pitchDegrees: number
+}
+
+export interface HeelPitchValues {
+  heelDegrees: number
+  pitchDegrees: number
 }
 
 export interface RaceMetrics {

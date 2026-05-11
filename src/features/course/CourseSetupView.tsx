@@ -1,10 +1,12 @@
 import { normalizeDegrees } from '../../domain/angles'
+import { getGpsStatusDisplay, getStartLineQuality } from '../../domain/gps'
 import { getCourseAxisHeading } from '../../domain/navigation'
 import { useWindHeadingMeasurement } from '../../hooks/useWindHeadingMeasurement'
-import type { CoursePointKey, CourseState } from '../../types'
+import type { CoursePoint, CoursePointKey, CourseState, LiveGpsReading } from '../../types'
 
 interface CourseSetupViewProps {
   course: CourseState
+  gps: LiveGpsReading
   onToggleCoursePoint: (key: CoursePointKey) => void
   onToggleWindHeading: (headingDegrees: number) => void
   onClearCourse: () => void
@@ -19,8 +21,13 @@ function getWindArrowRotation(windHeadingDegrees: number | null, courseAxisHeadi
   return normalizeDegrees(windHeadingDegrees - (courseAxisHeading ?? 0))
 }
 
+function getCourseMarkClassName(kind: string, point: CoursePoint | null): string {
+  return `course-mark ${kind} ${point?.quality ?? 'unset'}`
+}
+
 export function CourseSetupView({
   course,
+  gps,
   onToggleCoursePoint,
   onToggleWindHeading,
   onClearCourse,
@@ -63,13 +70,15 @@ export function CourseSetupView({
     idle: null,
   }[windMeasurementStatus]
   const statusMessage = windStatusMessage ?? gpsStatusMessage
+  const gpsStatus = getGpsStatusDisplay(gps)
+  const startLineQuality = getStartLineQuality(course.points.startA, course.points.startB)
 
   return (
     <section className="view-section course-view">
-      <div className="course-schematic">
+      <div className={`course-schematic start-line-${startLineQuality}`}>
         <button
           type="button"
-          className={`course-mark start-point ${course.points.startA ? 'set' : 'unset'}`}
+          className={getCourseMarkClassName('start-point start-a', course.points.startA)}
           onClick={() => onToggleCoursePoint('startA')}
         >
           A
@@ -77,7 +86,7 @@ export function CourseSetupView({
 
         <button
           type="button"
-          className={`course-mark start-point ${course.points.startB ? 'set' : 'unset'}`}
+          className={getCourseMarkClassName('start-point start-b', course.points.startB)}
           onClick={() => onToggleCoursePoint('startB')}
         >
           B
@@ -85,7 +94,7 @@ export function CourseSetupView({
 
         <button
           type="button"
-          className={`course-mark windward ${course.points.kryss1 ? 'set' : 'unset'}`}
+          className={getCourseMarkClassName('windward', course.points.kryss1)}
           onClick={() => onToggleCoursePoint('kryss1')}
         >
           K1
@@ -93,26 +102,10 @@ export function CourseSetupView({
 
         <button
           type="button"
-          className={`course-mark windward ${course.points.kryss2 ? 'set' : 'unset'}`}
-          onClick={() => onToggleCoursePoint('kryss2')}
-        >
-          K2
-        </button>
-
-        <button
-          type="button"
-          className={`course-mark leeward ${course.points.lans1 ? 'set' : 'unset'}`}
+          className={getCourseMarkClassName('leeward', course.points.lans1)}
           onClick={() => onToggleCoursePoint('lans1')}
         >
           L1
-        </button>
-
-        <button
-          type="button"
-          className={`course-mark leeward ${course.points.lans2 ? 'set' : 'unset'}`}
-          onClick={() => onToggleCoursePoint('lans2')}
-        >
-          L2
         </button>
 
         <button
@@ -130,6 +123,10 @@ export function CourseSetupView({
       </div>
 
       <div className="course-footer">
+        <div className="course-gps-status" role="status">
+          <span>{gpsStatus.label}</span>
+          {gpsStatus.statusText ? <span>{gpsStatus.statusText}</span> : null}
+        </div>
         {statusMessage ? (
           <p className="course-status" role="status">
             {statusMessage}

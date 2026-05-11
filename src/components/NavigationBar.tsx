@@ -6,6 +6,7 @@ interface NavigationBarProps {
 }
 
 const viewItems: Array<{ view: AppView; label: string }> = [
+  { view: 'setup', label: 'Setup' },
   { view: 'course', label: 'Bana' },
   { view: 'timer', label: 'Start' },
   { view: 'race', label: 'Segling' },

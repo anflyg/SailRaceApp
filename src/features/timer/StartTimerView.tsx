@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef } from 'react'
+import { formatMeters } from '../../domain/format'
+import { calculateStartMetrics } from '../../domain/startLine'
 import { useCountdown } from '../../hooks/useCountdown'
-import type { CountdownDuration } from '../../types'
+import type { CountdownDuration, CourseState, FilteredGpsReading, GeoPoint, LiveGpsReading } from '../../types'
 
 const durations: CountdownDuration[] = [5, 4, 3, 2, 1]
 
@@ -13,12 +15,49 @@ function formatTime(seconds: number) {
 
 interface StartTimerViewProps {
   selectedMinutes: CountdownDuration
+  course: CourseState
+  gps: LiveGpsReading
+  filteredGps: FilteredGpsReading
   onSelectedMinutesChange: (minutes: CountdownDuration) => void
   onFinish?: () => void
 }
 
+function getGpsPosition(gps: LiveGpsReading): GeoPoint | null {
+  if (gps.latitude === null || gps.longitude === null) {
+    return null
+  }
+
+  return {
+    latitude: gps.latitude,
+    longitude: gps.longitude,
+  }
+}
+
+function formatGpsLabel(gps: LiveGpsReading): string {
+  if (gps.latitude === null || gps.longitude === null || gps.accuracyMeters === null) {
+    return '—'
+  }
+
+  return `±${formatMeters(gps.accuracyMeters)} m`
+}
+
+function formatSeconds(value: number): string {
+  return `${value} s`
+}
+
+function formatBurnSeconds(value: number): string {
+  if (value > 0) {
+    return `+${value} s`
+  }
+
+  return `${value} s`
+}
+
 export function StartTimerView({
   selectedMinutes,
+  course,
+  gps,
+  filteredGps,
   onSelectedMinutesChange,
   onFinish,
 }: StartTimerViewProps) {
@@ -75,6 +114,16 @@ export function StartTimerView({
     : seconds < 0
       ? 'timer-negative'
       : 'timer-running'
+  const startMetrics = calculateStartMetrics({
+    boatPosition: getGpsPosition(gps),
+    currentAccuracyMeters: gps.accuracyMeters,
+    startA: course.points.startA,
+    startB: course.points.startB,
+    speedKnots: filteredGps.speedKnots,
+    courseDegrees: filteredGps.courseDegrees,
+    countdownSeconds: seconds,
+  })
+  const isTimerRunning = status === 'running'
 
   return (
     <section className="view-section timer-view">
@@ -92,21 +141,47 @@ export function StartTimerView({
         </div>
       </div>
 
-      <div className="button-grid timer-button-grid">
-        {buttonSet.map((button) => (
-          <button
-            key={button.minutes}
-            type="button"
-            className={`duration-button ${selectedMinutes === button.minutes ? 'active' : ''}`}
-            onClick={() => {
-              onSelectedMinutesChange(button.minutes)
-              reset(button.minutes * 60)
-            }}
-          >
-            {button.label}
-          </button>
-        ))}
-      </div>
+      {isTimerRunning ? (
+        <div className="start-run-panel">
+          <div className="start-metric-row">
+            <span>TTL</span>
+            <strong>{startMetrics.ttlSeconds !== null ? formatSeconds(startMetrics.ttlSeconds) : '—'}</strong>
+          </div>
+          <div className="start-metric-row">
+            <span>BURN</span>
+            <strong>
+              {startMetrics.burnSeconds !== null
+                ? formatBurnSeconds(startMetrics.burnSeconds)
+                : '—'}
+            </strong>
+          </div>
+          <div className="start-metric-row">
+            <span>GPS</span>
+            <strong>{formatGpsLabel(gps)}</strong>
+          </div>
+          {startMetrics.statusText ? (
+            <p className="start-status" role="status">
+              {startMetrics.statusText}
+            </p>
+          ) : null}
+        </div>
+      ) : (
+        <div className="button-grid timer-button-grid">
+          {buttonSet.map((button) => (
+            <button
+              key={button.minutes}
+              type="button"
+              className={`duration-button ${selectedMinutes === button.minutes ? 'active' : ''}`}
+              onClick={() => {
+                onSelectedMinutesChange(button.minutes)
+                reset(button.minutes * 60)
+              }}
+            >
+              {button.label}
+            </button>
+          ))}
+        </div>
+      )}
     </section>
   )
 }

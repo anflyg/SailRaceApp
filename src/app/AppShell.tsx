@@ -1,26 +1,30 @@
 import { useState } from 'react'
 import { NavigationBar } from '../components/NavigationBar'
+import { SetupView } from '../features/setup/SetupView'
 import { CourseSetupView } from '../features/course/CourseSetupView'
 import { StartTimerView } from '../features/timer/StartTimerView'
 import { RaceDashboardView } from '../features/race/RaceDashboardView'
 import { RaceAnalysisView } from '../features/analysis/RaceAnalysisView'
+import { calculateHeelPitchRelativeToCalibration } from '../domain/motion'
+import { getPointQuality } from '../domain/gps'
+import { useDeviceAttitude } from '../hooks/useDeviceAttitude'
+import { useFilteredGps } from '../hooks/useFilteredGps'
 import { useLiveGps } from '../hooks/useLiveGps'
 import type {
   AppView,
   CountdownDuration,
+  CoursePoint,
   CoursePointKey,
   CoursePointState,
   CourseState,
-  GeoPoint,
+  HeelPitchCalibration,
 } from '../types'
 
 const emptyCoursePoints: CoursePointState = {
   startA: null,
   startB: null,
   kryss1: null,
-  kryss2: null,
   lans1: null,
-  lans2: null,
 }
 
 const defaultCourseState: CourseState = {
@@ -29,21 +33,32 @@ const defaultCourseState: CourseState = {
 }
 
 export function AppShell() {
-  const [activeView, setActiveView] = useState<AppView>('course')
+  const [activeView, setActiveView] = useState<AppView>('setup')
   const [course, setCourse] = useState<CourseState>(defaultCourseState)
   const [selectedCountdownMinutes, setSelectedCountdownMinutes] = useState<CountdownDuration>(5)
   const [courseGpsStatus, setCourseGpsStatus] = useState<string | null>(null)
-  const liveGps = useLiveGps(activeView === 'course' || activeView === 'race')
+  const [heelPitchCalibration, setHeelPitchCalibration] = useState<HeelPitchCalibration | null>(null)
+  const liveGps = useLiveGps(activeView !== 'analysis')
+  const filteredGps = useFilteredGps(liveGps)
+  const deviceAttitude = useDeviceAttitude(activeView === 'setup' || activeView === 'race')
+  const heelPitch = calculateHeelPitchRelativeToCalibration(deviceAttitude, heelPitchCalibration)
 
-  const getLiveGpsPosition = (): GeoPoint | null => {
+  const getLiveGpsPosition = (): CoursePoint | null => {
     if (liveGps.latitude === null || liveGps.longitude === null) {
       return null
     }
 
-    return {
+    const coursePoint: CoursePoint = {
       latitude: liveGps.latitude,
       longitude: liveGps.longitude,
+      quality: getPointQuality(liveGps.accuracyMeters),
     }
+
+    if (liveGps.accuracyMeters !== null) {
+      coursePoint.accuracyAtSet = liveGps.accuracyMeters
+    }
+
+    return coursePoint
   }
 
   const toggleCoursePoint = (key: CoursePointKey) => {
@@ -88,10 +103,32 @@ export function AppShell() {
     setCourse(defaultCourseState)
   }
 
+  const calibrateHeelPitch = () => {
+    if (deviceAttitude.heelDegrees === null || deviceAttitude.pitchDegrees === null) {
+      return
+    }
+
+    setHeelPitchCalibration({
+      heelDegrees: deviceAttitude.heelDegrees,
+      pitchDegrees: deviceAttitude.pitchDegrees,
+    })
+  }
+
   const activeViewContent = {
+    setup: (
+      <SetupView
+        gps={liveGps}
+        filteredGps={filteredGps}
+        attitude={deviceAttitude}
+        heelPitch={heelPitch}
+        isCalibrated={heelPitchCalibration !== null}
+        onCalibrate={calibrateHeelPitch}
+      />
+    ),
     course: (
       <CourseSetupView
         course={course}
+        gps={liveGps}
         onToggleCoursePoint={toggleCoursePoint}
         onToggleWindHeading={toggleWindHeading}
         onClearCourse={clearCourse}
@@ -101,11 +138,14 @@ export function AppShell() {
     timer: (
       <StartTimerView
         selectedMinutes={selectedCountdownMinutes}
+        course={course}
+        gps={liveGps}
+        filteredGps={filteredGps}
         onSelectedMinutesChange={setSelectedCountdownMinutes}
         onFinish={() => setActiveView('race')}
       />
     ),
-    race: <RaceDashboardView course={course} gps={liveGps} />,
+    race: <RaceDashboardView course={course} gps={filteredGps} heelPitch={heelPitch} />,
     analysis: <RaceAnalysisView />,
   }[activeView]
 

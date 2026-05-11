@@ -1,36 +1,21 @@
 import { useState } from 'react'
-import { normalizeDegrees } from '../../domain/angles'
+import { formatDegrees, formatKnots, formatSignedDegrees, formatSignedKnots } from '../../domain/format'
 import {
   calculateBearingDegrees,
   calculateVelocityMadeGood,
   hasPrimaryCourse,
 } from '../../domain/navigation'
-import type { CourseState, GeoPoint, LiveGpsReading } from '../../types'
+import type { CourseState, FilteredGpsReading, GeoPoint, HeelPitchValues } from '../../types'
 
 type VelocityMode = 'vmg' | 'vmc'
 
-// Format knots value: clamp to 19.9 and use one decimal with comma
-function formatKnots(value: number): string {
-  const clamped = Math.max(0, Math.min(value, 19.9))
-  return clamped.toFixed(1).replace('.', ',')
-}
-
-function formatSignedKnots(value: number): string {
-  const clamped = Math.max(-19.9, Math.min(value, 19.9))
-  return clamped.toFixed(1).replace('.', ',')
-}
-
-function formatDegrees(value: number): string {
-  const rounded = Math.round(normalizeDegrees(value)) % 360
-  return `${rounded.toString().padStart(3, '0')}°`
-}
-
 interface RaceDashboardViewProps {
   course: CourseState
-  gps: LiveGpsReading
+  gps: FilteredGpsReading
+  heelPitch: HeelPitchValues | null
 }
 
-function getGpsPosition(gps: LiveGpsReading): GeoPoint | null {
+function getGpsPosition(gps: FilteredGpsReading): GeoPoint | null {
   if (gps.latitude === null || gps.longitude === null) {
     return null
   }
@@ -41,7 +26,7 @@ function getGpsPosition(gps: LiveGpsReading): GeoPoint | null {
   }
 }
 
-export function RaceDashboardView({ course, gps }: RaceDashboardViewProps) {
+export function RaceDashboardView({ course, gps, heelPitch }: RaceDashboardViewProps) {
   const [activeVelocityMode, setActiveVelocityMode] = useState<VelocityMode>('vmc')
   const speedKnots = gps.speedKnots
   const courseHeading = gps.courseReliable ? gps.courseDegrees : null
@@ -70,9 +55,9 @@ export function RaceDashboardView({ course, gps }: RaceDashboardViewProps) {
     ? calculateVelocityMadeGood(speedKnots, courseHeading, referenceHeading)
     : null
   const velocityLabel = selectedVelocityMode === 'vmc'
-    ? 'VMC mål'
+    ? 'VMG Bana'
     : selectedVelocityMode === 'vmg'
-      ? 'VMG vind'
+      ? 'VMG Vind'
       : 'Ej satt'
   const velocityValue = velocityMadeGood !== null ? formatSignedKnots(velocityMadeGood) : '--'
   const velocityClassName = selectedVelocityMode === 'vmc'
@@ -118,6 +103,11 @@ export function RaceDashboardView({ course, gps }: RaceDashboardViewProps) {
           <span className="metric-value">{velocityValue}</span>
           <span className="metric-label">{velocityLabel}</span>
         </div>
+      </div>
+
+      <div className="heel-pitch-strip" aria-label="Heel och pitch">
+        <span>H {heelPitch ? formatSignedDegrees(heelPitch.heelDegrees) : '—'}</span>
+        <span>P {heelPitch ? formatSignedDegrees(heelPitch.pitchDegrees) : '—'}</span>
       </div>
     </section>
   )

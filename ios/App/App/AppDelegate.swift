@@ -63,6 +63,7 @@ public class WindHeadingPlugin: CAPPlugin, CAPBridgedPlugin {
     public let jsName = "WindHeading"
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "getBackVectorHeading", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "getDeviceAttitude", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "stopBackVectorHeading", returnType: CAPPluginReturnPromise)
     ]
 
@@ -107,6 +108,41 @@ public class WindHeadingPlugin: CAPPlugin, CAPBridgedPlugin {
         ])
     }
 
+    @objc func getDeviceAttitude(_ call: CAPPluginCall) {
+        guard motionManager.isDeviceMotionAvailable else {
+            call.unavailable("Core Motion är inte tillgängligt.")
+            return
+        }
+
+        let selectedReferenceFrame = preferredMotionReferenceFrame()
+        startDeviceMotionUpdatesIfNeeded(using: selectedReferenceFrame.frame)
+
+        guard let motion = motionManager.deviceMotion else {
+            call.resolve([
+                "valid": false,
+                "motionAvailable": false,
+                "headingAvailable": false,
+                "heelDegrees": NSNull(),
+                "pitchDegrees": NSNull(),
+                "referenceFrame": selectedReferenceFrame.name
+            ])
+            return
+        }
+
+        let headingAvailable = selectedReferenceFrame.hasHeading &&
+            backVectorHeadingDegrees(from: motion.attitude.rotationMatrix) != nil
+
+        call.resolve([
+            "valid": true,
+            "motionAvailable": true,
+            "headingAvailable": headingAvailable,
+            "heelDegrees": radiansToDegrees(motion.attitude.roll),
+            "pitchDegrees": radiansToDegrees(motion.attitude.pitch),
+            "referenceFrame": selectedReferenceFrame.name,
+            "timestamp": Date().timeIntervalSince1970 * 1000
+        ])
+    }
+
     @objc func stopBackVectorHeading(_ call: CAPPluginCall) {
         motionManager.stopDeviceMotionUpdates()
         activeReferenceFrame = nil
@@ -125,6 +161,28 @@ public class WindHeadingPlugin: CAPPlugin, CAPBridgedPlugin {
         }
 
         return nil
+    }
+
+    private func preferredMotionReferenceFrame() -> (
+        frame: CMAttitudeReferenceFrame,
+        name: String,
+        hasHeading: Bool
+    ) {
+        if let headingReferenceFrame = preferredReferenceFrame() {
+            return (
+                headingReferenceFrame.frame,
+                headingReferenceFrame.name,
+                true
+            )
+        }
+
+        let availableReferenceFrames = CMMotionManager.availableAttitudeReferenceFrames()
+
+        if availableReferenceFrames.contains(.xArbitraryCorrectedZVertical) {
+            return (.xArbitraryCorrectedZVertical, "arbitrary-corrected", false)
+        }
+
+        return (.xArbitraryZVertical, "arbitrary", false)
     }
 
     private func startDeviceMotionUpdatesIfNeeded(using referenceFrame: CMAttitudeReferenceFrame) {
@@ -155,5 +213,9 @@ public class WindHeadingPlugin: CAPPlugin, CAPBridgedPlugin {
         let radians = atan2(-westComponent, northComponent)
         let degrees = radians * 180 / Double.pi
         return fmod(degrees + 360, 360)
+    }
+
+    private func radiansToDegrees(_ radians: Double) -> Double {
+        return radians * 180 / Double.pi
     }
 }
