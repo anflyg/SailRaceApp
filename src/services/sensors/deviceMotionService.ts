@@ -5,7 +5,7 @@ interface NativeDeviceAttitudeSample {
   valid?: boolean
   motionAvailable?: boolean
   headingAvailable?: boolean
-  heelDegrees?: number | null
+  rollDegrees?: number | null
   pitchDegrees?: number | null
   timestamp?: number | null
 }
@@ -20,7 +20,7 @@ const DeviceMotionNative = registerPlugin<DeviceMotionNativePlugin>('WindHeading
 const unavailableReading: DeviceAttitudeReading = {
   status: 'unavailable',
   error: 'Motion saknas.',
-  heelDegrees: null,
+  rollDegrees: null,
   pitchDegrees: null,
   motionAvailable: false,
   headingAvailable: false,
@@ -38,18 +38,18 @@ export async function getDeviceAttitude(): Promise<DeviceAttitudeReading> {
 
   try {
     const sample = await DeviceMotionNative.getDeviceAttitude()
-    const heelDegrees = finiteNumberOrNull(sample.heelDegrees)
+    const rollDegrees = finiteNumberOrNull(sample.rollDegrees)
     const pitchDegrees = finiteNumberOrNull(sample.pitchDegrees)
     const motionAvailable = sample.valid !== false && sample.motionAvailable === true
 
-    if (!motionAvailable || heelDegrees === null || pitchDegrees === null) {
+    if (!motionAvailable || rollDegrees === null || pitchDegrees === null) {
       return unavailableReading
     }
 
     return {
       status: 'watching',
       error: null,
-      heelDegrees,
+      rollDegrees,
       pitchDegrees,
       motionAvailable: true,
       headingAvailable: sample.headingAvailable === true,

@@ -5,7 +5,7 @@ import { CourseSetupView } from '../features/course/CourseSetupView'
 import { StartTimerView } from '../features/timer/StartTimerView'
 import { RaceDashboardView } from '../features/race/RaceDashboardView'
 import { RaceAnalysisView } from '../features/analysis/RaceAnalysisView'
-import { calculateHeelPitchRelativeToCalibration } from '../domain/motion'
+import { calculateRollPitchRelativeToCalibration } from '../domain/motion'
 import { getPointQuality } from '../domain/gps'
 import { useDeviceAttitude } from '../hooks/useDeviceAttitude'
 import { useFilteredGps } from '../hooks/useFilteredGps'
@@ -17,7 +17,7 @@ import type {
   CoursePointKey,
   CoursePointState,
   CourseState,
-  HeelPitchCalibration,
+  RollPitchCalibration,
 } from '../types'
 
 const emptyCoursePoints: CoursePointState = {
@@ -37,11 +37,11 @@ export function AppShell() {
   const [course, setCourse] = useState<CourseState>(defaultCourseState)
   const [selectedCountdownMinutes, setSelectedCountdownMinutes] = useState<CountdownDuration>(5)
   const [courseGpsStatus, setCourseGpsStatus] = useState<string | null>(null)
-  const [heelPitchCalibration, setHeelPitchCalibration] = useState<HeelPitchCalibration | null>(null)
+  const [rollPitchCalibration, setRollPitchCalibration] = useState<RollPitchCalibration | null>(null)
   const liveGps = useLiveGps(activeView !== 'analysis')
   const filteredGps = useFilteredGps(liveGps)
   const deviceAttitude = useDeviceAttitude(activeView === 'setup' || activeView === 'race')
-  const heelPitch = calculateHeelPitchRelativeToCalibration(deviceAttitude, heelPitchCalibration)
+  const rollPitch = calculateRollPitchRelativeToCalibration(deviceAttitude, rollPitchCalibration)
 
   const getLiveGpsPosition = (): CoursePoint | null => {
     if (liveGps.latitude === null || liveGps.longitude === null) {
@@ -103,13 +103,13 @@ export function AppShell() {
     setCourse(defaultCourseState)
   }
 
-  const calibrateHeelPitch = () => {
-    if (deviceAttitude.heelDegrees === null || deviceAttitude.pitchDegrees === null) {
+  const calibrateRollPitch = () => {
+    if (deviceAttitude.rollDegrees === null || deviceAttitude.pitchDegrees === null) {
       return
     }
 
-    setHeelPitchCalibration({
-      heelDegrees: deviceAttitude.heelDegrees,
+    setRollPitchCalibration({
+      rollDegrees: deviceAttitude.rollDegrees,
       pitchDegrees: deviceAttitude.pitchDegrees,
     })
   }
@@ -120,9 +120,9 @@ export function AppShell() {
         gps={liveGps}
         filteredGps={filteredGps}
         attitude={deviceAttitude}
-        heelPitch={heelPitch}
-        isCalibrated={heelPitchCalibration !== null}
-        onCalibrate={calibrateHeelPitch}
+        rollPitch={rollPitch}
+        isCalibrated={rollPitchCalibration !== null}
+        onCalibrate={calibrateRollPitch}
       />
     ),
     course: (
@@ -145,7 +145,7 @@ export function AppShell() {
         onFinish={() => setActiveView('race')}
       />
     ),
-    race: <RaceDashboardView course={course} gps={filteredGps} heelPitch={heelPitch} />,
+    race: <RaceDashboardView course={course} gps={filteredGps} rollPitch={rollPitch} />,
     analysis: <RaceAnalysisView />,
   }[activeView]
 

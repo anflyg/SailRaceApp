@@ -46,20 +46,20 @@ export type DeviceAttitudeStatus = 'idle' | 'watching' | 'error' | 'unavailable'
 export interface DeviceAttitudeReading {
   status: DeviceAttitudeStatus
   error: string | null
-  heelDegrees: number | null
+  rollDegrees: number | null
   pitchDegrees: number | null
   motionAvailable: boolean
   headingAvailable: boolean
   timestamp: number | null
 }
 
-export interface HeelPitchCalibration {
-  heelDegrees: number
+export interface RollPitchCalibration {
+  rollDegrees: number
   pitchDegrees: number
 }
 
-export interface HeelPitchValues {
-  heelDegrees: number
+export interface RollPitchValues {
+  rollDegrees: number
   pitchDegrees: number
 }
 

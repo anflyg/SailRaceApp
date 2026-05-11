@@ -1,20 +1,20 @@
 import { shortestAngleDeltaDegrees } from './angles'
-import type { DeviceAttitudeReading, HeelPitchCalibration, HeelPitchValues } from '../types'
+import type { DeviceAttitudeReading, RollPitchCalibration, RollPitchValues } from '../types'
 
-export function calculateHeelPitchRelativeToCalibration(
+export function calculateRollPitchRelativeToCalibration(
   attitude: DeviceAttitudeReading,
-  calibration: HeelPitchCalibration | null,
-): HeelPitchValues | null {
+  calibration: RollPitchCalibration | null,
+): RollPitchValues | null {
   if (
     !calibration ||
-    attitude.heelDegrees === null ||
+    attitude.rollDegrees === null ||
     attitude.pitchDegrees === null
   ) {
     return null
   }
 
   return {
-    heelDegrees: shortestAngleDeltaDegrees(attitude.heelDegrees, calibration.heelDegrees),
+    rollDegrees: shortestAngleDeltaDegrees(attitude.rollDegrees, calibration.rollDegrees),
     pitchDegrees: shortestAngleDeltaDegrees(attitude.pitchDegrees, calibration.pitchDegrees),
   }
 }

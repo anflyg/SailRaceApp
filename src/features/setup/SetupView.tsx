@@ -3,15 +3,15 @@ import { getGpsStatusDisplay } from '../../domain/gps'
 import type {
   DeviceAttitudeReading,
   FilteredGpsReading,
-  HeelPitchValues,
   LiveGpsReading,
+  RollPitchValues,
 } from '../../types'
 
 interface SetupViewProps {
   gps: LiveGpsReading
   filteredGps: FilteredGpsReading
   attitude: DeviceAttitudeReading
-  heelPitch: HeelPitchValues | null
+  rollPitch: RollPitchValues | null
   isCalibrated: boolean
   onCalibrate: () => void
 }
@@ -24,7 +24,7 @@ export function SetupView({
   gps,
   filteredGps,
   attitude,
-  heelPitch,
+  rollPitch,
   isCalibrated,
   onCalibrate,
 }: SetupViewProps) {
@@ -34,7 +34,7 @@ export function SetupView({
   const courseLabel = filteredGps.courseReliable && filteredGps.courseDegrees !== null
     ? formatDegrees(filteredGps.courseDegrees)
     : '—'
-  const canCalibrate = attitude.heelDegrees !== null && attitude.pitchDegrees !== null
+  const canCalibrate = attitude.rollDegrees !== null && attitude.pitchDegrees !== null
 
   return (
     <section className="view-section setup-view">
@@ -63,9 +63,9 @@ export function SetupView({
       </div>
 
       <div className="setup-calibration-panel">
-        <div className="setup-heel-pitch">
-          <span>H {heelPitch ? formatSignedDegrees(heelPitch.heelDegrees) : '—'}</span>
-          <span>P {heelPitch ? formatSignedDegrees(heelPitch.pitchDegrees) : '—'}</span>
+        <div className="setup-roll-pitch">
+          <span>R {rollPitch ? formatSignedDegrees(rollPitch.rollDegrees) : '—'}</span>
+          <span>S {rollPitch ? formatSignedDegrees(rollPitch.pitchDegrees) : '—'}</span>
         </div>
         <p className={`setup-calibration-status ${isCalibrated ? 'calibrated' : ''}`}>
           {isCalibrated ? 'Kalibrerad' : 'Ej kalibrerad'}

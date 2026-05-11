@@ -8,7 +8,7 @@ SailRaceApp assumes the iPhone is mounted vertically on the mast:
 - phone back side points toward bow
 - phone screen points toward stern
 
-The mast can rake aft, bend, and move with boat heel. This means simple compass
+The mast can rake aft, bend, and move with boat roll. This means simple compass
 heading APIs or raw magnetometer vectors are not robust enough for wind capture.
 
 ## Strategy by Use Case
@@ -52,7 +52,7 @@ Reason: when the boat is moving, GPS course is stable and directly reflects over
 - If true north is unavailable it falls back to `xMagneticNorthZVertical`.
 - Magnetic fallback is documented but not declination-corrected yet.
 
-Reason: low-speed GPS course is noisy; mast rake, bend, and heel require tilt-aware fused attitude.
+Reason: low-speed GPS course is noisy; mast rake, bend, and roll require tilt-aware fused attitude.
 
 Browser/dev fallback is separated from the iOS path:
 
@@ -61,19 +61,24 @@ Browser/dev fallback is separated from the iOS path:
 - On native iOS, if the Core Motion plugin or north reference is unavailable,
   the app reports failure and does not save a fake wind heading.
 
-### Heel/Pitch attitude
+### Rullning/Stampning attitude
 
 The iPhone is mounted in portrait with the back side toward the bow and the
-screen toward the stern. The app does not use raw `CMAttitude.roll/pitch`
-directly for display. Instead it maps Core Motion's rotation matrix to boat
-axes:
+screen toward the stern. The app does not use raw `CMAttitude.roll` and
+`CMAttitude.pitch` directly for display. Instead it maps Core Motion's rotation
+matrix to boat axes:
 
 - device right edge / +X = starboard
 - device back side / -Z = bow
-- H/heel is positive when the starboard side rises
-- P/pitch is positive when the bow rises
+- R/rullning is positive when the starboard side rises
+- S/stampning is positive when the bow rises
 
-Setup stores the current H/P as a runtime zero point. Segling then shows values
+Yaw/heading is rotation around the vertical axis and is not used as an R/S
+source. Because R/S is computed from the vertical components of the starboard and
+bow axes, yawing the phone around its vertical axis should not materially change
+R/S after calibration.
+
+Setup stores the current R/S as a runtime zero point. Segling then shows values
 relative to that calibration. The calibration is not persisted across app
 restart/reload.
 
@@ -88,7 +93,7 @@ Current TypeScript code defines:
 - heading math helpers (`src/domain/angles.ts`)
 - mock service (`src/services/sensors/mockSensorService.ts`)
 - iOS `WindHeadingPlugin` registered from `AppDelegate.swift`
-- device attitude hook (`src/hooks/useDeviceAttitude.ts`) for runtime H/P calibration
+- device attitude hook (`src/hooks/useDeviceAttitude.ts`) for runtime R/S calibration
 - filtered GPS hook (`src/hooks/useFilteredGps.ts`) for calmer speed/course values
 - start line geometry helpers (`src/domain/startLine.ts`) for TTL/BURN
 

@@ -122,7 +122,7 @@ public class WindHeadingPlugin: CAPPlugin, CAPBridgedPlugin {
                 "valid": false,
                 "motionAvailable": false,
                 "headingAvailable": false,
-                "heelDegrees": NSNull(),
+                "rollDegrees": NSNull(),
                 "pitchDegrees": NSNull(),
                 "referenceFrame": selectedReferenceFrame.name
             ])
@@ -138,7 +138,7 @@ public class WindHeadingPlugin: CAPPlugin, CAPBridgedPlugin {
             "valid": true,
             "motionAvailable": true,
             "headingAvailable": headingAvailable,
-            "heelDegrees": boatAttitude.heelDegrees,
+            "rollDegrees": boatAttitude.rollDegrees,
             "pitchDegrees": boatAttitude.pitchDegrees,
             "referenceFrame": selectedReferenceFrame.name,
             "timestamp": Date().timeIntervalSince1970 * 1000
@@ -218,7 +218,7 @@ public class WindHeadingPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     private func boatAttitudeDegrees(from rotationMatrix: CMRotationMatrix) -> (
-        heelDegrees: Double,
+        rollDegrees: Double,
         pitchDegrees: Double
     ) {
         // Device mount:
@@ -226,13 +226,13 @@ public class WindHeadingPlugin: CAPPlugin, CAPBridgedPlugin {
         // - device -Z/back side points to bow
         // - reference Z is vertical
         //
-        // H/heel is positive when starboard rises.
-        // P/pitch is positive when the bow rises.
+        // R/rullning is positive when starboard rises.
+        // S/stampning is positive when the bow rises.
         let starboardVerticalComponent = clampedUnitValue(rotationMatrix.m31)
         let bowVerticalComponent = clampedUnitValue(-rotationMatrix.m33)
 
         return (
-            heelDegrees: radiansToDegrees(asin(starboardVerticalComponent)),
+            rollDegrees: radiansToDegrees(asin(starboardVerticalComponent)),
             pitchDegrees: radiansToDegrees(asin(bowVerticalComponent))
         )
     }

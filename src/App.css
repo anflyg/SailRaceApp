@@ -166,7 +166,7 @@ button {
   background: rgba(255, 255, 255, 0.08);
 }
 
-.setup-heel-pitch {
+.setup-roll-pitch {
   display: flex;
   justify-content: space-between;
   gap: 16px;
@@ -614,7 +614,7 @@ button:focus-visible {
   color: rgba(255, 250, 242, 0.86);
 }
 
-.heel-pitch-strip {
+.roll-pitch-strip {
   display: flex;
   flex: 0 0 auto;
   min-height: 44px;
@@ -726,7 +726,7 @@ button:focus-visible {
     padding: 12px;
   }
 
-  .setup-heel-pitch {
+  .setup-roll-pitch {
     font-size: clamp(1.8rem, 9vw, 2.8rem);
   }
 
@@ -747,7 +747,7 @@ button:focus-visible {
     font-size: clamp(0.78rem, 2dvh, 0.95rem);
   }
 
-  .heel-pitch-strip {
+  .roll-pitch-strip {
     min-height: 40px;
     gap: 18px;
   }

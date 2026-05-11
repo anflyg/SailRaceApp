@@ -7,7 +7,7 @@ const DEVICE_ATTITUDE_INTERVAL_MS = 750
 const initialAttitude: DeviceAttitudeReading = {
   status: 'idle',
   error: null,
-  heelDegrees: null,
+  rollDegrees: null,
   pitchDegrees: null,
   motionAvailable: false,
   headingAvailable: false,

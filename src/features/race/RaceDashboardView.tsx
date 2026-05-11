@@ -5,14 +5,14 @@ import {
   calculateVelocityMadeGood,
   hasPrimaryCourse,
 } from '../../domain/navigation'
-import type { CourseState, FilteredGpsReading, GeoPoint, HeelPitchValues } from '../../types'
+import type { CourseState, FilteredGpsReading, GeoPoint, RollPitchValues } from '../../types'
 
 type VelocityMode = 'vmg' | 'vmc'
 
 interface RaceDashboardViewProps {
   course: CourseState
   gps: FilteredGpsReading
-  heelPitch: HeelPitchValues | null
+  rollPitch: RollPitchValues | null
 }
 
 function getGpsPosition(gps: FilteredGpsReading): GeoPoint | null {
@@ -26,7 +26,7 @@ function getGpsPosition(gps: FilteredGpsReading): GeoPoint | null {
   }
 }
 
-export function RaceDashboardView({ course, gps, heelPitch }: RaceDashboardViewProps) {
+export function RaceDashboardView({ course, gps, rollPitch }: RaceDashboardViewProps) {
   const [activeVelocityMode, setActiveVelocityMode] = useState<VelocityMode>('vmc')
   const speedKnots = gps.speedKnots
   const courseHeading = gps.courseReliable ? gps.courseDegrees : null
@@ -105,9 +105,9 @@ export function RaceDashboardView({ course, gps, heelPitch }: RaceDashboardViewP
         </div>
       </div>
 
-      <div className="heel-pitch-strip" aria-label="Heel och pitch">
-        <span>H {heelPitch ? formatSignedDegrees(heelPitch.heelDegrees) : '—'}</span>
-        <span>P {heelPitch ? formatSignedDegrees(heelPitch.pitchDegrees) : '—'}</span>
+      <div className="roll-pitch-strip" aria-label="Rullning och stampning">
+        <span>R {rollPitch ? formatSignedDegrees(rollPitch.rollDegrees) : '—'}</span>
+        <span>S {rollPitch ? formatSignedDegrees(rollPitch.pitchDegrees) : '—'}</span>
       </div>
     </section>
   )

@@ -41,7 +41,7 @@ Appen har fem huvudvyer i navigeringen: Setup, Bana, Start, Segling och Analys.
 
 ### Setup
 
-Syftet med Setup är att visa sensorstatus och kalibrera nolläge för heel/pitch.
+Syftet med Setup är att visa sensorstatus och kalibrera nolläge för rullning och stampning.
 
 Nuvarande beteende:
 
@@ -49,12 +49,13 @@ Nuvarande beteende:
 - Visar filtrerad fart i knop.
 - Visar filtrerad COG när den är användbar.
 - Visar Motion/Heading som `OK` bara när native sensor/plugin faktiskt ger data.
-- Visar `H —` och `P —` innan kalibrering.
-- Knappen `Kalibrera nolläge` sparar aktuell heel/pitch som runtime-nolläge.
-- Efter kalibrering visar Setup relativ H/P, till exempel `H +0°` och `P +0°`.
+- Visar `R —` och `S —` innan kalibrering.
+- Knappen `Kalibrera nolläge` sparar aktuell rullning/stampning som runtime-nolläge.
+- Efter kalibrering visar Setup relativ R/S, till exempel `R +0°` och `S +0°`.
 - Kalibrering sparas inte permanent och återställs vid apprestart/reload.
-- H/heel är positivt när styrbordssidan höjs jämfört med kalibreringen.
-- P/pitch är positivt när fören höjs jämfört med kalibreringen.
+- R/rullning är sidolutning och är positivt när styrbordssidan höjs jämfört med kalibreringen.
+- S/stampning är fören upp/ned och är positivt när fören höjs jämfört med kalibreringen.
+- Yaw/heading, vridning runt lodrät axel, ska inte påverka R/S nämnvärt.
 
 ### Bana
 
@@ -138,8 +139,8 @@ VMG-läge:
 - Om K1 och L1 finns men ingen vind finns visas `VMG Bana`.
 - Om både vind och primär bana finns kan användaren trycka på VMG-rutan för att växla mellan `VMG Vind` och `VMG Bana`.
 - Om varken vind eller primär bana finns visas `Ej satt` och `--`.
-- H/P visas kompakt längst ner, till exempel `H +8°   P -2°`.
-- Om H/P inte är kalibrerat visas `H —   P —`.
+- R/S visas kompakt längst ner, till exempel `R +8°   S -2°`.
+- Om R/S inte är kalibrerat visas `R —   S —`.
 
 Färgkodning:
 
@@ -187,20 +188,20 @@ Nuvarande React-state:
 - `AppShell` äger aktiv vy.
 - `AppShell` äger banstate: banpunkter och vindriktning.
 - `AppShell` äger vald startlängd som session-only state.
-- `AppShell` äger runtime-kalibrering för heel/pitch.
-- `SetupView` visar sensorstatus och kalibrerar heel/pitch.
+- `AppShell` äger runtime-kalibrering för rullning/stampning.
+- `SetupView` visar sensorstatus och kalibrerar rullning/stampning.
 - `CourseSetupView` renderar banan och anropar callbacks för att toggla punkter, vind och rensa bana.
 - `CourseSetupView` använder `useWindHeadingMeasurement` när vindpilen trycks och vind inte redan är satt.
 - `StartTimerView` äger countdownens sekunder/status via `useCountdown`.
 - `StartTimerView` får banstate, live GPS och filtrerad GPS för TTL/BURN.
-- `RaceDashboardView` får banstate, filtrerad GPS-data och H/P som props.
+- `RaceDashboardView` får banstate, filtrerad GPS-data och R/S som props.
 - Live GPS-watch startas när Setup, Bana, Start eller Segling är aktiv.
 - Bana använder live GPS-position när användaren sätter A, B, K1 och L1.
 - `useFilteredGps` håller ungefär 3 sekunders glidande medelvärde för speed over ground och course over ground.
 - `useDeviceAttitude` läser Core Motion-attitude via native plugin när Setup eller Segling är aktiv.
-- Native H/P beräknas från telefonens monterade båt-axlar, inte direkt från rå `roll`/`pitch`.
+- Native R/S beräknas från telefonens monterade båt-axlar, inte direkt från rå `CMAttitude.roll`/`CMAttitude.pitch`.
 
-Det finns ingen permanent lagring ännu. Vald startlängd sparas inte i `localStorage` och återställs till 5 minuter vid apprestart. Banpunkter, vindriktning och H/P-kalibrering är också bara React-minne.
+Det finns ingen permanent lagring ännu. Vald startlängd sparas inte i `localStorage` och återställs till 5 minuter vid apprestart. Banpunkter, vindriktning och R/S-kalibrering är också bara React-minne.
 
 Troliga framtida ändringar:
 
@@ -257,11 +258,11 @@ Nuvarande mål är K1 när K1 och L1 är satta. Aktiv växling mellan K1 och L1 
 
 TTL, Time To Line, beräknas med lokal meterprojektion nära aktuell GPS-position:
 
-- P är båtens aktuella GPS-position.
+- Båtpositionen är aktuell GPS-position.
 - A-B är startlinjesegmentet.
 - Rörelsevektorn kommer från filtrerad GPS COG.
 - Farten kommer från filtrerad GPS SOG.
-- Ray från P måste skära segmentet A-B framför båten.
+- Ray från båtpositionen måste skära segmentet A-B framför båten.
 
 Om rayen är parallell, skär bakom båten eller skär utanför segmentet visas `TTL —` och status `UTANFÖR LINJEN`.
 
@@ -329,7 +330,7 @@ Nuvarande status:
 - `sensorTypes.ts` definierar interface för GPS-position, GPS-fart, GPS-kurs, båtens framåtriktning och vindheading.
 - `useLiveGps.ts` startar en live GPS-watch via Capacitor Geolocation när Bana eller Segling är aktiv och exponerar status, fel, position, fart, kurs och kursens tillförlitlighet.
 - `useFilteredGps.ts` filtrerar speed over ground och course over ground över ungefär 3 sekunder.
-- `useDeviceAttitude.ts` läser heel/pitch och headingstatus för Setup/Segling.
+- `useDeviceAttitude.ts` läser rullning/stampning och headingstatus för Setup/Segling.
 - `useWindHeadingMeasurement.ts` exponerar status, fel och en `measureWindHeading`-funktion för Bana.
 - `windHeadingService.ts` samplar native-heading över tid, gör cirkulärt medelvärde och har en separat browser/mock-fallback.
 - `startLine.ts` innehåller TTL/BURN-geometri för startlinjesegmentet A-B.
@@ -356,7 +357,7 @@ Viktiga iOS-beslut:
 - Webbändringar syns inte i Xcode förrän appen har byggts och Capacitor har synkat eller kopierat `dist` till iOS-projektet.
 - Under utveckling deployas appen direkt från Xcode till ansluten iPhone.
 - `WindHeadingPlugin` är en liten lokal Capacitor-plugin för iOS som registreras från `AppDelegate.swift`.
-- Samma plugin exponerar även aktuell device attitude för runtime H/P-kalibrering.
+- Samma plugin exponerar även aktuell device attitude för runtime R/S-kalibrering.
 - Device attitude mappas till båtens axlar: telefonens högerkant är styrbord och telefonens baksida är fören.
 - Core Motion-baserad vindmätning kräver ingen extra Info.plist-rad i denna implementation.
 
@@ -393,7 +394,7 @@ Klart eller delvis klart:
 - Start visar post-startperiod utan minustecken.
 - Vald startlängd lever under aktuell appsession.
 - Segling visar stora instrumentvärden och VMG Vind/VMG Bana-växling.
-- Segling visar H/P kompakt när nolläge är kalibrerat.
+- Segling visar R/S kompakt när nolläge är kalibrerat.
 - Segling använder live GPS för fart, position och course over ground när data finns.
 - Grundläggande matematik för bearing, VMG och vinklar finns.
 - Sensorstrategi är dokumenterad.
@@ -401,7 +402,7 @@ Klart eller delvis klart:
 Inte klart:
 
 - Testad kalibrering av Core Motion-heading på flera fysiska monteringar.
-- Testad mapping av H/P mot faktisk mastmontering och båtens rörelser.
+- Testad mapping av R/S mot faktisk mastmontering och båtens rörelser.
 - Deklinationskorrigering när magnetisk nordfallback används.
 - Wake lock kopplad till UI/livscykel.
 - Raceinspelning och lokal persistens.
@@ -459,4 +460,4 @@ Manuell iPhone-verifiering bör kontrollera:
 - Bana visar bara A, B, K1 och L1.
 - Start visar minutknappar när timern inte kör och TTL/BURN/GPS när timern kör.
 - Start kan starta, pausa, återställa och växla till Segling vid intern -0:10.
-- Segling visar läsbara instrumentvärden, H/P och VMG-växling fungerar när både vind och primär bana finns.
+- Segling visar läsbara instrumentvärden, R/S och VMG-växling fungerar när både vind och primär bana finns.

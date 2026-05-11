@@ -48,8 +48,8 @@ SailRaceApp is a mobile-first sailing race app foundation built with React, Type
 - Appen innehåller fem huvudvyer: Setup, Bana, Start, Segling och Analys.
 - Live GPS används i Bana för A/B/K1/L1 och i Segling för fart, position och course over ground när data finns.
 - Start visar TTL/BURN/GPS när timern kör och minutknappar när timern är stoppad eller pausad.
-- Setup visar GPS-, fart-, COG-, motion- och headingstatus samt runtime-kalibrering för H/P.
-- H/heel visas positivt när styrbordssidan höjs; P/pitch visas positivt när fören höjs.
+- Setup visar GPS-, fart-, COG-, motion- och headingstatus samt runtime-kalibrering för R/S.
+- R/rullning visas positivt när styrbordssidan höjs; S/stampning visas positivt när fören höjs.
 - Core Motion-vindmätning använder telefonens bakåtriktade vektor och cirkulärt medelvärde över flera samples.
 - Sensorarkitektur och native-strategi finns dokumenterad i `docs/sensors.md`.
 
@@ -63,14 +63,14 @@ SailRaceApp is a mobile-first sailing race app foundation built with React, Type
 - När tidtagaren kör visas TTL/BURN/GPS i stället för minutknappar.
 - Tidtagaren går till -0:10 och växlar därefter automatiskt till Segling.
 - Segling visar stora värden för Fart, Riktning och VMG Vind/VMG Bana. Live GPS används när webbläsaren eller iPhone tillhandahåller data; annars visas `--`.
-- Segling visar H/P kompakt när nolläge har kalibrerats under aktuell appsession.
+- Segling visar R/S kompakt när nolläge har kalibrerats under aktuell appsession.
 - Analys visar markerade uppspelningsknappar och svensk placeholder-text.
 
 ## Known limitations
 
 - Core Motion-heading behöver verifieras och kalibreras i den faktiska mastmonteringen.
 - Magnetisk nordfallback är inte deklinationskorrigerad ännu.
-- Heel/pitch-kalibrering är runtime-state och återställs vid apprestart/reload.
+- Rullning/stampning-kalibrering är runtime-state och återställs vid apprestart/reload.
 - Race replay is currently placeholder-only.
 - Wake lock is prepared as a service stub but not wired to the UI.
 
