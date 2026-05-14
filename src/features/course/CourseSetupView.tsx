@@ -1,7 +1,9 @@
 import { normalizeDegrees } from '../../domain/angles'
+import { formatDegrees } from '../../domain/format'
 import { getGpsStatusDisplay, getStartLineQuality } from '../../domain/gps'
 import { getCourseAxisHeading } from '../../domain/navigation'
 import { useWindHeadingMeasurement } from '../../hooks/useWindHeadingMeasurement'
+import type { WindHeadingMeasurementResult } from '../../services/sensors/windHeadingService'
 import type { CoursePoint, CoursePointKey, CourseState, LiveGpsReading } from '../../types'
 
 interface CourseSetupViewProps {
@@ -25,6 +27,20 @@ function getCourseMarkClassName(kind: string, point: CoursePoint | null): string
   return `course-mark ${kind} ${point?.quality ?? 'unset'}`
 }
 
+function getReferenceFrameLabel(referenceFrame: WindHeadingMeasurementResult['referenceFrame']): string {
+  return {
+    'true-north': 'true-north',
+    'magnetic-north': 'magnetic-north',
+    mock: 'mock',
+  }[referenceFrame]
+}
+
+function formatAccuracyDegrees(accuracyDegrees: number | null): string {
+  return accuracyDegrees !== null
+    ? `±${Math.round(accuracyDegrees)}°`
+    : 'saknas'
+}
+
 export function CourseSetupView({
   course,
   gps,
@@ -35,6 +51,7 @@ export function CourseSetupView({
 }: CourseSetupViewProps) {
   const {
     status: windMeasurementStatus,
+    lastMeasurement,
     measureWindHeading,
     resetWindHeadingMeasurement,
   } = useWindHeadingMeasurement()
@@ -53,7 +70,7 @@ export function CourseSetupView({
     const measuredHeading = await measureWindHeading()
 
     if (measuredHeading !== null) {
-      onToggleWindHeading(normalizeDegrees(measuredHeading))
+      onToggleWindHeading(normalizeDegrees(measuredHeading.headingDegrees))
     }
   }
 
@@ -132,6 +149,23 @@ export function CourseSetupView({
             {statusMessage}
           </p>
         ) : null}
+        <div className="course-sensor-debug" aria-label="Vindmätning debug">
+          <div className="course-sensor-debug-title">Montering: baksida mot fören</div>
+          {lastMeasurement ? (
+            <div className="course-sensor-debug-grid">
+              <span>Back-vector</span>
+              <strong>{formatDegrees(lastMeasurement.headingDegrees)}</strong>
+              <span>Referens</span>
+              <strong>{getReferenceFrameLabel(lastMeasurement.referenceFrame)}</strong>
+              <span>Accuracy</span>
+              <strong>{formatAccuracyDegrees(lastMeasurement.accuracyDegrees)}</strong>
+              <span>Samples</span>
+              <strong>{lastMeasurement.sampleCount}</strong>
+            </div>
+          ) : (
+            <p className="course-sensor-debug-empty">Tryck vindpilen för att mäta heading.</p>
+          )}
+        </div>
         <button type="button" className="primary-button clear-button" onClick={handleClearCourse}>
           Rensa bana
         </button>

@@ -263,6 +263,49 @@ button:focus-visible {
   color: var(--accent);
 }
 
+.course-sensor-debug {
+  display: grid;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 1px solid rgba(185, 198, 211, 0.2);
+  border-radius: 12px;
+  background: rgba(3, 20, 38, 0.52);
+}
+
+.course-sensor-debug-title {
+  color: var(--text-high);
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.1;
+  text-align: center;
+}
+
+.course-sensor-debug-grid {
+  display: grid;
+  grid-template-columns: minmax(72px, 1fr) minmax(58px, 0.9fr);
+  gap: 3px 10px;
+  align-items: baseline;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.course-sensor-debug-grid strong {
+  color: var(--text-high);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.course-sensor-debug-empty {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.15;
+  text-align: center;
+}
+
 .course-mark,
 .course-arrow {
   position: absolute;

@@ -1,27 +1,34 @@
 import { useCallback, useState } from 'react'
-import { measureWindHeading as measureWindHeadingService } from '../services/sensors/windHeadingService'
+import {
+  measureWindHeading as measureWindHeadingService,
+  type WindHeadingMeasurementResult,
+} from '../services/sensors/windHeadingService'
 
 export type WindHeadingMeasurementStatus = 'idle' | 'measuring' | 'success' | 'error' | 'unavailable'
 
 interface WindHeadingMeasurementState {
   status: WindHeadingMeasurementStatus
   error: string | null
-  measureWindHeading: () => Promise<number | null>
+  lastMeasurement: WindHeadingMeasurementResult | null
+  measureWindHeading: () => Promise<WindHeadingMeasurementResult | null>
   resetWindHeadingMeasurement: () => void
 }
 
 export function useWindHeadingMeasurement(): WindHeadingMeasurementState {
   const [status, setStatus] = useState<WindHeadingMeasurementStatus>('idle')
   const [error, setError] = useState<string | null>(null)
+  const [lastMeasurement, setLastMeasurement] = useState<WindHeadingMeasurementResult | null>(null)
 
   const resetWindHeadingMeasurement = useCallback(() => {
     setStatus('idle')
     setError(null)
+    setLastMeasurement(null)
   }, [])
 
   const measureWindHeading = useCallback(async () => {
     setStatus('measuring')
     setError(null)
+    setLastMeasurement(null)
 
     try {
       const result = await measureWindHeadingService()
@@ -33,7 +40,8 @@ export function useWindHeadingMeasurement(): WindHeadingMeasurementState {
       }
 
       setStatus('success')
-      return result.headingDegrees
+      setLastMeasurement(result)
+      return result
     } catch (measurementError) {
       setStatus('error')
       setError(measurementError instanceof Error ? measurementError.message : 'Kunde inte mäta vind')
@@ -44,6 +52,7 @@ export function useWindHeadingMeasurement(): WindHeadingMeasurementState {
   return {
     status,
     error,
+    lastMeasurement,
     measureWindHeading,
     resetWindHeadingMeasurement,
   }

@@ -87,7 +87,8 @@ public class WindHeadingPlugin: CAPPlugin, CAPBridgedPlugin {
             call.resolve([
                 "valid": false,
                 "headingDegrees": NSNull(),
-                "referenceFrame": selectedReferenceFrame.name
+                "referenceFrame": selectedReferenceFrame.name,
+                "accuracyDegrees": NSNull()
             ])
             return
         }
@@ -96,7 +97,8 @@ public class WindHeadingPlugin: CAPPlugin, CAPBridgedPlugin {
             call.resolve([
                 "valid": false,
                 "headingDegrees": NSNull(),
-                "referenceFrame": selectedReferenceFrame.name
+                "referenceFrame": selectedReferenceFrame.name,
+                "accuracyDegrees": NSNull()
             ])
             return
         }
@@ -104,7 +106,8 @@ public class WindHeadingPlugin: CAPPlugin, CAPBridgedPlugin {
         call.resolve([
             "valid": true,
             "headingDegrees": headingDegrees,
-            "referenceFrame": selectedReferenceFrame.name
+            "referenceFrame": selectedReferenceFrame.name,
+            "accuracyDegrees": NSNull()
         ])
     }
 
@@ -154,6 +157,9 @@ public class WindHeadingPlugin: CAPPlugin, CAPBridgedPlugin {
     private func preferredReferenceFrame() -> (frame: CMAttitudeReferenceFrame, name: String)? {
         let availableReferenceFrames = CMMotionManager.availableAttitudeReferenceFrames()
 
+        // Prefer true north so GPS bearings, course geometry and wind heading
+        // share the same reference. Magnetic north is a fallback and is not
+        // declination-corrected by this plugin.
         if availableReferenceFrames.contains(.xTrueNorthZVertical) {
             return (.xTrueNorthZVertical, "true-north")
         }
@@ -199,6 +205,18 @@ public class WindHeadingPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     private func backVectorHeadingDegrees(from rotationMatrix: CMRotationMatrix) -> Double? {
+        // Device mount for wind heading:
+        // - phone is upright on the mast
+        // - phone -Z/back side points toward the bow
+        // - phone screen/front points toward the stern
+        //
+        // We deliberately use the back vector, not the screen/front vector, so
+        // a measured wind "from" heading is not 180 degrees flipped by the
+        // physical mount. m13/m23 are the vertical-frame components of device Z;
+        // negating them gives device -Z/back. Only the horizontal components are
+        // used, so normal roll, pitch and mast rake should not create systematic
+        // heading error. If the horizontal component is too weak, the heading is
+        // invalid instead of returning a noisy value.
         let northComponent = -rotationMatrix.m13
         let westComponent = -rotationMatrix.m23
         let horizontalMagnitude = sqrt(

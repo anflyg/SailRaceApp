@@ -559,7 +559,10 @@ Vind:
 - True north används i första hand.
 - Magnetic north används som fallback när true north saknas.
 - Magnetisk fallback är inte deklinationskorrigerad.
-- `windHeadingService` returnerar även sample count, reference frame och accuracy-fält, men `useWindHeadingMeasurement` exponerar i nuläget bara själva headingvärdet till Bana.
+- `windHeadingService` returnerar även sample count, reference frame och accuracy-fält.
+- Native iOS returnerar `accuracyDegrees: null` eftersom pluginen inte får ett tydligt accuracy-värde från Core Motion i nuvarande implementation.
+- `useWindHeadingMeasurement` exponerar senaste mätresultatet till Bana för fälttest/debug.
+- Bana visar en kompakt sensor-debug efter vindmätning: back-vector heading, reference frame, accuracyDegrees, sample count och texten `Montering: baksida mot fören`.
 - För att vindriktningen ska vara korrekt måste användaren mäta när telefonens baksida/fören representerar vindens riktning, normalt genom att båten pekar upp mot vinden vid mätningen.
 - Den sparade vindriktningen ska tolkas som riktningen vinden kommer från, inte riktningen vinden blåser mot.
 - Eftersom skärmen pekar akterut är det viktigt att all vindheading utgår från telefonens baksida. Nuvarande native-kod gör detta med back vector och undviker därmed en 180° skärm-/frontvektor-förväxling.
@@ -595,6 +598,7 @@ Sensorgranskning 2026-05-14:
 - `getDeviceAttitude` använder samma plugin och rapporterar om heading är tillgänglig.
 - `deviceMotionService.ts` exponerar roll, pitch, reference frame och headingstatus till React.
 - `CourseSetupView.tsx` sätter vindriktning via `useWindHeadingMeasurement`, vilket i sin tur samplar native back-vector heading.
+- `CourseSetupView.tsx` visar enkel debug-info för senaste vindmätningen utan att ändra race-/analysflöden.
 - `RaceDashboardView.tsx` beräknar både VMG Bana och VMG Vind från GPS COG, inte från telefonens sensorheading.
 - `raceLogger.ts` loggar `vmgCourseKnots` och `vmgWindKnots` från filtrerad GPS COG och ban-/vindreferens.
 - `navigation.ts` innehåller den gemensamma VMG-formeln `speed * cos(angleBetween(courseOverGround, referenceHeading))`.
@@ -611,18 +615,21 @@ Bedömning:
 Kvarvarande risker:
 
 - Magnetic-north fallback är inte deklinationskorrigerad och kan ge systematiskt fel jämfört med GPS true bearing.
-- UI:t visar inte ännu vilken reference frame som användes vid vindmätning.
-- UI:t visar inte sample count eller heading accuracy från vindmätningen, även om service-lagret har plats för den datan.
+- Native `accuracyDegrees` är för närvarande alltid `null`; debug-UI visar detta som saknat värde.
 - Field test behövs för att bekräfta att mastlutning, vibrationer och magnetisk störning inte ger praktiskt headingfel.
 
-Planerad sensor-debug i Setup/Bana:
+Sensor-debug i Bana:
 
 - aktuell back-vector heading
 - reference frame: true-north eller magnetic-north
 - heading accuracy när native kan leverera den
 - sample count vid vindmätning
-- roll/pitch
-- tydlig text: `Baksida mot fören`
+- tydlig text: `Montering: baksida mot fören`
+
+Planerad komplettering i Setup:
+
+- löpande roll/pitch bredvid aktuell headingdiagnostik
+- separat kalibreringsvy för att kontrollera om heading verkar 180° fel
 
 Rekommenderad separat kommande uppgift: `Sensor calibration and heading validation`.
 
@@ -706,13 +713,14 @@ Klart eller delvis klart:
 - Banvy/karta i Analys som roterar K1 uppåt och L1 nedåt när banmärken finns.
 - Startanalys med linjepassage, delta mot startskott och konservativ osäkerhet.
 - Ghost replay med ett ghost-race synkat mot samma `currentReplayTime`.
+- Enkel sensor-debug i Bana för senaste vindmätning: back-vector heading, reference frame, accuracyDegrees, sample count och monteringstext.
 
 Inte klart:
 
 - Testad Core Motion-vindmätning på flera fysiska monteringar.
 - Långtidstest av R/S-mappning i faktisk mastmontering och under rörelse.
 - Deklinationskorrigering när magnetic north används.
-- Sensor-debug i Setup/Bana för back-vector heading, reference frame, sample count, accuracy och roll/pitch.
+- Utökad sensor-debug i Setup med samlad headingdiagnostik och roll/pitch.
 - Sensor calibration and heading validation.
 - Wake lock kopplad till UI/livscykel.
 - Aktivt ben/aktivt mål för VMG Bana.
