@@ -4,16 +4,17 @@
   font-size: 16px;
   line-height: 1.4;
   color: #FFFFFF;
-  background: #061A33;
-  --surface: #0B2545;
-  --surface-strong: #14365E;
-  --surface-muted: #0F2D52;
-  --primary: #0077CC;
-  --primary-strong: #3DB5FF;
-  --accent: #FF7A00;
+  background: #031426;
+  --surface: #071F3D;
+  --surface-strong: #0A2A4D;
+  --surface-muted: #082346;
+  --primary: #0098F7;
+  --primary-strong: #35C2FF;
+  --accent: #FF8500;
   --text-high: #FFFFFF;
   --text-muted: #B9C6D3;
-  --border: rgba(139, 154, 170, 0.45);
+  --border: rgba(185, 198, 211, 0.22);
+  --border-active: rgba(53, 194, 255, 0.55);
 }
 
 * {
@@ -26,8 +27,8 @@ html, body, #root {
 
 body {
   margin: 0;
-  background: radial-gradient(circle at top, rgba(61, 181, 255, 0.16), transparent 38%),
-    linear-gradient(180deg, #0B2545 0%, #061A33 52%, #041327 100%);
+  background: radial-gradient(circle at top, rgba(53, 194, 255, 0.16), transparent 40%),
+    linear-gradient(180deg, #0A2A4D 0%, #061A33 52%, #031426 100%);
 }
 
 button {
