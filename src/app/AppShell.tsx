@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { NavigationBar } from '../components/NavigationBar'
 import { SetupView } from '../features/setup/SetupView'
 import { CourseSetupView } from '../features/course/CourseSetupView'
@@ -7,12 +7,20 @@ import { RaceDashboardView } from '../features/race/RaceDashboardView'
 import { RaceAnalysisView } from '../features/analysis/RaceAnalysisView'
 import { calculateRollPitchRelativeToCalibration } from '../domain/motion'
 import { getPointQuality } from '../domain/gps'
+import { getCourseAxisHeading } from '../domain/navigation'
 import { useDeviceAttitude } from '../hooks/useDeviceAttitude'
 import { useFilteredGps } from '../hooks/useFilteredGps'
 import { useLiveGps } from '../hooks/useLiveGps'
+import {
+  markStartGun,
+  recordSampleIfDue,
+  startRaceLogging,
+  stopActiveRace,
+} from '../services/raceLogger'
 import type {
   AppView,
   CountdownDuration,
+  CourseDefinition,
   CoursePoint,
   CoursePointKey,
   CoursePointState,
@@ -32,6 +40,49 @@ const defaultCourseState: CourseState = {
   windHeadingDegrees: null,
 }
 
+function getCourseDefinition(course: CourseState): CourseDefinition | undefined {
+  const courseDefinition: CourseDefinition = {}
+
+  if (course.points.startA && course.points.startB) {
+    courseDefinition.startLine = {
+      port: {
+        latitude: course.points.startA.latitude,
+        longitude: course.points.startA.longitude,
+      },
+      starboard: {
+        latitude: course.points.startB.latitude,
+        longitude: course.points.startB.longitude,
+      },
+    }
+  }
+
+  if (course.points.kryss1) {
+    courseDefinition.windwardMark = {
+      latitude: course.points.kryss1.latitude,
+      longitude: course.points.kryss1.longitude,
+    }
+  }
+
+  if (course.points.lans1) {
+    courseDefinition.leewardMark = {
+      latitude: course.points.lans1.latitude,
+      longitude: course.points.lans1.longitude,
+    }
+  }
+
+  if (course.windHeadingDegrees !== null) {
+    courseDefinition.windDirectionDegrees = course.windHeadingDegrees
+  }
+
+  const courseAxisDegrees = getCourseAxisHeading(course)
+
+  if (courseAxisDegrees !== null) {
+    courseDefinition.courseAxisDegrees = courseAxisDegrees
+  }
+
+  return Object.keys(courseDefinition).length > 0 ? courseDefinition : undefined
+}
+
 export function AppShell() {
   const [activeView, setActiveView] = useState<AppView>('setup')
   const [course, setCourse] = useState<CourseState>(defaultCourseState)
@@ -44,6 +95,7 @@ export function AppShell() {
   const deviceAttitude = useDeviceAttitude(activeView === 'setup' || activeView === 'race')
   const rollPitch = calculateRollPitchRelativeToCalibration(deviceAttitude, rollPitchCalibration)
   const isNavigationLocked = isStartTimerRunning
+  const courseDefinition = useMemo(() => getCourseDefinition(course), [course])
 
   const handleManualViewChange = useCallback((nextView: AppView) => {
     if (isNavigationLocked && nextView !== activeView) {
@@ -57,6 +109,32 @@ export function AppShell() {
     setIsStartTimerRunning(false)
     setActiveView('race')
   }, [])
+
+  const handleCountdownStart = useCallback((durationSeconds: number) => {
+    startRaceLogging({
+      countdownDurationSeconds: durationSeconds,
+      course: courseDefinition,
+    })
+  }, [courseDefinition])
+
+  const handleStartGun = useCallback(() => {
+    markStartGun()
+  }, [])
+
+  const handleTimerReset = useCallback(() => {
+    stopActiveRace()
+  }, [])
+
+  useEffect(() => {
+    if (activeView === 'analysis') {
+      return
+    }
+
+    recordSampleIfDue({
+      gps: filteredGps,
+      course: courseDefinition,
+    })
+  }, [activeView, courseDefinition, filteredGps])
 
   const getLiveGpsPosition = (): CoursePoint | null => {
     if (liveGps.latitude === null || liveGps.longitude === null) {
@@ -157,6 +235,9 @@ export function AppShell() {
         gps={liveGps}
         filteredGps={filteredGps}
         onSelectedMinutesChange={setSelectedCountdownMinutes}
+        onCountdownStart={handleCountdownStart}
+        onStartGun={handleStartGun}
+        onReset={handleTimerReset}
         onRunningChange={setIsStartTimerRunning}
         onFinish={handleTimerFinish}
       />

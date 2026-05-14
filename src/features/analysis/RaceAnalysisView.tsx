@@ -84,7 +84,7 @@ export function RaceAnalysisView() {
     }
 
     deleteStoredRace(race.id)
-    refreshRaceGroups(race.id)
+    refreshRaceGroups()
   }
 
   const handleRenameRace = (race: Race) => {
@@ -94,15 +94,15 @@ export function RaceAnalysisView() {
       return
     }
 
-    const renamedRace = renameRace(race.id, nextName)
+    renameRace(race.id, nextName)
 
-    refreshRaceGroups(renamedRace?.id ?? race.id)
+    refreshRaceGroups()
   }
 
   const handleToggleFavorite = (race: Race) => {
-    const updatedRace = toggleFavorite(race.id)
+    toggleFavorite(race.id)
 
-    refreshRaceGroups(updatedRace?.id ?? race.id)
+    refreshRaceGroups()
   }
 
   const handleSectionChange = (section: AnalysisSection) => {

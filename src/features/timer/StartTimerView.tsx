@@ -19,6 +19,9 @@ interface StartTimerViewProps {
   gps: LiveGpsReading
   filteredGps: FilteredGpsReading
   onSelectedMinutesChange: (minutes: CountdownDuration) => void
+  onCountdownStart?: (durationSeconds: number) => void
+  onStartGun?: () => void
+  onReset?: () => void
   onRunningChange?: (isRunning: boolean) => void
   onFinish?: () => void
 }
@@ -60,12 +63,16 @@ export function StartTimerView({
   gps,
   filteredGps,
   onSelectedMinutesChange,
+  onCountdownStart,
+  onStartGun,
+  onReset,
   onRunningChange,
   onFinish,
 }: StartTimerViewProps) {
   const { seconds, status, toggle, pause, reset } = useCountdown(selectedMinutes * 60)
   const longPressRef = useRef<number | null>(null)
   const longPressTriggered = useRef(false)
+  const startGunMarkedRef = useRef(false)
 
   useEffect(() => {
     reset(selectedMinutes * 60)
@@ -86,6 +93,19 @@ export function StartTimerView({
     }
   }, [seconds, status, pause, onFinish])
 
+  useEffect(() => {
+    if (status === 'stopped') {
+      startGunMarkedRef.current = false
+    }
+  }, [status])
+
+  useEffect(() => {
+    if (status === 'running' && seconds <= 0 && !startGunMarkedRef.current) {
+      startGunMarkedRef.current = true
+      onStartGun?.()
+    }
+  }, [seconds, status, onStartGun])
+
   const handleDisplayPointerDown = () => {
     longPressTriggered.current = false
     if (longPressRef.current) {
@@ -95,6 +115,8 @@ export function StartTimerView({
     longPressRef.current = window.setTimeout(() => {
       longPressTriggered.current = true
       onRunningChange?.(false)
+      onReset?.()
+      startGunMarkedRef.current = false
       reset(selectedMinutes * 60)
     }, 500)
   }
@@ -108,6 +130,11 @@ export function StartTimerView({
 
   const handleDisplayClick = () => {
     if (!longPressTriggered.current) {
+      if (status === 'stopped') {
+        startGunMarkedRef.current = false
+        onCountdownStart?.(selectedMinutes * 60)
+      }
+
       onRunningChange?.(status !== 'running')
       toggle()
     }
