@@ -12,14 +12,22 @@
   display: grid;
   min-height: 100vh;
   min-height: 100dvh;
+  opacity: 1;
   place-items: center;
   overflow: hidden;
   padding: max(28px, env(safe-area-inset-top, 0px)) 24px max(28px, env(safe-area-inset-bottom, 0px));
   color: var(--ar-white);
+  transform: scale(1);
   background:
     radial-gradient(circle at 50% 45%, rgba(24, 167, 255, 0.18), transparent 34%),
     linear-gradient(135deg, rgba(76, 195, 255, 0.08), transparent 34%),
     linear-gradient(180deg, var(--ar-navy-2) 0%, var(--ar-navy) 58%, #031123 100%);
+}
+
+.aster-race-splash--leaving {
+  opacity: 0;
+  transform: scale(1.01);
+  transition: opacity 300ms ease, transform 300ms ease;
 }
 
 .aster-race-splash::before {
@@ -156,6 +164,11 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .aster-race-splash--leaving {
+    transform: scale(1);
+    transition: opacity 140ms ease;
+  }
+
   .aster-race-splash__content {
     animation: aster-race-splash-enter-reduced 180ms ease-out both;
   }
