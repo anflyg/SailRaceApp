@@ -1,10 +1,10 @@
 .aster-race-splash {
   --ar-navy: #061A33;
-  --ar-navy-2: #092447;
-  --ar-blue: #18A7FF;
-  --ar-blue-soft: #4CC3FF;
-  --ar-orange: #FF7A1A;
-  --ar-white: #F7FBFF;
+  --ar-navy-2: #0B2545;
+  --ar-blue: #0077CC;
+  --ar-blue-soft: #3DB5FF;
+  --ar-orange: #FF7A00;
+  --ar-white: #FFFFFF;
 
   position: fixed;
   inset: 0;
@@ -19,9 +19,8 @@
   color: var(--ar-white);
   transform: scale(1);
   background:
-    radial-gradient(circle at 50% 45%, rgba(24, 167, 255, 0.18), transparent 34%),
-    linear-gradient(135deg, rgba(76, 195, 255, 0.08), transparent 34%),
-    linear-gradient(180deg, var(--ar-navy-2) 0%, var(--ar-navy) 58%, #031123 100%);
+    radial-gradient(circle at 50% 42%, rgba(61, 181, 255, 0.2), transparent 44%),
+    linear-gradient(180deg, var(--ar-navy-2) 0%, var(--ar-navy) 60%, #041327 100%);
 }
 
 .aster-race-splash--leaving {
@@ -32,134 +31,77 @@
 
 .aster-race-splash::before {
   position: absolute;
-  inset: -20%;
+  inset: 0;
   content: "";
-  background-image:
-    linear-gradient(rgba(247, 251, 255, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(247, 251, 255, 0.035) 1px, transparent 1px);
-  background-size: 44px 44px;
-  -webkit-mask-image: radial-gradient(circle at center, black 0%, transparent 68%);
-  mask-image: radial-gradient(circle at center, black 0%, transparent 68%);
+  background:
+    linear-gradient(90deg, rgba(6, 26, 51, 0.1) 0%, rgba(61, 181, 255, 0.05) 50%, rgba(6, 26, 51, 0.1) 100%),
+    repeating-linear-gradient(
+      0deg,
+      rgba(139, 154, 170, 0.04) 0px,
+      rgba(139, 154, 170, 0.04) 1px,
+      transparent 1px,
+      transparent 24px
+    );
+  pointer-events: none;
 }
 
 .aster-race-splash::after {
   position: absolute;
-  width: min(88vw, 520px);
+  width: min(90vw, 560px);
   aspect-ratio: 1;
   content: "";
-  border: 1px solid rgba(76, 195, 255, 0.14);
+  border: 1px solid rgba(139, 154, 170, 0.2);
   border-radius: 50%;
   box-shadow:
-    inset 0 0 0 1px rgba(247, 251, 255, 0.03),
-    0 0 70px rgba(24, 167, 255, 0.13);
+    inset 0 0 0 1px rgba(139, 154, 170, 0.08),
+    0 0 80px rgba(0, 119, 204, 0.22);
+  pointer-events: none;
 }
 
 .aster-race-splash__halo {
   position: absolute;
-  width: min(62vw, 360px);
+  width: min(68vw, 420px);
   aspect-ratio: 1;
-  border: 1px solid rgba(255, 122, 26, 0.16);
+  border: 1px solid rgba(61, 181, 255, 0.2);
   border-radius: 50%;
-  box-shadow: 0 0 90px rgba(24, 167, 255, 0.16);
+  box-shadow:
+    0 0 110px rgba(0, 119, 204, 0.18),
+    inset 0 0 60px rgba(61, 181, 255, 0.08);
 }
 
 .aster-race-splash__content {
   position: relative;
   z-index: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 24px;
-  text-align: center;
+  display: grid;
+  justify-items: center;
+  gap: 14px;
   animation: aster-race-splash-enter 700ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
-.aster-race-splash__mark {
+.aster-race-splash__logo {
   display: block;
-  width: clamp(136px, 42vw, 188px);
+  width: clamp(220px, 62vw, 420px);
   height: auto;
-  overflow: visible;
-  filter: drop-shadow(0 16px 34px rgba(0, 0, 0, 0.3));
+  filter: drop-shadow(0 16px 42px rgba(0, 0, 0, 0.45));
 }
 
-.aster-race-splash__dial,
-.aster-race-splash__dial-ring {
-  fill: rgba(6, 26, 51, 0.72);
-  stroke: rgba(247, 251, 255, 0.16);
-  stroke-width: 1.2;
-}
-
-.aster-race-splash__dial-ring {
-  fill: none;
-  stroke: rgba(76, 195, 255, 0.24);
-  stroke-dasharray: 1 12;
-  stroke-linecap: round;
-}
-
-.aster-race-splash__star {
-  fill: rgba(76, 195, 255, 0.07);
-  stroke: url("#aster-race-compass-gradient");
-  stroke-width: 2.6;
-  stroke-linejoin: round;
-}
-
-.aster-race-splash__sail {
-  fill: rgba(247, 251, 255, 0.94);
-}
-
-.aster-race-splash__sail-edge {
-  fill: none;
-  stroke: rgba(6, 26, 51, 0.58);
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 2;
-}
-
-.aster-race-splash__course {
-  fill: none;
-  stroke: url("#aster-race-course-gradient");
-  stroke-dasharray: 148;
-  stroke-dashoffset: 148;
-  stroke-linecap: round;
-  stroke-width: 5;
-  animation: aster-race-course-draw 980ms 260ms cubic-bezier(0.3, 0.7, 0.2, 1) forwards;
-}
-
-.aster-race-splash__accent {
-  fill: var(--ar-orange);
-  filter: drop-shadow(0 0 10px rgba(255, 122, 26, 0.46));
-}
-
-.aster-race-splash__center {
-  fill: var(--ar-orange);
-  stroke: var(--ar-navy);
-  stroke-width: 1.4;
-}
-
-.aster-race-splash__wordmark {
-  display: grid;
-  gap: 0;
-}
-
-.aster-race-splash h1 {
+.aster-race-splash__tagline {
   margin: 0;
-  color: var(--ar-white);
-  font-size: clamp(2.35rem, 11vw, 4.6rem);
-  font-weight: 900;
-  letter-spacing: 0;
-  line-height: 0.95;
-  text-shadow: 0 18px 44px rgba(0, 0, 0, 0.34);
+  color: rgba(185, 198, 211, 0.9);
+  font-size: clamp(0.82rem, 2.1vw, 1rem);
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  line-height: 1;
+  text-transform: uppercase;
 }
 
 @media (min-width: 720px) {
   .aster-race-splash__content {
-    flex-direction: row;
-    gap: 34px;
-    text-align: left;
+    gap: 18px;
   }
 
-  .aster-race-splash__mark {
-    width: clamp(156px, 18vw, 204px);
+  .aster-race-splash__logo {
+    width: clamp(300px, 37vw, 500px);
   }
 }
 
@@ -171,12 +113,6 @@
 
   .aster-race-splash__content {
     animation: aster-race-splash-enter-reduced 180ms ease-out both;
-  }
-
-  .aster-race-splash__course {
-    stroke-dasharray: none;
-    stroke-dashoffset: 0;
-    animation: none;
   }
 }
 
@@ -199,11 +135,5 @@
 
   to {
     opacity: 1;
-  }
-}
-
-@keyframes aster-race-course-draw {
-  to {
-    stroke-dashoffset: 0;
   }
 }
