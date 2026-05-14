@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react'
 import { RaceLibrary } from '../../components/RaceLibrary'
+import { useRaceReplay, type ReplaySpeed } from '../../hooks/useRaceReplay'
 import {
   deleteRace as deleteStoredRace,
   listRacesByDay,
@@ -15,6 +16,8 @@ type RaceLibraryGroup = {
   day: SailingDay
   races: Race[]
 }
+
+type RaceReplayState = ReturnType<typeof useRaceReplay>
 
 type AnalysisState = {
   activeSection: AnalysisSection
@@ -49,6 +52,17 @@ export function RaceAnalysisView() {
 
     return null
   }, [analysisState.selectedRaceId, groups])
+  const handleReplayTimeChange = useCallback((currentReplayTime: number) => {
+    setAnalysisState((current) => ({
+      ...current,
+      currentReplayTime,
+    }))
+  }, [])
+  const replay = useRaceReplay({
+    race: selectedRace,
+    currentReplayTime: analysisState.currentReplayTime,
+    onCurrentReplayTimeChange: handleReplayTimeChange,
+  })
 
   const refreshRaceGroups = useCallback((nextSelectedRaceId = analysisState.selectedRaceId) => {
     const nextGroups = loadRaceGroups()
@@ -113,6 +127,7 @@ export function RaceAnalysisView() {
   }
 
   const isLibraryActive = analysisState.activeSection === 'library'
+  const isOverviewActive = analysisState.activeSection === 'overview'
 
   return (
     <section className="view-section analysis-view">
@@ -151,11 +166,12 @@ export function RaceAnalysisView() {
           onRenameRace={handleRenameRace}
           onToggleFavorite={handleToggleFavorite}
         />
+      ) : isOverviewActive ? (
+        <RaceOverview race={selectedRace} replay={replay} />
       ) : (
         <AnalysisPlaceholder
           section={analysisState.activeSection}
           race={selectedRace}
-          currentReplayTime={analysisState.currentReplayTime}
         />
       )}
     </section>
@@ -174,11 +190,9 @@ function loadRaceGroups(): RaceLibraryGroup[] {
 function AnalysisPlaceholder({
   section,
   race,
-  currentReplayTime,
 }: {
   section: AnalysisSection
   race: Race | null
-  currentReplayTime: number
 }) {
   if (!race) {
     return (
@@ -224,11 +238,127 @@ function AnalysisPlaceholder({
           <dt>Samples</dt>
           <dd>{race.summary?.sampleCount ?? race.samples.length}</dd>
         </div>
+      </dl>
+    </div>
+  )
+}
+
+function RaceOverview({
+  race,
+  replay,
+}: {
+  race: Race | null
+  replay: RaceReplayState
+}) {
+  if (!race) {
+    return (
+      <div className="analysis-placeholder-panel">
+        <h3>Välj race i biblioteket</h3>
+        <p>Översikt kräver ett valt race. Gå till Bibliotek och öppna ett sparat race.</p>
+      </div>
+    )
+  }
+
+  if (race.samples.length === 0) {
+    return (
+      <div className="analysis-placeholder-panel">
+        <div className="analysis-placeholder-heading">
+          <div>
+            <p className="analysis-kicker">Översikt</p>
+            <h3>{race.name}</h3>
+          </div>
+          {race.isFavorite ? <span className="favorite-badge">Favorit</span> : null}
+        </div>
+        <p>Inga datapunkter finns för detta race ännu.</p>
+      </div>
+    )
+  }
+
+  const currentSample = replay.replayFrame?.sample ?? null
+
+  return (
+    <div className="race-overview-panel">
+      <div className="replay-control-bar">
+        <button type="button" className="primary-button replay-play-button" onClick={replay.togglePlay}>
+          {replay.isPlaying ? 'Paus' : 'Spela'}
+        </button>
+
+        <button type="button" className="secondary-button replay-reset-button" onClick={replay.reset}>
+          Reset
+        </button>
+
+        <div className="replay-speed-control" aria-label="Replayhastighet">
+          {[1, 2, 4].map((speed) => (
+            <button
+              key={speed}
+              type="button"
+              className={replay.replaySpeed === speed ? 'active' : ''}
+              onClick={() => replay.setReplaySpeed(speed as ReplaySpeed)}
+            >
+              {speed}x
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="replay-timeline">
+        <div className="replay-time-row">
+          <span>{formatDuration(replay.currentReplayTime)}</span>
+          <span>{formatDuration(replay.totalDurationSeconds)}</span>
+        </div>
+        <input
+          type="range"
+          min={0}
+          max={Math.max(0, replay.totalDurationSeconds)}
+          step={0.1}
+          value={replay.currentReplayTime}
+          onChange={(event) => replay.seek(event.currentTarget.valueAsNumber)}
+          aria-label="Replaytid"
+        />
+      </div>
+
+      <dl className="replay-data-panel">
         <div>
-          <dt>Replaytid</dt>
-          <dd>{formatDuration(currentReplayTime)}</dd>
+          <dt>Tid</dt>
+          <dd>{formatDuration(replay.currentReplayTime)}</dd>
+        </div>
+        <div>
+          <dt>Fart</dt>
+          <dd>{formatSpeed(currentSample?.speedKnots)}</dd>
+        </div>
+        <div>
+          <dt>Kurs/COG</dt>
+          <dd>{formatDegrees(currentSample?.cogDegrees)}</dd>
+        </div>
+        <div>
+          <dt>VMG bana</dt>
+          <dd>{formatSignedSpeed(currentSample?.vmgCourseKnots)}</dd>
+        </div>
+        <div>
+          <dt>VMG vind</dt>
+          <dd>{formatSignedSpeed(currentSample?.vmgWindKnots)}</dd>
+        </div>
+        <div>
+          <dt>Lat</dt>
+          <dd>{formatCoordinate(currentSample?.latitude)}</dd>
+        </div>
+        <div>
+          <dt>Lon</dt>
+          <dd>{formatCoordinate(currentSample?.longitude)}</dd>
+        </div>
+        <div>
+          <dt>GPS</dt>
+          <dd>{formatAccuracy(currentSample?.accuracy)}</dd>
         </div>
       </dl>
+
+      <p className="replay-sample-status">
+        {replay.replayFrame?.interpolationMode === 'interpolated'
+          ? 'Interpolerad datapunkt'
+          : replay.replayFrame?.interpolationMode === 'nearest'
+            ? 'Närmaste datapunkt'
+            : 'Exakt datapunkt'}
+      </p>
     </div>
   )
 }
@@ -288,4 +418,40 @@ function formatSpeed(speedKnots: number | undefined): string {
   }
 
   return `${speedKnots.toFixed(1).replace('.', ',')} kn`
+}
+
+function formatSignedSpeed(speedKnots: number | undefined): string {
+  if (speedKnots === undefined) {
+    return '--'
+  }
+
+  const sign = speedKnots > 0 ? '+' : ''
+
+  return `${sign}${speedKnots.toFixed(1).replace('.', ',')} kn`
+}
+
+function formatDegrees(degrees: number | undefined): string {
+  if (degrees === undefined) {
+    return '--'
+  }
+
+  const normalizedDegrees = Math.round(((degrees % 360) + 360) % 360)
+
+  return `${normalizedDegrees.toString().padStart(3, '0')}°`
+}
+
+function formatCoordinate(value: number | undefined): string {
+  if (value === undefined) {
+    return '--'
+  }
+
+  return value.toFixed(6)
+}
+
+function formatAccuracy(value: number | undefined): string {
+  if (value === undefined) {
+    return '--'
+  }
+
+  return `±${value.toFixed(1).replace('.', ',')} m`
 }

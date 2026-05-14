@@ -985,6 +985,124 @@ button:focus-visible {
   margin: 0;
 }
 
+.race-overview-panel {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+}
+
+.replay-control-bar {
+  display: grid;
+  grid-template-columns: minmax(88px, 0.8fr) minmax(74px, 0.65fr) minmax(132px, 1.25fr);
+  gap: 7px;
+}
+
+.replay-play-button,
+.replay-reset-button {
+  min-height: 42px;
+  border-radius: 10px;
+  font-size: 0.9rem;
+}
+
+.replay-speed-control {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid rgba(185, 198, 211, 0.22);
+  border-radius: 10px;
+  background: rgba(3, 20, 38, 0.7);
+}
+
+.replay-speed-control button {
+  min-width: 0;
+  min-height: 34px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.replay-speed-control button.active {
+  background: rgba(0, 152, 247, 0.82);
+  color: var(--text-high);
+}
+
+.replay-timeline {
+  display: grid;
+  gap: 5px;
+  padding: 10px;
+  border: 1px solid rgba(185, 198, 211, 0.22);
+  border-radius: 8px;
+  background: rgba(7, 31, 61, 0.92);
+}
+
+.replay-time-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--text-high);
+  font-size: 0.82rem;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.replay-timeline input[type='range'] {
+  width: 100%;
+  accent-color: var(--primary-strong);
+}
+
+.replay-data-panel {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  margin: 0;
+}
+
+.replay-data-panel div {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+  padding: 9px 8px;
+  border: 1px solid rgba(185, 198, 211, 0.14);
+  border-radius: 8px;
+  background: rgba(3, 20, 38, 0.62);
+}
+
+.replay-data-panel dt {
+  color: var(--text-muted);
+  font-size: 0.67rem;
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.replay-data-panel dd {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: var(--text-high);
+  font-size: 0.98rem;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.replay-sample-status {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
 @media (max-width: 920px) {
   .course-schematic {
     min-height: 0;
@@ -1121,5 +1239,13 @@ button:focus-visible {
 
   .selected-race-basics {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .replay-control-bar {
+    grid-template-columns: minmax(72px, 0.85fr) minmax(64px, 0.75fr) minmax(112px, 1.4fr);
+  }
+
+  .replay-data-panel dd {
+    font-size: 0.9rem;
   }
 }
