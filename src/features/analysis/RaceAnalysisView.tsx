@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { RaceLibrary } from '../../components/RaceLibrary'
 import { RaceTrackMap } from '../../components/RaceTrackMap'
 import { useRaceReplay, type ReplaySpeed } from '../../hooks/useRaceReplay'
+import { analyzeRaceStart, type StartAnalysisResult } from '../../services/startAnalysis'
 import {
   deleteRace as deleteStoredRace,
   listRacesByDay,
@@ -129,6 +130,7 @@ export function RaceAnalysisView() {
 
   const isLibraryActive = analysisState.activeSection === 'library'
   const isOverviewActive = analysisState.activeSection === 'overview'
+  const isStartActive = analysisState.activeSection === 'start'
 
   return (
     <section className="view-section analysis-view">
@@ -169,6 +171,8 @@ export function RaceAnalysisView() {
         />
       ) : isOverviewActive ? (
         <RaceOverview race={selectedRace} replay={replay} />
+      ) : isStartActive ? (
+        <StartAnalysisView race={selectedRace} />
       ) : (
         <AnalysisPlaceholder
           section={analysisState.activeSection}
@@ -176,6 +180,85 @@ export function RaceAnalysisView() {
         />
       )}
     </section>
+  )
+}
+
+function StartAnalysisView({ race }: { race: Race | null }) {
+  const startAnalysis = useMemo(() => (
+    race ? analyzeRaceStart(race) : null
+  ), [race])
+
+  if (!race || !startAnalysis) {
+    return (
+      <div className="analysis-placeholder-panel">
+        <h3>Välj race i biblioteket</h3>
+        <p>Startanalys kräver ett valt race med startlinje, startskott och GPS-spår.</p>
+      </div>
+    )
+  }
+
+  const resultText = getStartResultText(startAnalysis)
+  const statusMessage = getStartStatusMessage(startAnalysis.status)
+  const canShowMap = race.samples.length > 0
+
+  return (
+    <div className="start-analysis-panel">
+      {canShowMap ? (
+        <RaceTrackMap
+          race={race}
+          currentPoint={startAnalysis.crossingPoint ?? null}
+          highlightPoint={startAnalysis.crossingPoint}
+          highlightSegment={startAnalysis.beforeSample && startAnalysis.afterSample
+            ? {
+              before: startAnalysis.beforeSample,
+              after: startAnalysis.afterSample,
+            }
+            : undefined}
+          emphasizeStartLine
+        />
+      ) : null}
+
+      <div className={`start-analysis-result ${startAnalysis.status}`}>
+        <p className="analysis-kicker">Resultat</p>
+        <h3>{resultText}</h3>
+        <p>{statusMessage}</p>
+      </div>
+
+      <dl className="start-analysis-grid">
+        <div>
+          <dt>Startskott</dt>
+          <dd>{formatRaceDateTime(startAnalysis.startGunTime)}</dd>
+        </div>
+        <div>
+          <dt>Linje passerad</dt>
+          <dd>{formatRaceDateTime(startAnalysis.crossingTime)}</dd>
+        </div>
+        <div>
+          <dt>Tid mot start</dt>
+          <dd>{formatStartDelta(startAnalysis.deltaSeconds)}</dd>
+        </div>
+        <div>
+          <dt>Fart vid linje</dt>
+          <dd>{formatSpeed(startAnalysis.crossingSpeedKnots)}</dd>
+        </div>
+        <div>
+          <dt>Kurs vid linje</dt>
+          <dd>{formatDegrees(startAnalysis.crossingCogDegrees)}</dd>
+        </div>
+        <div>
+          <dt>GPS accuracy</dt>
+          <dd>{formatAccuracy(startAnalysis.crossingAccuracyMeters)}</dd>
+        </div>
+        <div>
+          <dt>Osäkerhet tid</dt>
+          <dd>{formatUncertaintySeconds(startAnalysis.uncertaintySeconds)}</dd>
+        </div>
+        <div>
+          <dt>Osäkerhet distans</dt>
+          <dd>{formatUncertaintyMeters(startAnalysis.uncertaintyMeters)}</dd>
+        </div>
+      </dl>
+    </div>
   )
 }
 
@@ -370,7 +453,11 @@ function getSectionLabel(section: AnalysisSection): string {
   return analysisSections.find((candidate) => candidate.id === section)?.label ?? 'Översikt'
 }
 
-function formatRaceDateTime(value: string): string {
+function formatRaceDateTime(value: string | undefined): string {
+  if (value === undefined) {
+    return '--'
+  }
+
   const date = new Date(value)
 
   if (!Number.isFinite(date.getTime())) {
@@ -457,4 +544,74 @@ function formatAccuracy(value: number | undefined): string {
   }
 
   return `±${value.toFixed(1).replace('.', ',')} m`
+}
+
+function formatStartDelta(deltaSeconds: number | undefined): string {
+  if (deltaSeconds === undefined) {
+    return '--'
+  }
+
+  if (deltaSeconds < 0) {
+    return `${formatSignedSeconds(deltaSeconds)} tidig`
+  }
+
+  if (deltaSeconds > 0) {
+    return `${formatSignedSeconds(deltaSeconds)} sen`
+  }
+
+  return '0 s perfekt'
+}
+
+function formatSignedSeconds(value: number): string {
+  const sign = value > 0 ? '+' : ''
+  const roundedValue = Math.abs(value % 1) === 0 ? value.toFixed(0) : value.toFixed(1).replace('.', ',')
+
+  return `${sign}${roundedValue} s`
+}
+
+function formatUncertaintySeconds(value: number | undefined): string {
+  if (value === undefined) {
+    return '--'
+  }
+
+  return `±${Math.ceil(value)} s`
+}
+
+function formatUncertaintyMeters(value: number | undefined): string {
+  if (value === undefined) {
+    return '--'
+  }
+
+  return `±${Math.ceil(value)} m`
+}
+
+function getStartResultText(startAnalysis: StartAnalysisResult): string {
+  if (startAnalysis.status !== 'ok' && startAnalysis.status !== 'uncertain') {
+    return 'Ingen starttid beräknad'
+  }
+
+  if (startAnalysis.deltaSeconds === undefined) {
+    return 'Ingen starttid beräknad'
+  }
+
+  if (startAnalysis.deltaSeconds < 0) {
+    return `${formatSignedSeconds(startAnalysis.deltaSeconds)} tidig / risk för tjuvstart`
+  }
+
+  if (startAnalysis.deltaSeconds > 0) {
+    return `${formatSignedSeconds(startAnalysis.deltaSeconds)} sen`
+  }
+
+  return '0 s på linjen'
+}
+
+function getStartStatusMessage(status: StartAnalysisResult['status']): string {
+  return {
+    ok: 'Tydlig linjepassage hittades i startfönstret.',
+    uncertain: 'Passagen hittades, men sample-gap eller GPS accuracy gör resultatet osäkert.',
+    'missing-start-line': 'Startlinje saknas.',
+    'missing-start-gun': 'Startskott saknas.',
+    'not-enough-samples': 'För få datapunkter i startfönstret.',
+    'no-crossing': 'Ingen tydlig linjepassage hittades.',
+  }[status]
 }

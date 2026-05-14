@@ -16,6 +16,12 @@ interface RaceTrackMapProps {
   race: Race
   currentPoint?: MapGeoPoint | null
   tracks?: RaceTrackMapTrack[]
+  highlightSegment?: {
+    before: MapGeoPoint
+    after: MapGeoPoint
+  }
+  highlightPoint?: MapGeoPoint | null
+  emphasizeStartLine?: boolean
 }
 
 type ScreenPoint = {
@@ -23,7 +29,14 @@ type ScreenPoint = {
   y: number
 }
 
-export function RaceTrackMap({ race, currentPoint, tracks }: RaceTrackMapProps) {
+export function RaceTrackMap({
+  race,
+  currentPoint,
+  tracks,
+  highlightSegment,
+  highlightPoint,
+  emphasizeStartLine = false,
+}: RaceTrackMapProps) {
   const mapTracks = useMemo(() => (
     tracks ?? [{
       id: race.id,
@@ -39,9 +52,9 @@ export function RaceTrackMap({ race, currentPoint, tracks }: RaceTrackMapProps) 
     createRaceMapProjection({
       samples: allSamples,
       course: race.course,
-      currentPoint,
+      currentPoint: highlightPoint ?? currentPoint,
     })
-  ), [allSamples, currentPoint, race.course])
+  ), [allSamples, currentPoint, highlightPoint, race.course])
   const screenProjector = useMemo(() => (
     projection ? createScreenProjector(projection.bounds) : null
   ), [projection])
@@ -55,6 +68,13 @@ export function RaceTrackMap({ race, currentPoint, tracks }: RaceTrackMapProps) 
   }
 
   const projectedCurrentPoint = currentPoint ? screenProjector(projection.project(currentPoint)) : null
+  const projectedHighlightPoint = highlightPoint ? screenProjector(projection.project(highlightPoint)) : null
+  const projectedHighlightSegment = highlightSegment
+    ? {
+      before: screenProjector(projection.project(highlightSegment.before)),
+      after: screenProjector(projection.project(highlightSegment.after)),
+    }
+    : null
   const startLine = getStartLine(race.course, projection.project, screenProjector)
   const windwardMark = getCourseMark(race.course?.windwardMark, projection.project, screenProjector)
   const leewardMark = getCourseMark(race.course?.leewardMark, projection.project, screenProjector)
@@ -80,7 +100,7 @@ export function RaceTrackMap({ race, currentPoint, tracks }: RaceTrackMapProps) 
 
         {startLine ? (
           <line
-            className="race-map-start-line"
+            className={`race-map-start-line ${emphasizeStartLine ? 'emphasized' : ''}`}
             x1={startLine.port.x}
             y1={startLine.port.y}
             x2={startLine.starboard.x}
@@ -90,6 +110,16 @@ export function RaceTrackMap({ race, currentPoint, tracks }: RaceTrackMapProps) 
 
         {windwardMark ? <CourseMarker point={windwardMark} label="K1" className="windward" /> : null}
         {leewardMark ? <CourseMarker point={leewardMark} label="L1" className="leeward" /> : null}
+
+        {projectedHighlightSegment ? (
+          <line
+            className="race-map-highlight-segment"
+            x1={projectedHighlightSegment.before.x}
+            y1={projectedHighlightSegment.before.y}
+            x2={projectedHighlightSegment.after.x}
+            y2={projectedHighlightSegment.after.y}
+          />
+        ) : null}
 
         {windArrow ? (
           <g className="race-map-wind-arrow" transform={`translate(${windArrow.x} ${windArrow.y}) rotate(${windArrow.rotation})`}>
@@ -102,6 +132,13 @@ export function RaceTrackMap({ race, currentPoint, tracks }: RaceTrackMapProps) 
           <g className="race-map-boat" transform={`translate(${projectedCurrentPoint.x} ${projectedCurrentPoint.y})`}>
             <circle r="7" />
             <circle r="3" />
+          </g>
+        ) : null}
+
+        {projectedHighlightPoint ? (
+          <g className="race-map-crossing-point" transform={`translate(${projectedHighlightPoint.x} ${projectedHighlightPoint.y})`}>
+            <circle r="8" />
+            <path d="M -5 0 L 5 0 M 0 -5 L 0 5" />
           </g>
         ) : null}
       </svg>

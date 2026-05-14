@@ -1041,6 +1041,20 @@ button:focus-visible {
   stroke-width: 3;
 }
 
+.race-map-start-line.emphasized {
+  stroke: #ffffff;
+  stroke-dasharray: none;
+  stroke-width: 5;
+  filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.35));
+}
+
+.race-map-highlight-segment {
+  stroke: #ffb15c;
+  stroke-linecap: round;
+  stroke-width: 6;
+  filter: drop-shadow(0 0 5px rgba(255, 133, 0, 0.35));
+}
+
 .race-map-mark circle {
   fill: rgba(255, 133, 0, 0.9);
   stroke: rgba(255, 255, 255, 0.7);
@@ -1078,6 +1092,100 @@ button:focus-visible {
 
 .race-map-boat circle:last-child {
   fill: #031426;
+}
+
+.race-map-crossing-point circle {
+  fill: rgba(255, 255, 255, 0.94);
+  stroke: #ff8500;
+  stroke-width: 3;
+}
+
+.race-map-crossing-point path {
+  stroke: #031426;
+  stroke-linecap: round;
+  stroke-width: 2;
+}
+
+.start-analysis-panel {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+}
+
+.start-analysis-result {
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+  border: 1px solid rgba(185, 198, 211, 0.22);
+  border-radius: 8px;
+  background: rgba(7, 31, 61, 0.92);
+}
+
+.start-analysis-result h3,
+.start-analysis-result p {
+  margin: 0;
+}
+
+.start-analysis-result h3 {
+  color: var(--text-high);
+  font-size: 1.2rem;
+  line-height: 1.15;
+}
+
+.start-analysis-result p:last-child {
+  color: var(--text-muted);
+  font-size: 0.86rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.start-analysis-result.ok {
+  border-color: rgba(62, 194, 133, 0.48);
+}
+
+.start-analysis-result.uncertain {
+  border-color: rgba(255, 133, 0, 0.55);
+}
+
+.start-analysis-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  margin: 0;
+}
+
+.start-analysis-grid div {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+  padding: 9px 8px;
+  border: 1px solid rgba(185, 198, 211, 0.14);
+  border-radius: 8px;
+  background: rgba(3, 20, 38, 0.62);
+}
+
+.start-analysis-grid dt {
+  color: var(--text-muted);
+  font-size: 0.67rem;
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.start-analysis-grid dd {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: var(--text-high);
+  font-size: 0.92rem;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .replay-control-bar {
@@ -1333,5 +1441,9 @@ button:focus-visible {
 
   .replay-data-panel dd {
     font-size: 0.9rem;
+  }
+
+  .start-analysis-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
