@@ -1,0 +1,196 @@
+.aster-race-splash {
+  --ar-navy: #061A33;
+  --ar-navy-2: #092447;
+  --ar-blue: #18A7FF;
+  --ar-blue-soft: #4CC3FF;
+  --ar-orange: #FF7A1A;
+  --ar-white: #F7FBFF;
+
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  min-height: 100vh;
+  min-height: 100dvh;
+  place-items: center;
+  overflow: hidden;
+  padding: max(28px, env(safe-area-inset-top, 0px)) 24px max(28px, env(safe-area-inset-bottom, 0px));
+  color: var(--ar-white);
+  background:
+    radial-gradient(circle at 50% 45%, rgba(24, 167, 255, 0.18), transparent 34%),
+    linear-gradient(135deg, rgba(76, 195, 255, 0.08), transparent 34%),
+    linear-gradient(180deg, var(--ar-navy-2) 0%, var(--ar-navy) 58%, #031123 100%);
+}
+
+.aster-race-splash::before {
+  position: absolute;
+  inset: -20%;
+  content: "";
+  background-image:
+    linear-gradient(rgba(247, 251, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(247, 251, 255, 0.035) 1px, transparent 1px);
+  background-size: 44px 44px;
+  -webkit-mask-image: radial-gradient(circle at center, black 0%, transparent 68%);
+  mask-image: radial-gradient(circle at center, black 0%, transparent 68%);
+}
+
+.aster-race-splash::after {
+  position: absolute;
+  width: min(88vw, 520px);
+  aspect-ratio: 1;
+  content: "";
+  border: 1px solid rgba(76, 195, 255, 0.14);
+  border-radius: 50%;
+  box-shadow:
+    inset 0 0 0 1px rgba(247, 251, 255, 0.03),
+    0 0 70px rgba(24, 167, 255, 0.13);
+}
+
+.aster-race-splash__halo {
+  position: absolute;
+  width: min(62vw, 360px);
+  aspect-ratio: 1;
+  border: 1px solid rgba(255, 122, 26, 0.16);
+  border-radius: 50%;
+  box-shadow: 0 0 90px rgba(24, 167, 255, 0.16);
+}
+
+.aster-race-splash__content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  text-align: center;
+  animation: aster-race-splash-enter 700ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.aster-race-splash__mark {
+  display: block;
+  width: clamp(136px, 42vw, 188px);
+  height: auto;
+  overflow: visible;
+  filter: drop-shadow(0 16px 34px rgba(0, 0, 0, 0.3));
+}
+
+.aster-race-splash__dial,
+.aster-race-splash__dial-ring {
+  fill: rgba(6, 26, 51, 0.72);
+  stroke: rgba(247, 251, 255, 0.16);
+  stroke-width: 1.2;
+}
+
+.aster-race-splash__dial-ring {
+  fill: none;
+  stroke: rgba(76, 195, 255, 0.24);
+  stroke-dasharray: 1 12;
+  stroke-linecap: round;
+}
+
+.aster-race-splash__star {
+  fill: rgba(76, 195, 255, 0.07);
+  stroke: url("#aster-race-compass-gradient");
+  stroke-width: 2.6;
+  stroke-linejoin: round;
+}
+
+.aster-race-splash__sail {
+  fill: rgba(247, 251, 255, 0.94);
+}
+
+.aster-race-splash__sail-edge {
+  fill: none;
+  stroke: rgba(6, 26, 51, 0.58);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.aster-race-splash__course {
+  fill: none;
+  stroke: url("#aster-race-course-gradient");
+  stroke-dasharray: 148;
+  stroke-dashoffset: 148;
+  stroke-linecap: round;
+  stroke-width: 5;
+  animation: aster-race-course-draw 980ms 260ms cubic-bezier(0.3, 0.7, 0.2, 1) forwards;
+}
+
+.aster-race-splash__accent {
+  fill: var(--ar-orange);
+  filter: drop-shadow(0 0 10px rgba(255, 122, 26, 0.46));
+}
+
+.aster-race-splash__center {
+  fill: var(--ar-orange);
+  stroke: var(--ar-navy);
+  stroke-width: 1.4;
+}
+
+.aster-race-splash__wordmark {
+  display: grid;
+  gap: 0;
+}
+
+.aster-race-splash h1 {
+  margin: 0;
+  color: var(--ar-white);
+  font-size: clamp(2.35rem, 11vw, 4.6rem);
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 0.95;
+  text-shadow: 0 18px 44px rgba(0, 0, 0, 0.34);
+}
+
+@media (min-width: 720px) {
+  .aster-race-splash__content {
+    flex-direction: row;
+    gap: 34px;
+    text-align: left;
+  }
+
+  .aster-race-splash__mark {
+    width: clamp(156px, 18vw, 204px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aster-race-splash__content {
+    animation: aster-race-splash-enter-reduced 180ms ease-out both;
+  }
+
+  .aster-race-splash__course {
+    stroke-dasharray: none;
+    stroke-dashoffset: 0;
+    animation: none;
+  }
+}
+
+@keyframes aster-race-splash-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes aster-race-splash-enter-reduced {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes aster-race-course-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}

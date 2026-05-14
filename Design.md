@@ -154,6 +154,17 @@ Nuvarande beteende:
 - När timern passerar 0:00 fortsätter den internt till -0:10.
 - Den negativa perioden visas utan minustecken; röd timerbakgrund signalerar post-start.
 - Vid intern tid -0:10 pausas timern och appen växlar automatiskt till Segling.
+- När timern är stoppad eller pausad visas minutknapparna.
+- När timern kör döljs minutknapparna och Start visar TTL, BURN, GPS och eventuell status.
+- När timern kör tar timerrutan mindre vertikal plats än tidigare, medan TTL/BURN/GPS-raderna är kraftigt förstorade för läsbarhet på avstånd.
+- TTL beräknas mot startlinjesegmentet A-B från aktuell GPS-position, filtrerad GPS-fart och filtrerad COG.
+- BURN beräknas som `countdownSeconds - TTL`, där plus betyder tidig och minus betyder sen.
+- TTL/BURN visas bara när GPS finns, A/B finns, aktuell GPS-accuracy är högst 5 meter, filtrerad fart är minst 1 knop och rörelsevektorn skär A-B-segmentet framför båten.
+- TTL/BURN använder medvetet lägre farttröskel än Segling: 1,0 knop för att fungera tidigt i startmanövern.
+- Statusprioritet är `GPS SAKNAS`, `SAKNAR LINJE`, `GPS OSÄKER`, `FÖR LÅG FART`, `UTANFÖR LINJEN`, `LINJE OSÄKER`.
+- Medan timern är `running` är manuell navigation låst. Appen stannar på Start, övriga navigationsknappar är inaktiverade och användaren kan inte manuellt byta vy.
+- När timern pausas eller återställs låses navigationen upp igen.
+- Automatisk övergång vid intern `-0:10` är uttryckligen tillåten trots navigationslåset. Då växlar appen till Segling och navigationen låses upp.
 
 Två UI-lägen:
 
@@ -301,6 +312,7 @@ Nuvarande state-flöde:
 - `CourseSetupView` renderar banan och anropar callbacks för punkter, vind och rensa bana.
 - `CourseSetupView` använder `useWindHeadingMeasurement` när vindpilen trycks och vind saknas.
 - `StartTimerView` äger countdownens sekunder/status via `useCountdown`.
+- `StartTimerView` får banstate, live GPS och filtrerad GPS för TTL/BURN.
 - `StartTimerView` meddelar `AppShell` när timern kör via `onRunningChange`.
 - `StartTimerView` anropar `onFinish` vid -0:10, vilket växlar till Segling.
 - `RaceDashboardView` får banstate, filtrerad GPS-data och R/S som props.
@@ -432,6 +444,21 @@ Rullning/stampning:
 - Kalibrering görs i React-state genom att aktuell R/S sparas som nolläge.
 - `calculateRollPitchRelativeToCalibration` använder kortaste vinkeldelta mellan aktuell R/S och kalibrerad R/S.
 
+Nuvarande sensorstatus:
+
+- `sensorTypes.ts` definierar interface för GPS-position, GPS-fart, GPS-kurs, båtens framåtriktning och vindheading.
+- `useLiveGps.ts` startar en live GPS-watch via Capacitor Geolocation när Setup, Bana, Start eller Segling är aktiv och exponerar status, fel, position, fart, kurs och kursens tillförlitlighet.
+- `useFilteredGps.ts` filtrerar speed over ground och course over ground över ungefär 3 sekunder.
+- `useDeviceAttitude.ts` läser rullning/stampning och headingstatus för Setup/Segling.
+- `useWindHeadingMeasurement.ts` exponerar status, fel och en `measureWindHeading`-funktion för Bana.
+- `windHeadingService.ts` samplar native-heading över tid, gör cirkulärt medelvärde och har en separat browser/mock-fallback.
+- `startLine.ts` innehåller TTL/BURN-geometri för startlinjesegmentet A-B.
+- `mockSensorService.ts` innehåller mockade sensorvärden och visar tänkt form för framtida implementation.
+- `AppDelegate.swift` registrerar en Capacitor-plugin `WindHeading` som använder `CMDeviceMotion`.
+- `geolocationService.ts`, `headingService.ts`, `wakeLockService.ts` och `raceRecordingService.ts` är stubs/TODO.
+
+Om Core Motion, pluginen eller nordreferens saknas på native iOS sätts ingen fejkad vind. UI:t visar en kort felstatus och vind förblir ej satt.
+
 ## 8. iOS / Capacitor
 
 Appen paketeras med Capacitor.
@@ -448,11 +475,13 @@ Viktiga iOS-beslut:
 
 - iPhone ska vara låst till porträtt.
 - Safe area hanteras i CSS.
-- Webbändringar måste byggas och synkas innan de syns i Xcode/iOS.
-- Appen deployas direkt från Xcode under utveckling.
-- `AppBridgeViewController` registrerar `WindHeadingPlugin`.
-- `WindHeadingPlugin` exponerar `getBackVectorHeading`, `getDeviceAttitude` och `stopBackVectorHeading`.
-- Samma plugin används för vindheading och R/S.
+- Webbändringar syns inte i Xcode förrän appen har byggts och Capacitor har synkat eller kopierat `dist` till iOS-projektet.
+- Under utveckling deployas appen direkt från Xcode till ansluten iPhone.
+- `WindHeadingPlugin` är en liten lokal Capacitor-plugin för iOS som registreras från `AppDelegate.swift`.
+- Samma plugin exponerar även aktuell device attitude för runtime R/S-kalibrering.
+- Device attitude mappas till båtens axlar: telefonens högerkant är styrbord och telefonens baksida är fören.
+- R/S beräknas från `CMDeviceMotion.gravity`: rullning från styrbordsaxelns uppkomponent och stampning från förens uppkomponent.
+- Core Motion-baserad vindmätning kräver ingen extra Info.plist-rad i denna implementation.
 
 Standardflöde efter webbändringar:
 
@@ -469,7 +498,7 @@ Klart eller delvis klart:
 - React/Vite/TypeScript-app med fem huvudvyer.
 - Capacitor/iOS-projekt finns.
 - Navigering mellan Setup, Bana, Start, Segling och Analys.
-- Navigation låses när starttimern kör.
+- Manuell navigation låses medan starttimern kör och låses upp vid paus, reset eller automatisk växling till Segling.
 - iPhone safe area respekteras i CSS.
 - iPhone porträttorientering är satt i iOS-konfiguration.
 - iOS har `NSLocationWhenInUseUsageDescription` för GPS-behörighet.
@@ -478,8 +507,7 @@ Klart eller delvis klart:
 - Bana kan sätta/rensa vind via vindpilen.
 - Bana ritar startlinje och märken visuellt.
 - Start har valbar nedräkning, start/paus, långt tryck för reset och automatisk växling till Segling.
-- Start visar TTL/BURN/GPS när timern kör.
-- Start visar minutknappar när timern inte kör.
+- Start visar stora TTL/BURN/GPS-rader när timern kör och har en lägre timerruta än tidigare utan att minska timerns sifferstorlek.
 - Start visar post-startperiod utan minustecken.
 - Vald startlängd lever under aktuell appsession.
 - Segling visar stora instrumentvärden och VMG Vind/VMG Bana-växling.
@@ -550,9 +578,9 @@ Manuell iPhone-verifiering bör kontrollera:
 - Bana visar bara A, B, K1 och L1.
 - Bana kan sätta/rensa punkter och visa grå/grön/gul kvalitet.
 - Bana kan mäta vind med vindpilen och rensa vind med nästa tryck.
-- Start visar minutknappar när timern inte kör.
-- Start visar TTL/BURN/GPS när timern kör.
-- Start låser navigation när timern kör.
-- Paus/reset låser upp navigation.
-- Start växlar automatiskt till Segling vid intern -0:10.
-- Segling visar läsbara instrumentvärden, R/S och VMG-växling.
+- Start visar minutknappar när timern inte kör och TTL/BURN/GPS när timern kör.
+- Start låser manuell navigation medan timern kör.
+- Paus och långtrycksreset på Start låser upp navigationen.
+- Start kan starta, pausa, återställa och växla till Segling vid intern -0:10.
+- Automatisk växling till Segling vid intern -0:10 fungerar trots navigationslåset och låser upp navigationen efteråt.
+- Segling visar läsbara instrumentvärden, R/S och VMG-växling fungerar när både vind och primär bana finns.
