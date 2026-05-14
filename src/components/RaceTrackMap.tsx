@@ -12,9 +12,17 @@ export type RaceTrackMapTrack = {
   className?: string
 }
 
+export type RaceTrackMapMarker = {
+  id: string
+  point: MapGeoPoint
+  className?: string
+  label?: string
+}
+
 interface RaceTrackMapProps {
   race: Race
   currentPoint?: MapGeoPoint | null
+  currentMarkers?: RaceTrackMapMarker[]
   tracks?: RaceTrackMapTrack[]
   highlightSegment?: {
     before: MapGeoPoint
@@ -32,6 +40,7 @@ type ScreenPoint = {
 export function RaceTrackMap({
   race,
   currentPoint,
+  currentMarkers,
   tracks,
   highlightSegment,
   highlightPoint,
@@ -68,6 +77,12 @@ export function RaceTrackMap({
   }
 
   const projectedCurrentPoint = currentPoint ? screenProjector(projection.project(currentPoint)) : null
+  const projectedCurrentMarkers = currentMarkers
+    ? currentMarkers.map((marker) => ({
+      ...marker,
+      point: screenProjector(projection.project(marker.point)),
+    }))
+    : []
   const projectedHighlightPoint = highlightPoint ? screenProjector(projection.project(highlightPoint)) : null
   const projectedHighlightSegment = highlightSegment
     ? {
@@ -134,6 +149,18 @@ export function RaceTrackMap({
             <circle r="3" />
           </g>
         ) : null}
+
+        {projectedCurrentMarkers.map((marker) => (
+          <g
+            key={marker.id}
+            className={`race-map-boat ${marker.className ?? ''}`}
+            transform={`translate(${marker.point.x} ${marker.point.y})`}
+            aria-label={marker.label}
+          >
+            <circle r="7" />
+            <circle r="3" />
+          </g>
+        ))}
 
         {projectedHighlightPoint ? (
           <g className="race-map-crossing-point" transform={`translate(${projectedHighlightPoint.x} ${projectedHighlightPoint.y})`}>

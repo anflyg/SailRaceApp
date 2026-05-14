@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { RaceLibrary } from '../../components/RaceLibrary'
 import { RaceTrackMap } from '../../components/RaceTrackMap'
 import { useRaceReplay, type ReplaySpeed } from '../../hooks/useRaceReplay'
+import { buildReplayTimeline, getReplayFrame } from '../../services/raceReplay'
 import { analyzeRaceStart, type StartAnalysisResult } from '../../services/startAnalysis'
 import {
   deleteRace as deleteStoredRace,
@@ -24,6 +25,7 @@ type RaceReplayState = ReturnType<typeof useRaceReplay>
 type AnalysisState = {
   activeSection: AnalysisSection
   selectedRaceId: string | null
+  ghostRaceId: string | null
   currentReplayTime: number
 }
 
@@ -40,8 +42,12 @@ export function RaceAnalysisView() {
   const [analysisState, setAnalysisState] = useState<AnalysisState>({
     activeSection: 'library',
     selectedRaceId: null,
+    ghostRaceId: null,
     currentReplayTime: 0,
   })
+  const allRaces = useMemo(() => (
+    groups.flatMap((group) => group.races)
+  ), [groups])
 
   const selectedRace = useMemo(() => {
     for (const group of groups) {
@@ -54,6 +60,9 @@ export function RaceAnalysisView() {
 
     return null
   }, [analysisState.selectedRaceId, groups])
+  const ghostRace = useMemo(() => (
+    allRaces.find((race) => race.id === analysisState.ghostRaceId) ?? null
+  ), [allRaces, analysisState.ghostRaceId])
   const handleReplayTimeChange = useCallback((currentReplayTime: number) => {
     setAnalysisState((current) => ({
       ...current,
@@ -71,6 +80,9 @@ export function RaceAnalysisView() {
     const selectedRaceStillExists = nextGroups.some((group) => (
       group.races.some((race) => race.id === nextSelectedRaceId)
     ))
+    const ghostRaceStillExists = nextGroups.some((group) => (
+      group.races.some((race) => race.id === analysisState.ghostRaceId)
+    ))
 
     setGroups(nextGroups)
 
@@ -79,17 +91,34 @@ export function RaceAnalysisView() {
         ...current,
         activeSection: 'library',
         selectedRaceId: null,
+        ghostRaceId: null,
         currentReplayTime: 0,
       }))
+      return
     }
-  }, [analysisState.selectedRaceId])
+
+    if (analysisState.ghostRaceId && !ghostRaceStillExists) {
+      setAnalysisState((current) => ({
+        ...current,
+        ghostRaceId: null,
+      }))
+    }
+  }, [analysisState.ghostRaceId, analysisState.selectedRaceId])
 
   const handleSelectRace = (race: Race) => {
     setAnalysisState({
       activeSection: 'overview',
       selectedRaceId: race.id,
+      ghostRaceId: analysisState.ghostRaceId === race.id ? null : analysisState.ghostRaceId,
       currentReplayTime: 0,
     })
+  }
+
+  const handleGhostRaceChange = (ghostRaceId: string | null) => {
+    setAnalysisState((current) => ({
+      ...current,
+      ghostRaceId: ghostRaceId === current.selectedRaceId ? null : ghostRaceId,
+    }))
   }
 
   const handleDeleteRace = (race: Race) => {
@@ -170,7 +199,14 @@ export function RaceAnalysisView() {
           onToggleFavorite={handleToggleFavorite}
         />
       ) : isOverviewActive ? (
-        <RaceOverview race={selectedRace} replay={replay} />
+        <RaceOverview
+          race={selectedRace}
+          replay={replay}
+          allRaces={allRaces}
+          ghostRace={ghostRace?.id === selectedRace?.id ? null : ghostRace}
+          selectedGhostRaceId={analysisState.ghostRaceId}
+          onGhostRaceChange={handleGhostRaceChange}
+        />
       ) : isStartActive ? (
         <StartAnalysisView race={selectedRace} />
       ) : (
@@ -330,10 +366,58 @@ function AnalysisPlaceholder({
 function RaceOverview({
   race,
   replay,
+  allRaces,
+  ghostRace,
+  selectedGhostRaceId,
+  onGhostRaceChange,
 }: {
   race: Race | null
   replay: RaceReplayState
+  allRaces: Race[]
+  ghostRace: Race | null
+  selectedGhostRaceId: string | null
+  onGhostRaceChange: (ghostRaceId: string | null) => void
 }) {
+  const currentSample = replay.replayFrame?.sample ?? null
+  const ghostOptions = useMemo(() => (
+    race ? allRaces.filter((candidate) => candidate.id !== race.id) : []
+  ), [allRaces, race])
+  const ghostTimeline = useMemo(() => (
+    buildReplayTimeline(ghostRace)
+  ), [ghostRace])
+  const ghostFrame = useMemo(() => (
+    getReplayFrame(ghostTimeline, replay.currentReplayTime)
+  ), [ghostTimeline, replay.currentReplayTime])
+  const ghostSample = ghostFrame?.sample ?? null
+  const mapTracks = useMemo(() => {
+    if (!race) {
+      return []
+    }
+
+    return [
+      {
+        id: race.id,
+        label: race.name,
+        samples: race.samples,
+        className: 'primary-track',
+      },
+      ...(ghostRace ? [{
+        id: ghostRace.id,
+        label: ghostRace.name,
+        samples: ghostRace.samples,
+        className: 'ghost-track',
+      }] : []),
+    ]
+  }, [ghostRace, race])
+  const ghostMarkers = ghostRace && ghostSample
+    ? [{
+      id: ghostRace.id,
+      point: ghostSample,
+      className: 'ghost-boat',
+      label: `Ghost: ${ghostRace.name}`,
+    }]
+    : []
+
   if (!race) {
     return (
       <div className="analysis-placeholder-panel">
@@ -358,11 +442,39 @@ function RaceOverview({
     )
   }
 
-  const currentSample = replay.replayFrame?.sample ?? null
-
   return (
     <div className="race-overview-panel">
-      <RaceTrackMap race={race} currentPoint={currentSample} />
+      <RaceTrackMap
+        race={race}
+        currentPoint={currentSample}
+        currentMarkers={ghostMarkers}
+        tracks={mapTracks}
+      />
+
+      <div className="ghost-replay-panel">
+        <div className="ghost-race-labels">
+          <span>Huvud: {race.name}</span>
+          <span>Ghost: {ghostRace ? ghostRace.name : 'Ingen ghost'}</span>
+        </div>
+        <label>
+          <span>Ghost-race</span>
+          <select
+            value={ghostRace?.id ?? ''}
+            onChange={(event) => onGhostRaceChange(event.currentTarget.value || null)}
+            disabled={ghostOptions.length === 0}
+          >
+            <option value="">Ingen ghost</option>
+            {ghostOptions.map((candidate) => (
+              <option key={candidate.id} value={candidate.id}>
+                {formatGhostRaceOption(candidate)}
+              </option>
+            ))}
+          </select>
+        </label>
+        {selectedGhostRaceId && !ghostRace ? (
+          <p>Valt ghost-race kunde inte hittas.</p>
+        ) : null}
+      </div>
 
       <div className="replay-control-bar">
         <button type="button" className="primary-button replay-play-button" onClick={replay.togglePlay}>
@@ -471,6 +583,10 @@ function formatRaceDateTime(value: string | undefined): string {
     hour: '2-digit',
     minute: '2-digit',
   }).format(date)
+}
+
+function formatGhostRaceOption(race: Race): string {
+  return `${race.name} · ${formatRaceDateTime(race.createdAt)}`
 }
 
 function formatDuration(durationSeconds: number | undefined): string {

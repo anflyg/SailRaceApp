@@ -1034,6 +1034,12 @@ button:focus-visible {
   filter: drop-shadow(0 0 5px rgba(53, 194, 255, 0.25));
 }
 
+.race-map-track.ghost-track {
+  stroke: rgba(255, 177, 92, 0.58);
+  stroke-dasharray: 6 5;
+  stroke-width: 2.5;
+}
+
 .race-map-start-line {
   stroke: #f7f7f7;
   stroke-dasharray: 5 4;
@@ -1094,6 +1100,20 @@ button:focus-visible {
   fill: #031426;
 }
 
+.race-map-boat.ghost-boat {
+  opacity: 0.78;
+}
+
+.race-map-boat.ghost-boat circle:first-child {
+  fill: rgba(255, 177, 92, 0.92);
+  stroke: rgba(3, 20, 38, 0.9);
+  stroke-width: 2;
+}
+
+.race-map-boat.ghost-boat circle:last-child {
+  fill: rgba(3, 20, 38, 0.92);
+}
+
 .race-map-crossing-point circle {
   fill: rgba(255, 255, 255, 0.94);
   stroke: #ff8500;
@@ -1104,6 +1124,65 @@ button:focus-visible {
   stroke: #031426;
   stroke-linecap: round;
   stroke-width: 2;
+}
+
+.ghost-replay-panel {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid rgba(185, 198, 211, 0.18);
+  border-radius: 8px;
+  background: rgba(3, 20, 38, 0.62);
+}
+
+.ghost-race-labels {
+  display: grid;
+  gap: 3px;
+  color: var(--text-high);
+  font-size: 0.78rem;
+  font-weight: 850;
+  line-height: 1.25;
+}
+
+.ghost-race-labels span:last-child {
+  color: #ffb15c;
+}
+
+.ghost-replay-panel label {
+  display: grid;
+  gap: 5px;
+}
+
+.ghost-replay-panel label span {
+  color: var(--text-muted);
+  font-size: 0.67rem;
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.ghost-replay-panel select {
+  min-width: 0;
+  min-height: 36px;
+  border: 1px solid rgba(185, 198, 211, 0.24);
+  border-radius: 8px;
+  padding: 7px 8px;
+  background: rgba(7, 31, 61, 0.95);
+  color: var(--text-high);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.ghost-replay-panel select:disabled {
+  opacity: 0.5;
+}
+
+.ghost-replay-panel p {
+  margin: 0;
+  color: var(--accent);
+  font-size: 0.78rem;
+  font-weight: 800;
 }
 
 .start-analysis-panel {
