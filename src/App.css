@@ -994,6 +994,92 @@ button:focus-visible {
   overflow-y: auto;
 }
 
+.race-track-map {
+  display: grid;
+  min-height: 190px;
+  place-items: center;
+  border: 1px solid rgba(185, 198, 211, 0.22);
+  border-radius: 8px;
+  background: rgba(3, 20, 38, 0.7);
+  overflow: hidden;
+}
+
+.race-track-map.empty {
+  padding: 18px;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.race-track-map svg {
+  display: block;
+  width: 100%;
+  max-height: min(38dvh, 300px);
+}
+
+.race-map-water {
+  fill: rgba(6, 29, 55, 0.98);
+}
+
+.race-map-track {
+  fill: none;
+  stroke: rgba(53, 194, 255, 0.88);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 4;
+}
+
+.race-map-track.primary-track {
+  filter: drop-shadow(0 0 5px rgba(53, 194, 255, 0.25));
+}
+
+.race-map-start-line {
+  stroke: #f7f7f7;
+  stroke-dasharray: 5 4;
+  stroke-linecap: round;
+  stroke-width: 3;
+}
+
+.race-map-mark circle {
+  fill: rgba(255, 133, 0, 0.9);
+  stroke: rgba(255, 255, 255, 0.7);
+  stroke-width: 2;
+}
+
+.race-map-mark.leeward circle {
+  fill: rgba(62, 194, 133, 0.9);
+}
+
+.race-map-mark text,
+.race-map-wind-arrow text {
+  fill: #ffffff;
+  font-size: 9px;
+  font-weight: 900;
+  text-anchor: middle;
+}
+
+.race-map-wind-arrow path {
+  fill: #ffb15c;
+  stroke: rgba(3, 20, 38, 0.8);
+  stroke-width: 1.5;
+}
+
+.race-map-wind-arrow text {
+  fill: #ffb15c;
+  font-size: 8px;
+}
+
+.race-map-boat circle:first-child {
+  fill: #ffffff;
+  stroke: rgba(0, 152, 247, 0.9);
+  stroke-width: 3;
+}
+
+.race-map-boat circle:last-child {
+  fill: #031426;
+}
+
 .replay-control-bar {
   display: grid;
   grid-template-columns: minmax(88px, 0.8fr) minmax(74px, 0.65fr) minmax(132px, 1.25fr);

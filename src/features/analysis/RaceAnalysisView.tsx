@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react'
 import { RaceLibrary } from '../../components/RaceLibrary'
+import { RaceTrackMap } from '../../components/RaceTrackMap'
 import { useRaceReplay, type ReplaySpeed } from '../../hooks/useRaceReplay'
 import {
   deleteRace as deleteStoredRace,
@@ -278,6 +279,8 @@ function RaceOverview({
 
   return (
     <div className="race-overview-panel">
+      <RaceTrackMap race={race} currentPoint={currentSample} />
+
       <div className="replay-control-bar">
         <button type="button" className="primary-button replay-play-button" onClick={replay.togglePlay}>
           {replay.isPlaying ? 'Paus' : 'Spela'}
