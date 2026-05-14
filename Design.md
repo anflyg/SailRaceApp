@@ -1,10 +1,10 @@
-# SailRaceApp Design Document
+# Aster Race Design Document
 
 Det här dokumentet beskriver nuvarande implementation i repo:t. När dokumentation och kod skiljer sig åt gäller koden.
 
 ## 1. Syfte
 
-SailRaceApp är en iPhone-app för kappsegling. Appen ska hjälpa seglaren att:
+Aster Race är en iPhone-app för kappsegling. Appen ska hjälpa seglaren att:
 
 - kontrollera GPS/sensorer och kalibrera rullning/stampning
 - sätta upp en enkel kappseglingsbana
@@ -13,6 +13,11 @@ SailRaceApp är en iPhone-app för kappsegling. Appen ska hjälpa seglaren att:
 - senare kunna spela upp och analysera seglingen efteråt
 
 Appen är byggd för användarens egen iPhone under utveckling och körs i nuläget direkt via Xcode på fysisk iPhone, inte via App Store.
+
+Brandingriktning:
+
+- Performance Instrument + Nordic Premium.
+- Mörk marin instrumentkänsla med hög kontrast för dagsljus.
 
 ## 2. Plattform och teknikval
 
@@ -258,8 +263,8 @@ VMG-läge:
 
 Färger:
 
-- VMG Vind använder mörkgrön bakgrund.
-- VMG Bana använder mörkorange bakgrund.
+- VMG Vind använder blå/cyan performance-stil.
+- VMG Bana använder orange tactical/course-stil.
 - Ej satt använder grå/dimmad bakgrund.
 
 Segling använder 1,5 knop som tröskel för pålitlig COG. Det är avsiktligt högre än TTL:s 1,0 knop eftersom Segling visar kontinuerlig riktning och VMG och behöver stabilare COG.
@@ -290,6 +295,38 @@ Principer:
 - Safe area ska respekteras.
 - Dynamic Island/statusbar-området ska inte innehålla tryckbara element.
 - Hemindikatorns område ska lämnas fritt.
+
+Branding och färgpalett:
+
+- Background primary: `#031426`
+- Background secondary/fallback: `#061A33`
+- Surface/cards: `#071F3D`
+- Surface elevated: `#0A2A4D`
+- Primary blue: `#0098F7`
+- Primary light/cyan: `#35C2FF`
+- Accent orange: `#FF8500`
+- Text primary: `#FFFFFF`
+- Text secondary: `#B9C6D3`
+- Border subtle: `rgba(185, 198, 211, 0.22)`
+- Border active: `rgba(53, 194, 255, 0.55)`
+
+Färgroller:
+
+- navy/mörkblå = bas/instrument
+- blå/cyan = performance, vind och VMG Vind
+- orange = tactical/course och VMG Bana
+- vitt = primär data
+- sekundär blågrå text = stödtext
+- grönt/rött = status/alert (behålls för running/negativ timer och varningslägen)
+
+Grafiska ändringar får inte ändra:
+
+- vylogik
+- navigation
+- placering av data
+- storlek på siffror
+- race-/timer-/sensorlogik
+- vystruktur eller instrumentlayout
 
 Start-vyn när timern kör prioriterar:
 
@@ -466,8 +503,12 @@ Appen paketeras med Capacitor.
 `capacitor.config.ts` använder:
 
 - `appId`: `com.anflyg.sailraceapp`
-- `appName`: `SailRaceApp`
+- `appName`: `SailRaceApp` (teknisk konfiguration)
 - `webDir`: `dist`
+
+Appnamn i iOS (visningsnamn):
+
+- `CFBundleDisplayName`: `Aster Race`
 
 iOS-projektet finns under `ios/App`.
 
@@ -482,6 +523,17 @@ Viktiga iOS-beslut:
 - Device attitude mappas till båtens axlar: telefonens högerkant är styrbord och telefonens baksida är fören.
 - R/S beräknas från `CMDeviceMotion.gravity`: rullning från styrbordsaxelns uppkomponent och stampning från förens uppkomponent.
 - Core Motion-baserad vindmätning kräver ingen extra Info.plist-rad i denna implementation.
+
+Splashscreen:
+
+- React-splash använder `AsterRaceSplash` med officiell primary logo (`src/assets/branding/aster-race-primary-logo.png`).
+- Splashens timing är fade in + diskret leave-state (ingen layoutförändring av övriga vyer).
+- Launch screen i iOS hålls mörk navy för att minimera vit blinkning vid uppstart.
+
+Appikon:
+
+- iOS appicon byggs från `aster-race-appicon-master.png` och ligger i `ios/App/App/Assets.xcassets/AppIcon.appiconset`.
+- `Contents.json` innehåller iPhone-, iPad- och iOS-marketing-storlekar.
 
 Standardflöde efter webbändringar:
 
@@ -539,6 +591,7 @@ Inte klart:
 - VMG-matematiken ska inte ändras utan separat uppgift och testning.
 - Timerlogiken är fortfarande komponentbaserad; därför låses navigationen när timern kör.
 - Permanent lagring införs separat. Nuvarande state är medvetet flyktigt.
+- Ändringar i branding/färg får inte ändra vystruktur, storlekar, spacing, placering eller logik utan separat beslut.
 
 ## 11. Rekommenderade nästa utvecklingssteg
 
