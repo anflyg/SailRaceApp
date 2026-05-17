@@ -119,7 +119,11 @@ public class WindHeadingPlugin: CAPPlugin, CAPBridgedPlugin, CLLocationManagerDe
             rotationMatrix: rotationMatrix
         )
 
-        guard let headingDegrees = headingDiagnostics.backVectorHeadingDegrees else {
+        let selectedHeadingDegrees =
+            headingDiagnostics.backVectorHeadingRowDegrees ??
+            headingDiagnostics.backVectorHeadingDegrees
+
+        guard let headingDegrees = selectedHeadingDegrees else {
             call.resolve([
                 "valid": false,
                 "headingDegrees": NSNull(),
@@ -281,7 +285,8 @@ public class WindHeadingPlugin: CAPPlugin, CAPBridgedPlugin, CLLocationManagerDe
     }
 
     private func backVectorHeadingDegrees(from rotationMatrix: CMRotationMatrix) -> Double? {
-        return headingDiagnostics(from: rotationMatrix).backVectorHeadingDegrees
+        let diagnostics = headingDiagnostics(from: rotationMatrix)
+        return diagnostics.backVectorHeadingRowDegrees ?? diagnostics.backVectorHeadingDegrees
     }
 
     private func headingDiagnostics(from rotationMatrix: CMRotationMatrix) -> HeadingDiagnostics {

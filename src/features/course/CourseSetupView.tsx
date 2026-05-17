@@ -239,8 +239,8 @@ export function CourseSetupView({
               <strong>{getWindQualityLabel(lastMeasurement)}</strong>
               <span>Samples</span>
               <strong>{lastMeasurement.sampleCount}</strong>
-              <span>Back vektor (vald)</span>
-              <strong>{formatOptionalDegrees(lastMeasurement.nativeDebug?.headings.backVectorHeadingDegrees)}</strong>
+              <span>Back vektor (vald row-alt)</span>
+              <strong>{formatDegrees(lastMeasurement.headingDegrees)}</strong>
               <span>Back vektor (row-alt)</span>
               <strong>{formatOptionalDegrees(lastMeasurement.nativeDebug?.headings.backVectorHeadingRowDegrees)}</strong>
               <span>Front vektor</span>
