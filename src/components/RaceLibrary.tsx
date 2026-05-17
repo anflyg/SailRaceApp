@@ -12,7 +12,8 @@ interface RaceLibraryProps {
   onDeleteRace: (race: Race) => void
   onRenameRace: (race: Race) => void
   onToggleFavorite: (race: Race) => void
-  onExportRace: (race: Race) => void
+  onExportRace: (race: Race) => Promise<void> | void
+  exportingRaceId?: string | null
 }
 
 export function RaceLibrary({
@@ -23,6 +24,7 @@ export function RaceLibrary({
   onRenameRace,
   onToggleFavorite,
   onExportRace,
+  exportingRaceId = null,
 }: RaceLibraryProps) {
   const raceCount = groups.reduce((count, group) => count + group.races.length, 0)
 
@@ -92,8 +94,12 @@ export function RaceLibrary({
                   <button type="button" onClick={() => onRenameRace(race)}>
                     Döp om
                   </button>
-                  <button type="button" onClick={() => onExportRace(race)}>
-                    Exportera
+                  <button
+                    type="button"
+                    onClick={() => onExportRace(race)}
+                    disabled={exportingRaceId !== null}
+                  >
+                    {exportingRaceId === race.id ? 'Exporterar...' : 'Exportera'}
                   </button>
                   <button type="button" className="danger-action" onClick={() => onDeleteRace(race)}>
                     Radera

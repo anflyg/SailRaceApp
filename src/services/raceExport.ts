@@ -1,3 +1,7 @@
+import { Capacitor } from '@capacitor/core'
+import { Directory, Filesystem } from '@capacitor/filesystem'
+import { Share } from '@capacitor/share'
+import { strToU8, zipSync } from 'fflate'
 import type { Race, RaceSample } from '../types'
 
 const EXPORT_VERSION = 1
@@ -7,6 +11,12 @@ type ExportedRaceFile = {
   fileName: string
   mimeType: string
   content: string
+}
+
+type ZippedRaceExport = {
+  fileName: string
+  mimeType: string
+  data: Uint8Array
 }
 
 interface RaceExportPayload {
@@ -207,17 +217,31 @@ function toGpxContent(race: Race): string {
 </gpx>`
 }
 
-function createFileDownload(file: ExportedRaceFile): void {
-  const blob = new Blob([file.content], { type: file.mimeType })
+function createBinaryFileDownload(fileName: string, mimeType: string, data: Uint8Array): void {
+  const safeBytes = new Uint8Array(data.length)
+  safeBytes.set(data)
+  const blob = new Blob([safeBytes.buffer], { type: mimeType })
   const url = URL.createObjectURL(blob)
   const linkElement = document.createElement('a')
   linkElement.href = url
-  linkElement.download = file.fileName
+  linkElement.download = fileName
   linkElement.style.display = 'none'
   document.body.append(linkElement)
   linkElement.click()
   linkElement.remove()
   window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
+function uint8ArrayToBase64(data: Uint8Array): string {
+  let binaryString = ''
+  const chunkSize = 0x8000
+
+  for (let index = 0; index < data.length; index += chunkSize) {
+    const chunk = data.subarray(index, index + chunkSize)
+    binaryString += String.fromCharCode(...chunk)
+  }
+
+  return btoa(binaryString)
 }
 
 export function createRaceExportFiles(race: Race): ExportedRaceFile[] {
@@ -243,10 +267,47 @@ export function createRaceExportFiles(race: Race): ExportedRaceFile[] {
   ]
 }
 
-export function exportRaceDownloads(race: Race): void {
+export function createRaceExportZip(race: Race): ZippedRaceExport {
   const files = createRaceExportFiles(race)
+  const zipEntries = Object.fromEntries(files.map((file) => (
+    [file.fileName, strToU8(file.content)]
+  )))
+  const baseFileName = toExportBaseFileName(race)
 
-  for (const file of files) {
-    createFileDownload(file)
+  return {
+    fileName: `${baseFileName}.zip`,
+    mimeType: 'application/zip',
+    data: zipSync(zipEntries, { level: 6 }),
   }
+}
+
+export async function exportRaceDownloads(race: Race): Promise<void> {
+  const zipExport = createRaceExportZip(race)
+
+  if (Capacitor.isNativePlatform()) {
+    const path = `exports/${zipExport.fileName}`
+    const data = uint8ArrayToBase64(zipExport.data)
+
+    await Filesystem.writeFile({
+      path,
+      data,
+      directory: Directory.Cache,
+      recursive: true,
+    })
+    const fileUri = await Filesystem.getUri({
+      path,
+      directory: Directory.Cache,
+    })
+
+    await Share.share({
+      title: race.name || 'Aster Race export',
+      text: 'Export från Aster Race',
+      url: fileUri.uri,
+      dialogTitle: 'Exportera race',
+    })
+
+    return
+  }
+
+  createBinaryFileDownload(zipExport.fileName, zipExport.mimeType, zipExport.data)
 }

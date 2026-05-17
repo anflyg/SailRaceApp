@@ -40,6 +40,7 @@ const analysisSections: Array<{ id: AnalysisSection; label: string }> = [
 
 export function RaceAnalysisView() {
   const [groups, setGroups] = useState(loadRaceGroups)
+  const [exportingRaceId, setExportingRaceId] = useState<string | null>(null)
   const [analysisState, setAnalysisState] = useState<AnalysisState>({
     activeSection: 'library',
     selectedRaceId: null,
@@ -151,11 +152,15 @@ export function RaceAnalysisView() {
     refreshRaceGroups()
   }
 
-  const handleExportRace = (race: Race) => {
+  const handleExportRace = async (race: Race) => {
+    setExportingRaceId(race.id)
+
     try {
-      exportRaceDownloads(race)
+      await exportRaceDownloads(race)
     } catch {
       window.alert('Kunde inte exportera race')
+    } finally {
+      setExportingRaceId(null)
     }
   }
 
@@ -207,6 +212,7 @@ export function RaceAnalysisView() {
           onRenameRace={handleRenameRace}
           onToggleFavorite={handleToggleFavorite}
           onExportRace={handleExportRace}
+          exportingRaceId={exportingRaceId}
         />
       ) : isOverviewActive ? (
         <RaceOverview
