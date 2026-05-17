@@ -1,6 +1,7 @@
 import UIKit
 import Capacitor
 import CoreMotion
+import CoreLocation
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -58,7 +59,7 @@ class AppBridgeViewController: CAPBridgeViewController {
 }
 
 @objc(WindHeadingPlugin)
-public class WindHeadingPlugin: CAPPlugin, CAPBridgedPlugin {
+public class WindHeadingPlugin: CAPPlugin, CAPBridgedPlugin, CLLocationManagerDelegate {
     public let identifier = "WindHeadingPlugin"
     public let jsName = "WindHeading"
     public let pluginMethods: [CAPPluginMethod] = [
@@ -69,6 +70,13 @@ public class WindHeadingPlugin: CAPPlugin, CAPBridgedPlugin {
 
     private let motionManager = CMMotionManager()
     private var activeReferenceFrame: CMAttitudeReferenceFrame?
+    private lazy var locationManager: CLLocationManager = {
+        let manager = CLLocationManager()
+        manager.delegate = self
+        manager.headingFilter = kCLHeadingFilterNone
+        return manager
+    }()
+    private var latestHeadingAccuracyDegrees: Double?
 
     @objc func getBackVectorHeading(_ call: CAPPluginCall) {
         guard motionManager.isDeviceMotionAvailable else {
@@ -81,6 +89,7 @@ public class WindHeadingPlugin: CAPPlugin, CAPBridgedPlugin {
             return
         }
 
+        startHeadingUpdatesIfAvailable()
         startDeviceMotionUpdatesIfNeeded(using: selectedReferenceFrame.frame)
 
         guard let motion = motionManager.deviceMotion else {
@@ -88,7 +97,7 @@ public class WindHeadingPlugin: CAPPlugin, CAPBridgedPlugin {
                 "valid": false,
                 "headingDegrees": NSNull(),
                 "referenceFrame": selectedReferenceFrame.name,
-                "accuracyDegrees": NSNull()
+                "accuracyDegrees": headingAccuracyValue()
             ])
             return
         }
@@ -98,7 +107,7 @@ public class WindHeadingPlugin: CAPPlugin, CAPBridgedPlugin {
                 "valid": false,
                 "headingDegrees": NSNull(),
                 "referenceFrame": selectedReferenceFrame.name,
-                "accuracyDegrees": NSNull()
+                "accuracyDegrees": headingAccuracyValue()
             ])
             return
         }
@@ -107,7 +116,7 @@ public class WindHeadingPlugin: CAPPlugin, CAPBridgedPlugin {
             "valid": true,
             "headingDegrees": headingDegrees,
             "referenceFrame": selectedReferenceFrame.name,
-            "accuracyDegrees": NSNull()
+            "accuracyDegrees": headingAccuracyValue()
         ])
     }
 
@@ -150,8 +159,13 @@ public class WindHeadingPlugin: CAPPlugin, CAPBridgedPlugin {
 
     @objc func stopBackVectorHeading(_ call: CAPPluginCall) {
         motionManager.stopDeviceMotionUpdates()
+        stopHeadingUpdatesIfAvailable()
         activeReferenceFrame = nil
         call.resolve()
+    }
+
+    public func locationManager(_ manager: CLLocationManager, didUpdateHeading newHeading: CLHeading) {
+        latestHeadingAccuracyDegrees = validHeadingAccuracyDegrees(newHeading.headingAccuracy)
     }
 
     private func preferredReferenceFrame() -> (frame: CMAttitudeReferenceFrame, name: String)? {
@@ -202,6 +216,47 @@ public class WindHeadingPlugin: CAPPlugin, CAPBridgedPlugin {
         motionManager.deviceMotionUpdateInterval = 1.0 / 30.0
         motionManager.startDeviceMotionUpdates(using: referenceFrame)
         activeReferenceFrame = referenceFrame
+    }
+
+    private func startHeadingUpdatesIfAvailable() {
+        guard CLLocationManager.headingAvailable() else {
+            return
+        }
+
+        if locationManager.authorizationStatus == .notDetermined {
+            locationManager.requestWhenInUseAuthorization()
+        }
+
+        locationManager.startUpdatingHeading()
+    }
+
+    private func stopHeadingUpdatesIfAvailable() {
+        guard CLLocationManager.headingAvailable() else {
+            return
+        }
+
+        locationManager.stopUpdatingHeading()
+    }
+
+    private func headingAccuracyValue() -> Any {
+        if let latestHeadingAccuracyDegrees = latestHeadingAccuracyDegrees {
+            return latestHeadingAccuracyDegrees
+        }
+
+        guard let heading = locationManager.heading,
+              let headingAccuracyDegrees = validHeadingAccuracyDegrees(heading.headingAccuracy) else {
+            return NSNull()
+        }
+
+        return headingAccuracyDegrees
+    }
+
+    private func validHeadingAccuracyDegrees(_ accuracyDegrees: Double) -> Double? {
+        if accuracyDegrees >= 0 && accuracyDegrees.isFinite {
+            return accuracyDegrees
+        }
+
+        return nil
     }
 
     private func backVectorHeadingDegrees(from rotationMatrix: CMRotationMatrix) -> Double? {

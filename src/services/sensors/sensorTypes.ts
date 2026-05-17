@@ -36,6 +36,8 @@ export interface WindHeadingReading {
   headingDegrees: number
   sampleCount: number
   accuracyDegrees?: number
+  spreadDegrees?: number
+  quality?: 'good' | 'ok' | 'poor' | 'unstable' | 'unknown'
   source: 'averaged-device-back-heading'
   timestamp: number
 }

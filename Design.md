@@ -555,14 +555,18 @@ Vind:
 - Back vector projiceras mot horisontalplanet innan heading räknas ut.
 - Projektionen gör att roll, pitch och normal mastlutning inte ska ge ett systematiskt headingfel så länge telefonens back vector har tillräcklig horisontell komponent.
 - Native-koden returnerar ingen heading om den horisontella komponenten är för svag.
+- Vindmätningen är en engångsmätning på 5 sekunder med 100 ms sample-intervall.
+- Minst 25 giltiga heading-samples krävs.
 - Samples medelvärdesbildas cirkulärt i `windHeadingService`.
+- `windHeadingService` beräknar också cirkulär spridning från kortaste vinkelavvikelse mot medelvärdet.
+- Om spridningen är större än 10° underkänns mätningen som ostabil och vindriktningen sparas inte.
 - True north används i första hand.
 - Magnetic north används som fallback när true north saknas.
 - Magnetisk fallback är inte deklinationskorrigerad.
 - `windHeadingService` returnerar även sample count, reference frame och accuracy-fält.
 - Native iOS returnerar `accuracyDegrees: null` eftersom pluginen inte får ett tydligt accuracy-värde från Core Motion i nuvarande implementation.
 - `useWindHeadingMeasurement` exponerar senaste mätresultatet till Bana för fälttest/debug.
-- Bana visar en kompakt sensor-debug efter vindmätning: back-vector heading, reference frame, accuracyDegrees, sample count och texten `Montering: baksida mot fören`.
+- Bana visar en kompakt sensor-debug efter vindmätning: back-vector heading, reference frame, accuracyDegrees, spreadDegrees, quality, sample count och texten `Montering: baksida mot fören`.
 - För att vindriktningen ska vara korrekt måste användaren mäta när telefonens baksida/fören representerar vindens riktning, normalt genom att båten pekar upp mot vinden vid mätningen.
 - Den sparade vindriktningen ska tolkas som riktningen vinden kommer från, inte riktningen vinden blåser mot.
 - Eftersom skärmen pekar akterut är det viktigt att all vindheading utgår från telefonens baksida. Nuvarande native-kod gör detta med back vector och undviker därmed en 180° skärm-/frontvektor-förväxling.
@@ -623,6 +627,7 @@ Sensor-debug i Bana:
 - aktuell back-vector heading
 - reference frame: true-north eller magnetic-north
 - heading accuracy när native kan leverera den
+- cirkulär spridning och kvalitetsstatus
 - sample count vid vindmätning
 - tydlig text: `Montering: baksida mot fören`
 

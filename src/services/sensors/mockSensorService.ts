@@ -1,4 +1,4 @@
-import { averageAnglesDegrees, normalizeDegrees } from '../../domain/angles'
+import { averageAnglesDegrees, getCircularSpreadDegrees, normalizeDegrees } from '../../domain/angles'
 import type {
   BoatForwardHeadingReading,
   CourseReading,
@@ -55,8 +55,8 @@ export async function getBoatForwardHeadingFromDeviceBack(): Promise<BoatForward
   }
 }
 
-export async function measureWindHeading(sampleCount = 12): Promise<WindHeadingReading> {
-  // TODO(iOS): Use Core Motion fused attitude samples over ~1-3 seconds,
+export async function measureWindHeading(sampleCount = 50): Promise<WindHeadingReading> {
+  // TODO(iOS): Use Core Motion fused attitude samples over 8 seconds,
   // convert each sample to horizontal back-vector heading and average.
   const baseHeading = 41
   const mockOffsets = [-4, -2, -1, 0, 2, 3, -3, 1, 0, 2, -1, 1]
@@ -64,11 +64,16 @@ export async function measureWindHeading(sampleCount = 12): Promise<WindHeadingR
     normalizeDegrees(baseHeading + mockOffsets[index % mockOffsets.length]),
   )
   const headingDegrees = averageAnglesDegrees(samples)
+  const spreadDegrees = headingDegrees !== null
+    ? getCircularSpreadDegrees(samples, headingDegrees)
+    : null
 
   return {
     headingDegrees: headingDegrees ?? normalizeDegrees(baseHeading),
     sampleCount,
     accuracyDegrees: 5,
+    spreadDegrees: spreadDegrees ?? undefined,
+    quality: 'good',
     source: 'averaged-device-back-heading',
     timestamp: now(),
   }

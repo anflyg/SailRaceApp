@@ -1,10 +1,17 @@
 import { useCallback, useState } from 'react'
 import {
+  WindHeadingMeasurementError,
   measureWindHeading as measureWindHeadingService,
   type WindHeadingMeasurementResult,
 } from '../services/sensors/windHeadingService'
 
-export type WindHeadingMeasurementStatus = 'idle' | 'measuring' | 'success' | 'error' | 'unavailable'
+export type WindHeadingMeasurementStatus =
+  | 'idle'
+  | 'measuring'
+  | 'success'
+  | 'error'
+  | 'unavailable'
+  | 'unstable'
 
 interface WindHeadingMeasurementState {
   status: WindHeadingMeasurementStatus
@@ -35,7 +42,7 @@ export function useWindHeadingMeasurement(): WindHeadingMeasurementState {
 
       if (!result) {
         setStatus('unavailable')
-        setError('Vindmätning saknas')
+        setError('Kunde inte mäta vind')
         return null
       }
 
@@ -43,6 +50,19 @@ export function useWindHeadingMeasurement(): WindHeadingMeasurementState {
       setLastMeasurement(result)
       return result
     } catch (measurementError) {
+      if (measurementError instanceof WindHeadingMeasurementError) {
+        if (measurementError.reason === 'unstable') {
+          setStatus('unstable')
+          setError(measurementError.message)
+          setLastMeasurement(measurementError.result)
+          return null
+        }
+
+        setStatus('error')
+        setError(measurementError.message)
+        return null
+      }
+
       setStatus('error')
       setError(measurementError instanceof Error ? measurementError.message : 'Kunde inte mäta vind')
       return null

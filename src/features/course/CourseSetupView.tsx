@@ -1,9 +1,14 @@
-import { normalizeDegrees } from '../../domain/angles'
-import { formatDegrees } from '../../domain/format'
+import { normalizeDegrees, shortestAngleDeltaDegrees } from '../../domain/angles'
+import { formatDegrees, formatSignedDegrees } from '../../domain/format'
 import { getGpsStatusDisplay, getStartLineQuality } from '../../domain/gps'
-import { getCourseAxisHeading } from '../../domain/navigation'
+import {
+  getCourseDisplayReference,
+  getStartLineAdvantageMeters,
+  type CourseDisplayReference,
+  type StartLineAdvantage,
+} from '../../domain/navigation'
 import { useWindHeadingMeasurement } from '../../hooks/useWindHeadingMeasurement'
-import type { WindHeadingMeasurementResult } from '../../services/sensors/windHeadingService'
+import type { WindHeadingMeasurementResult, WindHeadingQuality } from '../../services/sensors/windHeadingService'
 import type { CoursePoint, CoursePointKey, CourseState, LiveGpsReading } from '../../types'
 
 interface CourseSetupViewProps {
@@ -15,12 +20,24 @@ interface CourseSetupViewProps {
   gpsStatusMessage: string | null
 }
 
-function getWindArrowRotation(windHeadingDegrees: number | null, courseAxisHeading: number | null): number {
+function getWindArrowRotation(
+  windHeadingDegrees: number | null,
+  displayReference: CourseDisplayReference,
+): number {
   if (windHeadingDegrees === null) {
     return 0
   }
 
-  return normalizeDegrees(windHeadingDegrees - (courseAxisHeading ?? 0))
+  const relativeAngle = shortestAngleDeltaDegrees(
+    windHeadingDegrees,
+    displayReference.headingDegrees,
+  )
+
+  if (displayReference.kind === 'start-line') {
+    return relativeAngle + 90
+  }
+
+  return relativeAngle
 }
 
 function getCourseMarkClassName(kind: string, point: CoursePoint | null): string {
@@ -41,6 +58,48 @@ function formatAccuracyDegrees(accuracyDegrees: number | null): string {
     : 'saknas'
 }
 
+function formatSpreadDegrees(spreadDegrees: number | null): string {
+  return spreadDegrees !== null
+    ? `${spreadDegrees.toFixed(1).replace('.', ',')}°`
+    : 'saknas'
+}
+
+function getDisplayReferenceLabel(reference: CourseDisplayReference): string {
+  return {
+    'course-axis': 'bana',
+    'start-line': 'startlinje',
+    'north-fallback': 'nord',
+  }[reference.kind]
+}
+
+function getWindQualityLabel(measurement: WindHeadingMeasurementResult): string {
+  if (measurement.quality === 'good' && measurement.accuracyDegrees !== null) {
+    return measurement.accuracyDegrees <= 5 ? 'mycket bra' : 'bra'
+  }
+
+  const labels: Record<WindHeadingQuality, string> = {
+    good: 'bra',
+    ok: 'tveksam',
+    poor: 'dålig',
+    unstable: 'ostabil',
+    unknown: 'okänd',
+  }
+
+  return labels[measurement.quality]
+}
+
+function formatStartLineAdvantage(advantage: StartLineAdvantage | null): string | null {
+  if (!advantage) {
+    return null
+  }
+
+  if (advantage.favoredEnd === 'neutral') {
+    return 'Startlinjefördel: neutral'
+  }
+
+  return `Startlinjefördel: ${advantage.favoredEnd} +${Math.round(advantage.meters)} m`
+}
+
 export function CourseSetupView({
   course,
   gps,
@@ -51,13 +110,19 @@ export function CourseSetupView({
 }: CourseSetupViewProps) {
   const {
     status: windMeasurementStatus,
+    error: windMeasurementError,
     lastMeasurement,
     measureWindHeading,
     resetWindHeadingMeasurement,
   } = useWindHeadingMeasurement()
 
-  const courseAxisHeading = getCourseAxisHeading(course)
-  const windArrowRotation = getWindArrowRotation(course.windHeadingDegrees, courseAxisHeading)
+  const displayReference = getCourseDisplayReference(course)
+  const startLineAdvantage = getStartLineAdvantageMeters(course)
+  const startLineAdvantageLabel = formatStartLineAdvantage(startLineAdvantage)
+  const windArrowRotation = getWindArrowRotation(course.windHeadingDegrees, displayReference)
+  const windRelativeDisplayAngle = course.windHeadingDegrees !== null
+    ? shortestAngleDeltaDegrees(course.windHeadingDegrees, displayReference.headingDegrees)
+    : null
   const isMeasuringWind = windMeasurementStatus === 'measuring'
 
   const handleWindArrowClick = async () => {
@@ -80,19 +145,22 @@ export function CourseSetupView({
   }
 
   const windStatusMessage = {
-    measuring: 'Mäter vind...',
+    measuring: 'Mäter vind i 8 sekunder...',
     success: 'Vind satt',
+    unstable: 'Vindmätning ostabil. Håll båten i vindögat och försök igen.',
     error: 'Kunde inte mäta vind',
     unavailable: 'Kunde inte mäta vind',
     idle: null,
   }[windMeasurementStatus]
-  const statusMessage = windStatusMessage ?? gpsStatusMessage
+  const statusMessage = windMeasurementError ?? windStatusMessage ?? gpsStatusMessage
   const gpsStatus = getGpsStatusDisplay(gps)
   const startLineQuality = getStartLineQuality(course.points.startA, course.points.startB)
 
   return (
     <section className="view-section course-view">
       <div className={`course-schematic start-line-${startLineQuality}`}>
+        <div className="course-axis-line" aria-hidden="true" />
+
         <button
           type="button"
           className={getCourseMarkClassName('start-point start-a', course.points.startA)}
@@ -159,12 +227,25 @@ export function CourseSetupView({
               <strong>{getReferenceFrameLabel(lastMeasurement.referenceFrame)}</strong>
               <span>Accuracy</span>
               <strong>{formatAccuracyDegrees(lastMeasurement.accuracyDegrees)}</strong>
+              <span>Spridning</span>
+              <strong>{formatSpreadDegrees(lastMeasurement.spreadDegrees)}</strong>
+              <span>Kvalitet</span>
+              <strong>{getWindQualityLabel(lastMeasurement)}</strong>
               <span>Samples</span>
               <strong>{lastMeasurement.sampleCount}</strong>
             </div>
           ) : (
             <p className="course-sensor-debug-empty">Tryck vindpilen för att mäta heading.</p>
           )}
+        </div>
+        <div className="course-display-debug" aria-label="Banvy debug">
+          <span>Referens: {getDisplayReferenceLabel(displayReference)}</span>
+          {windRelativeDisplayAngle !== null ? (
+            <span>Vind relativt referens: {formatSignedDegrees(windRelativeDisplayAngle)}</span>
+          ) : null}
+          {startLineAdvantageLabel ? (
+            <span>{startLineAdvantageLabel}</span>
+          ) : null}
         </div>
         <button type="button" className="primary-button clear-button" onClick={handleClearCourse}>
           Rensa bana

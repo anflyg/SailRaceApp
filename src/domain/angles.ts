@@ -38,3 +38,17 @@ export function averageAnglesDegrees(angles: number[]): number | null {
   const meanDegrees = (meanRadians * 180) / Math.PI
   return normalizeDegrees(meanDegrees)
 }
+
+export function getCircularSpreadDegrees(angles: number[], meanAngle: number): number | null {
+  if (angles.length === 0 || !Number.isFinite(meanAngle)) {
+    return null
+  }
+
+  const squaredDeltaSum = angles.reduce((sum, angle) => {
+    const delta = shortestAngleDeltaDegrees(angle, meanAngle)
+
+    return sum + delta * delta
+  }, 0)
+
+  return Math.sqrt(squaredDeltaSum / angles.length)
+}

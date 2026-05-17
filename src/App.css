@@ -306,6 +306,18 @@ button:focus-visible {
   text-align: center;
 }
 
+.course-display-debug {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 12px;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.15;
+  text-align: center;
+}
+
 .course-mark,
 .course-arrow {
   position: absolute;
@@ -375,7 +387,7 @@ button:focus-visible {
 /* Wind arrow button - positioned at top center of schematic */
 .wind-arrow-button {
   position: absolute;
-  z-index: 1;
+  z-index: 3;
   top: 116px;
   left: 50%;
   width: 80px;
@@ -445,6 +457,19 @@ button:focus-visible {
   background: rgba(185, 198, 211, 0.28);
   border-radius: 1.5px;
   transform: translateY(-50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.course-axis-line {
+  position: absolute;
+  top: 66px;
+  bottom: 66px;
+  left: 50%;
+  width: 2px;
+  border-radius: 1px;
+  transform: translateX(-50%);
+  background: rgba(185, 198, 211, 0.2);
   pointer-events: none;
   z-index: 0;
 }
@@ -1476,6 +1501,11 @@ button:focus-visible {
   .course-schematic::before {
     left: 48px;
     right: 48px;
+  }
+
+  .course-axis-line {
+    top: 58px;
+    bottom: 58px;
   }
 
   .wind-arrow-button {
