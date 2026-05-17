@@ -24,6 +24,8 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Appen använder position och kompassriktning för att visa fart, kurs, VMG, startlinjeinformation och spela in seglingen under racet.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
