@@ -11,6 +11,33 @@ export type WindHeadingReferenceFrame = 'true-north' | 'magnetic-north' | 'mock'
 export type WindHeadingQuality = 'good' | 'ok' | 'poor' | 'unstable' | 'unknown'
 export type WindHeadingMeasurementErrorReason = 'failed' | 'insufficient-samples' | 'unstable'
 
+export interface WindHeadingMatrixDebug {
+  m11: number
+  m12: number
+  m13: number
+  m21: number
+  m22: number
+  m23: number
+  m31: number
+  m32: number
+  m33: number
+}
+
+export interface WindHeadingAlternativeHeadingsDebug {
+  backVectorHeadingDegrees: number | null
+  backVectorHeadingRowDegrees: number | null
+  frontVectorHeadingDegrees: number | null
+  topEdgeHeadingDegrees: number | null
+  rightEdgeHeadingDegrees: number | null
+}
+
+export interface WindHeadingNativeDebug {
+  clTrueHeadingDegrees: number | null
+  clMagneticHeadingDegrees: number | null
+  headings: WindHeadingAlternativeHeadingsDebug
+  matrix: WindHeadingMatrixDebug
+}
+
 export interface WindHeadingMeasurementResult {
   headingDegrees: number
   sampleCount: number
@@ -18,6 +45,7 @@ export interface WindHeadingMeasurementResult {
   accuracyDegrees: number | null
   spreadDegrees: number | null
   quality: WindHeadingQuality
+  nativeDebug: WindHeadingNativeDebug | null
 }
 
 export class WindHeadingMeasurementError extends Error {
@@ -40,6 +68,7 @@ interface NativeWindHeadingSample {
   headingDegrees: number | null
   referenceFrame: 'true-north' | 'magnetic-north'
   accuracyDegrees?: number | null
+  nativeDebug?: WindHeadingNativeDebug | null
   valid?: boolean
 }
 
@@ -66,6 +95,14 @@ function getValidAccuracyDegrees(accuracyDegrees: number | null | undefined): nu
     accuracyDegrees >= 0
     ? accuracyDegrees
     : null
+}
+
+function getValidDebugData(nativeDebug: WindHeadingNativeDebug | null | undefined): WindHeadingNativeDebug | null {
+  if (!nativeDebug) {
+    return null
+  }
+
+  return nativeDebug
 }
 
 function averageAccuracyDegrees(accuracySamples: number[]): number | null {
@@ -113,6 +150,7 @@ async function measureMockHeading(): Promise<WindHeadingMeasurementResult> {
     referenceFrame: 'mock',
     accuracyDegrees: getValidAccuracyDegrees(reading.accuracyDegrees),
     spreadDegrees: reading.spreadDegrees ?? null,
+    nativeDebug: null,
   })
 
   if (result.quality === 'unstable') {
@@ -132,6 +170,7 @@ function createMeasurementResult({
   referenceFrame,
   accuracyDegrees,
   spreadDegrees,
+  nativeDebug,
 }: Omit<WindHeadingMeasurementResult, 'quality'>): WindHeadingMeasurementResult {
   const quality = getMeasurementQuality(accuracyDegrees, spreadDegrees)
 
@@ -142,6 +181,7 @@ function createMeasurementResult({
     accuracyDegrees,
     spreadDegrees,
     quality,
+    nativeDebug,
   }
 }
 
@@ -152,6 +192,7 @@ export async function measureWindHeading(): Promise<WindHeadingMeasurementResult
 
   const samples: number[] = []
   const accuracySamples: number[] = []
+  let latestNativeDebug: WindHeadingNativeDebug | null = null
   let referenceFrame: WindHeadingReferenceFrame | null = null
   const startedAt = Date.now()
 
@@ -164,9 +205,14 @@ export async function measureWindHeading(): Promise<WindHeadingMeasurementResult
         referenceFrame = sample.referenceFrame
 
         const accuracyDegrees = getValidAccuracyDegrees(sample.accuracyDegrees)
+        const nativeDebug = getValidDebugData(sample.nativeDebug)
 
         if (accuracyDegrees !== null) {
           accuracySamples.push(accuracyDegrees)
+        }
+
+        if (nativeDebug !== null) {
+          latestNativeDebug = nativeDebug
         }
       }
 
@@ -203,6 +249,7 @@ export async function measureWindHeading(): Promise<WindHeadingMeasurementResult
     referenceFrame,
     accuracyDegrees: averageAccuracyDegrees(accuracySamples),
     spreadDegrees,
+    nativeDebug: latestNativeDebug,
   })
 
   if (result.quality === 'unstable') {

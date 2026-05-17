@@ -77,6 +77,16 @@ public class WindHeadingPlugin: CAPPlugin, CAPBridgedPlugin, CLLocationManagerDe
         return manager
     }()
     private var latestHeadingAccuracyDegrees: Double?
+    private var latestTrueHeadingDegrees: Double?
+    private var latestMagneticHeadingDegrees: Double?
+
+    private struct HeadingDiagnostics {
+        let backVectorHeadingDegrees: Double?
+        let backVectorHeadingRowDegrees: Double?
+        let frontVectorHeadingDegrees: Double?
+        let topEdgeHeadingDegrees: Double?
+        let rightEdgeHeadingDegrees: Double?
+    }
 
     @objc func getBackVectorHeading(_ call: CAPPluginCall) {
         guard motionManager.isDeviceMotionAvailable else {
@@ -102,12 +112,20 @@ public class WindHeadingPlugin: CAPPlugin, CAPBridgedPlugin, CLLocationManagerDe
             return
         }
 
-        guard let headingDegrees = backVectorHeadingDegrees(from: motion.attitude.rotationMatrix) else {
+        let rotationMatrix = motion.attitude.rotationMatrix
+        let headingDiagnostics = headingDiagnostics(from: rotationMatrix)
+        let nativeDebug = nativeDebugPayload(
+            from: headingDiagnostics,
+            rotationMatrix: rotationMatrix
+        )
+
+        guard let headingDegrees = headingDiagnostics.backVectorHeadingDegrees else {
             call.resolve([
                 "valid": false,
                 "headingDegrees": NSNull(),
                 "referenceFrame": selectedReferenceFrame.name,
-                "accuracyDegrees": headingAccuracyValue()
+                "accuracyDegrees": headingAccuracyValue(),
+                "nativeDebug": nativeDebug
             ])
             return
         }
@@ -116,7 +134,8 @@ public class WindHeadingPlugin: CAPPlugin, CAPBridgedPlugin, CLLocationManagerDe
             "valid": true,
             "headingDegrees": headingDegrees,
             "referenceFrame": selectedReferenceFrame.name,
-            "accuracyDegrees": headingAccuracyValue()
+            "accuracyDegrees": headingAccuracyValue(),
+            "nativeDebug": nativeDebug
         ])
     }
 
@@ -166,6 +185,8 @@ public class WindHeadingPlugin: CAPPlugin, CAPBridgedPlugin, CLLocationManagerDe
 
     public func locationManager(_ manager: CLLocationManager, didUpdateHeading newHeading: CLHeading) {
         latestHeadingAccuracyDegrees = validHeadingAccuracyDegrees(newHeading.headingAccuracy)
+        latestTrueHeadingDegrees = validLocationHeadingDegrees(newHeading.trueHeading)
+        latestMagneticHeadingDegrees = validLocationHeadingDegrees(newHeading.magneticHeading)
     }
 
     private func preferredReferenceFrame() -> (frame: CMAttitudeReferenceFrame, name: String)? {
@@ -260,6 +281,10 @@ public class WindHeadingPlugin: CAPPlugin, CAPBridgedPlugin, CLLocationManagerDe
     }
 
     private func backVectorHeadingDegrees(from rotationMatrix: CMRotationMatrix) -> Double? {
+        return headingDiagnostics(from: rotationMatrix).backVectorHeadingDegrees
+    }
+
+    private func headingDiagnostics(from rotationMatrix: CMRotationMatrix) -> HeadingDiagnostics {
         // Device mount for wind heading:
         // - phone is upright on the mast
         // - phone -Z/back side points toward the bow
@@ -272,8 +297,48 @@ public class WindHeadingPlugin: CAPPlugin, CAPBridgedPlugin, CLLocationManagerDe
         // used, so normal roll, pitch and mast rake should not create systematic
         // heading error. If the horizontal component is too weak, the heading is
         // invalid instead of returning a noisy value.
-        let northComponent = -rotationMatrix.m13
-        let westComponent = -rotationMatrix.m23
+        // Column-based interpretation:
+        // - +X/right edge: column 1
+        // - +Y/top edge: column 2
+        // - +Z/front/screen: column 3
+        // - -Z/back side: negated column 3
+        let backVectorHeadingDegrees = headingDegreesFromComponents(
+            northComponent: -rotationMatrix.m13,
+            westComponent: -rotationMatrix.m23
+        )
+        let frontVectorHeadingDegrees = headingDegreesFromComponents(
+            northComponent: rotationMatrix.m13,
+            westComponent: rotationMatrix.m23
+        )
+        let topEdgeHeadingDegrees = headingDegreesFromComponents(
+            northComponent: rotationMatrix.m12,
+            westComponent: rotationMatrix.m22
+        )
+        let rightEdgeHeadingDegrees = headingDegreesFromComponents(
+            northComponent: rotationMatrix.m11,
+            westComponent: rotationMatrix.m21
+        )
+
+        // Row-based alternative interpretation (transposed matrix assumption).
+        // Useful for field diagnostics when heading appears systematically biased.
+        let backVectorHeadingRowDegrees = headingDegreesFromComponents(
+            northComponent: -rotationMatrix.m31,
+            westComponent: -rotationMatrix.m32
+        )
+
+        return HeadingDiagnostics(
+            backVectorHeadingDegrees: backVectorHeadingDegrees,
+            backVectorHeadingRowDegrees: backVectorHeadingRowDegrees,
+            frontVectorHeadingDegrees: frontVectorHeadingDegrees,
+            topEdgeHeadingDegrees: topEdgeHeadingDegrees,
+            rightEdgeHeadingDegrees: rightEdgeHeadingDegrees
+        )
+    }
+
+    private func headingDegreesFromComponents(
+        northComponent: Double,
+        westComponent: Double
+    ) -> Double? {
         let horizontalMagnitude = sqrt(
             northComponent * northComponent + westComponent * westComponent
         )
@@ -288,6 +353,58 @@ public class WindHeadingPlugin: CAPPlugin, CAPBridgedPlugin, CLLocationManagerDe
         let radians = atan2(-westComponent, northComponent)
         let degrees = radians * 180 / Double.pi
         return fmod(degrees + 360, 360)
+    }
+
+    private func nativeDebugPayload(
+        from headingDiagnostics: HeadingDiagnostics,
+        rotationMatrix: CMRotationMatrix
+    ) -> [String: Any] {
+        return [
+            "headings": [
+                "backVectorHeadingDegrees": optionalNumberOrNull(headingDiagnostics.backVectorHeadingDegrees),
+                "backVectorHeadingRowDegrees": optionalNumberOrNull(headingDiagnostics.backVectorHeadingRowDegrees),
+                "frontVectorHeadingDegrees": optionalNumberOrNull(headingDiagnostics.frontVectorHeadingDegrees),
+                "topEdgeHeadingDegrees": optionalNumberOrNull(headingDiagnostics.topEdgeHeadingDegrees),
+                "rightEdgeHeadingDegrees": optionalNumberOrNull(headingDiagnostics.rightEdgeHeadingDegrees)
+            ],
+            "clTrueHeadingDegrees": optionalNumberOrNull(currentTrueHeadingDegrees()),
+            "clMagneticHeadingDegrees": optionalNumberOrNull(currentMagneticHeadingDegrees()),
+            "matrix": [
+                "m11": rotationMatrix.m11,
+                "m12": rotationMatrix.m12,
+                "m13": rotationMatrix.m13,
+                "m21": rotationMatrix.m21,
+                "m22": rotationMatrix.m22,
+                "m23": rotationMatrix.m23,
+                "m31": rotationMatrix.m31,
+                "m32": rotationMatrix.m32,
+                "m33": rotationMatrix.m33
+            ]
+        ]
+    }
+
+    private func currentTrueHeadingDegrees() -> Double? {
+        if let latestTrueHeadingDegrees = latestTrueHeadingDegrees {
+            return latestTrueHeadingDegrees
+        }
+
+        guard let heading = locationManager.heading else {
+            return nil
+        }
+
+        return validLocationHeadingDegrees(heading.trueHeading)
+    }
+
+    private func currentMagneticHeadingDegrees() -> Double? {
+        if let latestMagneticHeadingDegrees = latestMagneticHeadingDegrees {
+            return latestMagneticHeadingDegrees
+        }
+
+        guard let heading = locationManager.heading else {
+            return nil
+        }
+
+        return validLocationHeadingDegrees(heading.magneticHeading)
     }
 
     private func boatAttitudeDegrees(from gravity: CMAcceleration) -> (
@@ -316,5 +433,21 @@ public class WindHeadingPlugin: CAPPlugin, CAPBridgedPlugin, CLLocationManagerDe
 
     private func radiansToDegrees(_ radians: Double) -> Double {
         return radians * 180 / Double.pi
+    }
+
+    private func validLocationHeadingDegrees(_ headingDegrees: Double) -> Double? {
+        if headingDegrees >= 0 && headingDegrees.isFinite {
+            return headingDegrees
+        }
+
+        return nil
+    }
+
+    private func optionalNumberOrNull(_ value: Double?) -> Any {
+        if let value = value {
+            return value
+        }
+
+        return NSNull()
     }
 }

@@ -29,7 +29,8 @@ function getGpsPosition(gps: FilteredGpsReading): GeoPoint | null {
 export function RaceDashboardView({ course, gps, rollPitch }: RaceDashboardViewProps) {
   const [activeVelocityMode, setActiveVelocityMode] = useState<VelocityMode>('vmc')
   const speedKnots = gps.speedKnots
-  const courseHeading = gps.courseReliable ? gps.courseDegrees : null
+  const courseHeading = gps.displayCourseDegrees
+  const hasDisplayCourse = courseHeading !== null
   const boatPosition = getGpsPosition(gps)
   const targetMark = course.points.kryss1
   const hasWindVmg = course.windHeadingDegrees !== null
@@ -51,7 +52,7 @@ export function RaceDashboardView({ course, gps, rollPitch }: RaceDashboardViewP
     : selectedVelocityMode === 'vmg'
       ? course.windHeadingDegrees
       : null
-  const velocityMadeGood = speedKnots !== null && courseHeading !== null && referenceHeading !== null
+  const velocityMadeGood = speedKnots !== null && hasDisplayCourse && referenceHeading !== null
     ? calculateVelocityMadeGood(speedKnots, courseHeading, referenceHeading)
     : null
   const velocityLabel = selectedVelocityMode === 'vmc'
@@ -83,7 +84,7 @@ export function RaceDashboardView({ course, gps, rollPitch }: RaceDashboardViewP
         </div>
 
         <div className="metric-box" aria-label="Riktning">
-          <span className="metric-value">{courseHeading !== null ? formatDegrees(courseHeading) : '--'}</span>
+          <span className="metric-value">{hasDisplayCourse ? formatDegrees(courseHeading) : '--'}</span>
           <span className="metric-label">Riktning</span>
         </div>
 

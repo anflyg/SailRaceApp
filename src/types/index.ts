@@ -31,6 +31,7 @@ export interface LiveGpsReading {
 
 export interface FilteredGpsReading extends LiveGpsReading {
   sampleCount: number
+  displayCourseDegrees: number | null
 }
 
 export type CoursePointQuality = 'unset' | 'good' | 'poor'

@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { RaceLibrary } from '../../components/RaceLibrary'
 import { RaceTrackMap } from '../../components/RaceTrackMap'
 import { useRaceReplay, type ReplaySpeed } from '../../hooks/useRaceReplay'
+import { exportRaceDownloads } from '../../services/raceExport'
 import { buildReplayTimeline, getReplayFrame } from '../../services/raceReplay'
 import { analyzeRaceStart, type StartAnalysisResult } from '../../services/startAnalysis'
 import {
@@ -150,6 +151,14 @@ export function RaceAnalysisView() {
     refreshRaceGroups()
   }
 
+  const handleExportRace = (race: Race) => {
+    try {
+      exportRaceDownloads(race)
+    } catch {
+      window.alert('Kunde inte exportera race')
+    }
+  }
+
   const handleSectionChange = (section: AnalysisSection) => {
     setAnalysisState((current) => ({
       ...current,
@@ -197,6 +206,7 @@ export function RaceAnalysisView() {
           onDeleteRace={handleDeleteRace}
           onRenameRace={handleRenameRace}
           onToggleFavorite={handleToggleFavorite}
+          onExportRace={handleExportRace}
         />
       ) : isOverviewActive ? (
         <RaceOverview

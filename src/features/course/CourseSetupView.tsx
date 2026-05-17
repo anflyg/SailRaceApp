@@ -64,6 +64,12 @@ function formatSpreadDegrees(spreadDegrees: number | null): string {
     : 'saknas'
 }
 
+function formatOptionalDegrees(value: number | null | undefined): string {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? formatDegrees(value)
+    : 'saknas'
+}
+
 function getDisplayReferenceLabel(reference: CourseDisplayReference): string {
   return {
     'course-axis': 'bana',
@@ -233,6 +239,32 @@ export function CourseSetupView({
               <strong>{getWindQualityLabel(lastMeasurement)}</strong>
               <span>Samples</span>
               <strong>{lastMeasurement.sampleCount}</strong>
+              <span>Back vektor (vald)</span>
+              <strong>{formatOptionalDegrees(lastMeasurement.nativeDebug?.headings.backVectorHeadingDegrees)}</strong>
+              <span>Back vektor (row-alt)</span>
+              <strong>{formatOptionalDegrees(lastMeasurement.nativeDebug?.headings.backVectorHeadingRowDegrees)}</strong>
+              <span>Front vektor</span>
+              <strong>{formatOptionalDegrees(lastMeasurement.nativeDebug?.headings.frontVectorHeadingDegrees)}</strong>
+              <span>Ovankant (+Y)</span>
+              <strong>{formatOptionalDegrees(lastMeasurement.nativeDebug?.headings.topEdgeHeadingDegrees)}</strong>
+              <span>Högerkant (+X)</span>
+              <strong>{formatOptionalDegrees(lastMeasurement.nativeDebug?.headings.rightEdgeHeadingDegrees)}</strong>
+              <span>CL True</span>
+              <strong>{formatOptionalDegrees(lastMeasurement.nativeDebug?.clTrueHeadingDegrees)}</strong>
+              <span>CL Magnetic</span>
+              <strong>{formatOptionalDegrees(lastMeasurement.nativeDebug?.clMagneticHeadingDegrees)}</strong>
+              <span>M13/M23</span>
+              <strong>
+                {lastMeasurement.nativeDebug
+                  ? `${lastMeasurement.nativeDebug.matrix.m13.toFixed(3)} / ${lastMeasurement.nativeDebug.matrix.m23.toFixed(3)}`
+                  : 'saknas'}
+              </strong>
+              <span>M31/M32</span>
+              <strong>
+                {lastMeasurement.nativeDebug
+                  ? `${lastMeasurement.nativeDebug.matrix.m31.toFixed(3)} / ${lastMeasurement.nativeDebug.matrix.m32.toFixed(3)}`
+                  : 'saknas'}
+              </strong>
             </div>
           ) : (
             <p className="course-sensor-debug-empty">Tryck vindpilen för att mäta heading.</p>
