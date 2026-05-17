@@ -26,6 +26,8 @@
 	<true/>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Appen använder position och kompassriktning för att visa fart, kurs, VMG, startlinjeinformation och spela in seglingen under racet.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Aster Race använder position under segling för att visa fart, kurs, VMG, startlinjeinformation och spela in seglingen. Position används endast för appens seglingsfunktioner.</string>
 	<key>NSMotionUsageDescription</key>
 	<string>Appen använder rörelsedata från telefonen för att mäta lutning, riktning och förbättra seglingsanalysen.</string>
 	<key>UILaunchStoryboardName</key>
