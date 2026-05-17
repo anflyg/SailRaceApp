@@ -44,32 +44,6 @@ function getCourseMarkClassName(kind: string, point: CoursePoint | null): string
   return `course-mark ${kind} ${point?.quality ?? 'unset'}`
 }
 
-function getReferenceFrameLabel(referenceFrame: WindHeadingMeasurementResult['referenceFrame']): string {
-  return {
-    'true-north': 'true-north',
-    'magnetic-north': 'magnetic-north',
-    mock: 'mock',
-  }[referenceFrame]
-}
-
-function formatAccuracyDegrees(accuracyDegrees: number | null): string {
-  return accuracyDegrees !== null
-    ? `±${Math.round(accuracyDegrees)}°`
-    : 'saknas'
-}
-
-function formatSpreadDegrees(spreadDegrees: number | null): string {
-  return spreadDegrees !== null
-    ? `${spreadDegrees.toFixed(1).replace('.', ',')}°`
-    : 'saknas'
-}
-
-function formatOptionalDegrees(value: number | null | undefined): string {
-  return typeof value === 'number' && Number.isFinite(value)
-    ? formatDegrees(value)
-    : 'saknas'
-}
-
 function getDisplayReferenceLabel(reference: CourseDisplayReference): string {
   return {
     'course-axis': 'bana',
@@ -129,6 +103,9 @@ export function CourseSetupView({
   const windRelativeDisplayAngle = course.windHeadingDegrees !== null
     ? shortestAngleDeltaDegrees(course.windHeadingDegrees, displayReference.headingDegrees)
     : null
+  const windMeasurementSummary = lastMeasurement
+    ? `Vind satt: ${formatDegrees(lastMeasurement.headingDegrees)} · Kvalitet: ${getWindQualityLabel(lastMeasurement)}`
+    : null
   const isMeasuringWind = windMeasurementStatus === 'measuring'
 
   const handleWindArrowClick = async () => {
@@ -151,7 +128,7 @@ export function CourseSetupView({
   }
 
   const windStatusMessage = {
-    measuring: 'Mäter vind i 8 sekunder...',
+    measuring: 'Mäter vind i 4 sekunder...',
     success: 'Vind satt',
     unstable: 'Vindmätning ostabil. Håll båten i vindögat och försök igen.',
     error: 'Kunde inte mäta vind',
@@ -223,54 +200,10 @@ export function CourseSetupView({
             {statusMessage}
           </p>
         ) : null}
-        <div className="course-sensor-debug" aria-label="Vindmätning debug">
-          <div className="course-sensor-debug-title">Montering: baksida mot fören</div>
-          {lastMeasurement ? (
-            <div className="course-sensor-debug-grid">
-              <span>Back-vector</span>
-              <strong>{formatDegrees(lastMeasurement.headingDegrees)}</strong>
-              <span>Referens</span>
-              <strong>{getReferenceFrameLabel(lastMeasurement.referenceFrame)}</strong>
-              <span>Accuracy</span>
-              <strong>{formatAccuracyDegrees(lastMeasurement.accuracyDegrees)}</strong>
-              <span>Spridning</span>
-              <strong>{formatSpreadDegrees(lastMeasurement.spreadDegrees)}</strong>
-              <span>Kvalitet</span>
-              <strong>{getWindQualityLabel(lastMeasurement)}</strong>
-              <span>Samples</span>
-              <strong>{lastMeasurement.sampleCount}</strong>
-              <span>Back vektor (vald row-alt)</span>
-              <strong>{formatDegrees(lastMeasurement.headingDegrees)}</strong>
-              <span>Back vektor (row-alt)</span>
-              <strong>{formatOptionalDegrees(lastMeasurement.nativeDebug?.headings.backVectorHeadingRowDegrees)}</strong>
-              <span>Front vektor</span>
-              <strong>{formatOptionalDegrees(lastMeasurement.nativeDebug?.headings.frontVectorHeadingDegrees)}</strong>
-              <span>Ovankant (+Y)</span>
-              <strong>{formatOptionalDegrees(lastMeasurement.nativeDebug?.headings.topEdgeHeadingDegrees)}</strong>
-              <span>Högerkant (+X)</span>
-              <strong>{formatOptionalDegrees(lastMeasurement.nativeDebug?.headings.rightEdgeHeadingDegrees)}</strong>
-              <span>CL True</span>
-              <strong>{formatOptionalDegrees(lastMeasurement.nativeDebug?.clTrueHeadingDegrees)}</strong>
-              <span>CL Magnetic</span>
-              <strong>{formatOptionalDegrees(lastMeasurement.nativeDebug?.clMagneticHeadingDegrees)}</strong>
-              <span>M13/M23</span>
-              <strong>
-                {lastMeasurement.nativeDebug
-                  ? `${lastMeasurement.nativeDebug.matrix.m13.toFixed(3)} / ${lastMeasurement.nativeDebug.matrix.m23.toFixed(3)}`
-                  : 'saknas'}
-              </strong>
-              <span>M31/M32</span>
-              <strong>
-                {lastMeasurement.nativeDebug
-                  ? `${lastMeasurement.nativeDebug.matrix.m31.toFixed(3)} / ${lastMeasurement.nativeDebug.matrix.m32.toFixed(3)}`
-                  : 'saknas'}
-              </strong>
-            </div>
-          ) : (
-            <p className="course-sensor-debug-empty">Tryck vindpilen för att mäta heading.</p>
-          )}
-        </div>
         <div className="course-display-debug" aria-label="Banvy debug">
+          {windMeasurementSummary ? (
+            <span>{windMeasurementSummary}</span>
+          ) : null}
           <span>Referens: {getDisplayReferenceLabel(displayReference)}</span>
           {windRelativeDisplayAngle !== null ? (
             <span>Vind relativt referens: {formatSignedDegrees(windRelativeDisplayAngle)}</span>

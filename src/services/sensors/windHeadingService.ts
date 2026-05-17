@@ -2,9 +2,9 @@ import { Capacitor, registerPlugin } from '@capacitor/core'
 import { averageAnglesDegrees, getCircularSpreadDegrees, normalizeDegrees } from '../../domain/angles'
 import { measureWindHeading as measureMockWindHeading } from './mockSensorService'
 
-export const WIND_HEADING_SAMPLE_DURATION_MS = 8000
+export const WIND_HEADING_SAMPLE_DURATION_MS = 4000
 export const WIND_HEADING_SAMPLE_INTERVAL_MS = 100
-export const MIN_WIND_HEADING_SAMPLES = 50
+export const MIN_WIND_HEADING_SAMPLES = 30
 export const MAX_WIND_HEADING_SPREAD_DEGREES = 10
 
 export type WindHeadingReferenceFrame = 'true-north' | 'magnetic-north' | 'mock'
