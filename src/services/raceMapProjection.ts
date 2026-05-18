@@ -23,6 +23,10 @@ export type RaceMapProjection = {
 }
 
 const FALLBACK_HALF_SIZE_METERS = 50
+const MIN_TRACK_BOUND_SIZE_METERS = 80
+const AUXILIARY_POINT_INFLUENCE_FACTOR = 0.65
+const AUXILIARY_POINT_MIN_INFLUENCE_METERS = 90
+const TRACK_PADDING_FACTOR = 0.08
 
 export function createRaceMapProjection({
   samples,
@@ -33,16 +37,23 @@ export function createRaceMapProjection({
   course?: CourseDefinition
   currentPoint?: MapGeoPoint | null
 }): RaceMapProjection | null {
-  const geoPoints = getProjectionGeoPoints(samples, course, currentPoint)
+  const trackGeoPoints = samples.filter(isGeoPoint)
+  const auxiliaryGeoPoints = getAuxiliaryGeoPoints(course, currentPoint)
+  const referenceGeoPoints = trackGeoPoints.length > 0
+    ? trackGeoPoints
+    : [...trackGeoPoints, ...auxiliaryGeoPoints]
 
-  if (geoPoints.length === 0) {
+  if (referenceGeoPoints.length === 0) {
     return null
   }
 
-  const origin = getAveragePoint(geoPoints)
+  const origin = getAveragePoint(referenceGeoPoints)
   const rotationRadians = getCourseAxisRotationRadians(course)
-  const projectedPoints = geoPoints.map((point) => projectPoint(point, origin, rotationRadians))
-  const bounds = expandFlatBounds(getBounds(projectedPoints))
+  const projectedTrackPoints = trackGeoPoints.map((point) => projectPoint(point, origin, rotationRadians))
+  const projectedAuxiliaryPoints = auxiliaryGeoPoints.map((point) => projectPoint(point, origin, rotationRadians))
+  const bounds = projectedTrackPoints.length > 0
+    ? getTrackFocusedBounds(projectedTrackPoints, projectedAuxiliaryPoints)
+    : expandFlatBounds(getBounds(projectedAuxiliaryPoints))
 
   return {
     project: (point) => projectPoint(point, origin, rotationRadians),
@@ -52,13 +63,11 @@ export function createRaceMapProjection({
   }
 }
 
-function getProjectionGeoPoints(
-  samples: RaceSample[],
+function getAuxiliaryGeoPoints(
   course: CourseDefinition | undefined,
   currentPoint: MapGeoPoint | null | undefined,
 ): MapGeoPoint[] {
   return [
-    ...samples,
     currentPoint,
     course?.startLine?.port,
     course?.startLine?.starboard,
@@ -152,17 +161,62 @@ function getBounds(points: ProjectedMapPoint[]): RaceMapProjection['bounds'] {
   })
 }
 
+function getTrackFocusedBounds(
+  projectedTrackPoints: ProjectedMapPoint[],
+  projectedAuxiliaryPoints: ProjectedMapPoint[],
+): RaceMapProjection['bounds'] {
+  const expandedTrackBounds = expandFlatBounds(getBounds(projectedTrackPoints))
+  const trackWidth = expandedTrackBounds.maxX - expandedTrackBounds.minX
+  const trackHeight = expandedTrackBounds.maxY - expandedTrackBounds.minY
+  const maxAuxiliaryInfluenceX = Math.max(
+    AUXILIARY_POINT_MIN_INFLUENCE_METERS,
+    trackWidth * AUXILIARY_POINT_INFLUENCE_FACTOR,
+  )
+  const maxAuxiliaryInfluenceY = Math.max(
+    AUXILIARY_POINT_MIN_INFLUENCE_METERS,
+    trackHeight * AUXILIARY_POINT_INFLUENCE_FACTOR,
+  )
+
+  return projectedAuxiliaryPoints.reduce((bounds, point) => {
+    const boundedX = clamp(
+      point.x,
+      expandedTrackBounds.minX - maxAuxiliaryInfluenceX,
+      expandedTrackBounds.maxX + maxAuxiliaryInfluenceX,
+    )
+    const boundedY = clamp(
+      point.y,
+      expandedTrackBounds.minY - maxAuxiliaryInfluenceY,
+      expandedTrackBounds.maxY + maxAuxiliaryInfluenceY,
+    )
+
+    return {
+      minX: Math.min(bounds.minX, boundedX),
+      maxX: Math.max(bounds.maxX, boundedX),
+      minY: Math.min(bounds.minY, boundedY),
+      maxY: Math.max(bounds.maxY, boundedY),
+    }
+  }, expandedTrackBounds)
+}
+
 function expandFlatBounds(bounds: RaceMapProjection['bounds']): RaceMapProjection['bounds'] {
   const width = bounds.maxX - bounds.minX
   const height = bounds.maxY - bounds.minY
-  const xPadding = width === 0 ? FALLBACK_HALF_SIZE_METERS : 0
-  const yPadding = height === 0 ? FALLBACK_HALF_SIZE_METERS : 0
+  const safeWidth = Math.max(width, MIN_TRACK_BOUND_SIZE_METERS)
+  const safeHeight = Math.max(height, MIN_TRACK_BOUND_SIZE_METERS)
+  const xHalfExpansion = width === 0
+    ? FALLBACK_HALF_SIZE_METERS
+    : Math.max(0, (safeWidth - width) / 2)
+  const yHalfExpansion = height === 0
+    ? FALLBACK_HALF_SIZE_METERS
+    : Math.max(0, (safeHeight - height) / 2)
+  const xPadding = safeWidth * TRACK_PADDING_FACTOR
+  const yPadding = safeHeight * TRACK_PADDING_FACTOR
 
   return {
-    minX: bounds.minX - xPadding,
-    maxX: bounds.maxX + xPadding,
-    minY: bounds.minY - yPadding,
-    maxY: bounds.maxY + yPadding,
+    minX: bounds.minX - xHalfExpansion - xPadding,
+    maxX: bounds.maxX + xHalfExpansion + xPadding,
+    minY: bounds.minY - yHalfExpansion - yPadding,
+    maxY: bounds.maxY + yHalfExpansion + yPadding,
   }
 }
 
@@ -189,4 +243,8 @@ function toDegrees(radians: number): number {
 
 function normalizeDegrees(degrees: number): number {
   return ((degrees % 360) + 360) % 360
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value))
 }

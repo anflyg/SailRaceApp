@@ -1,9 +1,11 @@
-import { useMemo } from 'react'
+import { useMemo, type KeyboardEvent } from 'react'
 import { createRaceMapProjection, type MapGeoPoint, type ProjectedMapPoint } from '../services/raceMapProjection'
 import type { CourseDefinition, Race, RaceSample } from '../types'
 
 const VIEWBOX_SIZE = 320
 const VIEWBOX_PADDING = 26
+const VIEWBOX_CENTER = VIEWBOX_SIZE / 2
+const MIN_ZOOM_SCALE = 1
 
 export type RaceTrackMapTrack = {
   id: string
@@ -30,6 +32,10 @@ interface RaceTrackMapProps {
   }
   highlightPoint?: MapGeoPoint | null
   emphasizeStartLine?: boolean
+  zoomScale?: number
+  onActivate?: () => void
+  activationLabel?: string
+  className?: string
 }
 
 type ScreenPoint = {
@@ -45,6 +51,10 @@ export function RaceTrackMap({
   highlightSegment,
   highlightPoint,
   emphasizeStartLine = false,
+  zoomScale = MIN_ZOOM_SCALE,
+  onActivate,
+  activationLabel = 'Racekarta',
+  className = '',
 }: RaceTrackMapProps) {
   const mapTracks = useMemo(() => (
     tracks ?? [{
@@ -76,6 +86,19 @@ export function RaceTrackMap({
     )
   }
 
+  const handleMapKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (!onActivate) {
+      return
+    }
+
+    if (event.key !== 'Enter' && event.key !== ' ') {
+      return
+    }
+
+    event.preventDefault()
+    onActivate()
+  }
+
   const projectedCurrentPoint = currentPoint ? screenProjector(projection.project(currentPoint)) : null
   const projectedCurrentMarkers = currentMarkers
     ? currentMarkers.map((marker) => ({
@@ -95,11 +118,19 @@ export function RaceTrackMap({
   const leewardMark = getCourseMark(race.course?.leewardMark, projection.project, screenProjector)
   const windArrow = getWindArrow(race.course, projection.project, projection.projectHeadingDegrees, screenProjector)
 
-  return (
-    <div className="race-track-map">
-      <svg viewBox={`0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}`} role="img" aria-label="Racebana och spår">
-        <rect className="race-map-water" x="0" y="0" width={VIEWBOX_SIZE} height={VIEWBOX_SIZE} rx="10" />
-
+  const svg = (
+    <svg
+      className={className}
+      viewBox={`0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}`}
+      role="img"
+      aria-label="Racebana och spår"
+    >
+      <rect className="race-map-water" x="0" y="0" width={VIEWBOX_SIZE} height={VIEWBOX_SIZE} rx="10" />
+      <g
+        transform={zoomScale === MIN_ZOOM_SCALE
+          ? undefined
+          : `translate(${VIEWBOX_CENTER} ${VIEWBOX_CENTER}) scale(${zoomScale}) translate(-${VIEWBOX_CENTER} -${VIEWBOX_CENTER})`}
+      >
         {mapTracks.map((track) => {
           const path = createTrackPath(track.samples, projection.project, screenProjector)
 
@@ -168,7 +199,29 @@ export function RaceTrackMap({
             <path d="M -5 0 L 5 0 M 0 -5 L 0 5" />
           </g>
         ) : null}
-      </svg>
+      </g>
+    </svg>
+  )
+
+  if (!onActivate) {
+    return (
+      <div className="race-track-map">
+        {svg}
+      </div>
+    )
+  }
+
+  return (
+    <div
+      className="race-track-map race-track-map-interactive"
+      role="button"
+      tabIndex={0}
+      aria-label={activationLabel}
+      onClick={onActivate}
+      onKeyDown={handleMapKeyDown}
+    >
+      {svg}
+      <span className="race-map-open-button">Tryck för att förstora</span>
     </div>
   )
 }

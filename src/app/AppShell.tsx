@@ -11,6 +11,7 @@ import { getCourseAxisHeading } from '../domain/navigation'
 import { useDeviceAttitude } from '../hooks/useDeviceAttitude'
 import { useFilteredGps } from '../hooks/useFilteredGps'
 import { useLiveGps } from '../hooks/useLiveGps'
+import { useWakeLock } from '../hooks/useWakeLock'
 import {
   markStartGun,
   recordSampleIfDue,
@@ -96,6 +97,7 @@ export function AppShell() {
   const rollPitch = calculateRollPitchRelativeToCalibration(deviceAttitude, rollPitchCalibration)
   const isNavigationLocked = isStartTimerRunning
   const courseDefinition = useMemo(() => getCourseDefinition(course), [course])
+  useWakeLock(true)
 
   const handleManualViewChange = useCallback((nextView: AppView) => {
     if (isNavigationLocked && nextView !== activeView) {

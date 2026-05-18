@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { RaceLibrary } from '../../components/RaceLibrary'
 import { RaceTrackMap } from '../../components/RaceTrackMap'
 import { useRaceReplay, type ReplaySpeed } from '../../hooks/useRaceReplay'
@@ -29,6 +29,10 @@ type AnalysisState = {
   ghostRaceId: string | null
   currentReplayTime: number
 }
+
+const MAP_MIN_ZOOM = 1
+const MAP_MAX_ZOOM = 4
+const MAP_ZOOM_STEP = 0.5
 
 const analysisSections: Array<{ id: AnalysisSection; label: string }> = [
   { id: 'library', label: 'Bibliotek' },
@@ -394,6 +398,8 @@ function RaceOverview({
   selectedGhostRaceId: string | null
   onGhostRaceChange: (ghostRaceId: string | null) => void
 }) {
+  const [isMapExpanded, setIsMapExpanded] = useState(false)
+  const [expandedMapZoomScale, setExpandedMapZoomScale] = useState(MAP_MIN_ZOOM)
   const currentSample = replay.replayFrame?.sample ?? null
   const ghostOptions = useMemo(() => (
     race ? allRaces.filter((candidate) => candidate.id !== race.id) : []
@@ -433,6 +439,43 @@ function RaceOverview({
       label: `Ghost: ${ghostRace.name}`,
     }]
     : []
+  const openMap = () => {
+    setIsMapExpanded(true)
+  }
+  const closeMap = () => {
+    setIsMapExpanded(false)
+    setExpandedMapZoomScale(MAP_MIN_ZOOM)
+  }
+  const zoomIn = () => {
+    setExpandedMapZoomScale((currentZoomScale) => (
+      Math.min(MAP_MAX_ZOOM, currentZoomScale + MAP_ZOOM_STEP)
+    ))
+  }
+  const zoomOut = () => {
+    setExpandedMapZoomScale((currentZoomScale) => (
+      Math.max(MAP_MIN_ZOOM, currentZoomScale - MAP_ZOOM_STEP)
+    ))
+  }
+  const resetZoom = () => {
+    setExpandedMapZoomScale(MAP_MIN_ZOOM)
+  }
+
+  useEffect(() => {
+    if (!isMapExpanded) {
+      return
+    }
+
+    const handleEscapeKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') {
+        return
+      }
+
+      closeMap()
+    }
+
+    window.addEventListener('keydown', handleEscapeKey)
+    return () => window.removeEventListener('keydown', handleEscapeKey)
+  }, [isMapExpanded])
 
   if (!race) {
     return (
@@ -465,7 +508,33 @@ function RaceOverview({
         currentPoint={currentSample}
         currentMarkers={ghostMarkers}
         tracks={mapTracks}
+        onActivate={openMap}
+        activationLabel="Racekarta, tryck för att förstora"
       />
+
+      {isMapExpanded ? (
+        <div className="race-map-modal" role="dialog" aria-modal="true" aria-label="Förstorad racekarta">
+          <div className="race-map-modal-content">
+            <div className="race-map-modal-controls">
+              <button type="button" onClick={zoomOut} disabled={expandedMapZoomScale <= MAP_MIN_ZOOM}>−</button>
+              <button type="button" onClick={zoomIn} disabled={expandedMapZoomScale >= MAP_MAX_ZOOM}>+</button>
+              <button type="button" onClick={resetZoom}>Återställ</button>
+              <button type="button" className="race-map-modal-close" onClick={closeMap}>Stäng</button>
+            </div>
+
+            <div className="race-map-modal-track">
+              <RaceTrackMap
+                race={race}
+                currentPoint={currentSample}
+                currentMarkers={ghostMarkers}
+                tracks={mapTracks}
+                zoomScale={expandedMapZoomScale}
+                className="race-track-map-expanded-svg"
+              />
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <div className="ghost-replay-panel">
         <div className="ghost-race-labels">
