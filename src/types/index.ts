@@ -1,5 +1,13 @@
 export type AppView = 'setup' | 'course' | 'timer' | 'race' | 'analysis'
 
+export type {
+  CourseDefinition,
+  Race,
+  RaceSample,
+  RaceSummary,
+  SailingDay,
+} from './race'
+
 export type CountdownDuration = 5 | 4 | 3 | 2 | 1
 
 export type LiveGpsStatus = 'idle' | 'requesting' | 'watching' | 'error' | 'unavailable'
@@ -23,6 +31,7 @@ export interface LiveGpsReading {
 
 export interface FilteredGpsReading extends LiveGpsReading {
   sampleCount: number
+  displayCourseDegrees: number | null
 }
 
 export type CoursePointQuality = 'unset' | 'good' | 'poor'

@@ -44,10 +44,14 @@ Reason: when the boat is moving, GPS course is stable and directly reflects over
 - Use fused device orientation from iOS Core Motion.
 - Compute heading from the phone back-facing vector projected to the horizontal plane.
 - The back-facing vector maps to boat bow heading by mount design.
-- The app samples for 2 seconds at about 10 Hz and requires at least 5 valid
+- The app samples for 5 seconds at about 10 Hz and requires at least 25 valid
   samples.
 - Samples are averaged with circular averaging so headings around 0/359 degrees
   are handled correctly.
+- The app calculates circular spread from the shortest angular deviation to the
+  mean heading.
+- If spread is greater than 10 degrees, the one-shot wind measurement is marked
+  unstable and the wind heading is not saved.
 - The native plugin prefers Core Motion `xTrueNorthZVertical`.
 - If true north is unavailable it falls back to `xMagneticNorthZVertical`.
 - Magnetic fallback is documented but not declination-corrected yet.

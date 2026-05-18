@@ -10,7 +10,7 @@ Aster Race är en iPhone-app för kappsegling. Appen ska hjälpa seglaren att:
 - sätta upp en enkel kappseglingsbana
 - hantera startnedräkning
 - visa stora instrumentvärden under segling
-- senare kunna spela upp och analysera seglingen efteråt
+- spara, spela upp och analysera seglingen efteråt
 
 Appen är byggd för användarens egen iPhone under utveckling och körs i nuläget direkt via Xcode på fysisk iPhone, inte via App Store.
 
@@ -73,12 +73,14 @@ Begrepp:
 - `S` = stampning = fören upp/ned = pitch.
 - Yaw/heading, alltså vridning runt lodrät axel, ska inte påverka R/S nämnvärt.
 
-Telefonmontering enligt koden:
+Telefonmontering enligt kod och fysisk installationskrav:
 
+- Telefonen sitter på masten.
 - Telefonen sitter i portrait/stående.
 - Telefonens högerkant motsvarar styrbord.
 - Telefonens baksida pekar mot fören.
 - Telefonens skärm pekar mot aktern.
+- Telefonen kan luta lite framåt/bakåt beroende på mastlutning.
 
 Teckenkonvention i native-koden:
 
@@ -170,6 +172,10 @@ Nuvarande beteende:
 - Medan timern är `running` är manuell navigation låst. Appen stannar på Start, övriga navigationsknappar är inaktiverade och användaren kan inte manuellt byta vy.
 - När timern pausas eller återställs låses navigationen upp igen.
 - Automatisk övergång vid intern `-0:10` är uttryckligen tillåten trots navigationslåset. Då växlar appen till Segling och navigationen låses upp.
+- När en ny nedräkning startas skapar race logging-engine ett nytt race.
+- Om ett aktivt race redan finns avslutas det innan nästa race skapas.
+- När timern når 0 sätts `startGunTime` på det aktiva racet.
+- Efter start fortsätter logging tills racet stoppas, ersätts av ny nedräkning eller auto-avslutas av stillaliggande heuristik.
 
 Två UI-lägen:
 
@@ -271,14 +277,39 @@ Segling använder 1,5 knop som tröskel för pålitlig COG. Det är avsiktligt h
 
 ### Analys
 
-Analys är en placeholder för framtida replay och efteranalys.
+Analys är appens after-action-läge. Den får därför ha högre informationsdensitet än Bana,
+Start och Segling: fler tabeller, mindre siffror och mer metadata är okej eftersom
+användaren inte ska läsa den i samma stressade läge som under start eller aktiv segling.
 
 Nuvarande beteende:
 
-- Visar svensk placeholdertext.
-- Har placeholderknapp för spela/pausa.
-- Har uppspelningshastigheter 1x, 2x och 4x.
-- Ingen riktig raceinspelning, replaygrafik eller analysberäkning är kopplad ännu.
+- Segmenterad kontroll med `Bibliotek`, `Översikt`, `Start`, `Grafer` och `Data`.
+- `Bibliotek` är första vy och listar sparade race grupperade per datum.
+- Racekort visar namn, datum/tid, duration, distans, maxfart, sample count och favoritstatus.
+- Race kan öppnas, döpas om, raderas och favoritmarkeras från biblioteket.
+- När ett race öppnas växlar Analys till `Översikt`.
+- `Översikt` använder replay-engine med play/paus, reset, seek-slider och hastigheter 1x, 2x och 4x.
+- Replay drivs av en central `currentReplayTime` och interpolerar aktuell position och data mellan samples.
+- Datapanelen visar aktuell replaytid, fart, COG, VMG Bana, VMG Vind, lat/lon och GPS accuracy när data finns.
+- Banvyn/kartan är en lokal SVG/projektionsvy utan extern kartleverantör.
+- Kartan visar huvudspår, aktuell båtposition, startlinje, K1, L1 och vindpil när datan finns.
+- Om K1 och L1 finns roteras banvyn så K1 ligger uppåt och L1 nedåt.
+- Om K1/L1 saknas används nordorienterad vy.
+- Ghost replay kan lägga ett andra race ovanpå huvudracet.
+- Ghost använder samma `currentReplayTime` som huvudracet, men jämför relativ race-tid, inte absoluta klockslag.
+- Ghost-spår och ghost-position visas tunnare och mer transparent än huvudracet.
+- `Start` visar startanalys för valt race när startlinje, startskott och tillräckliga samples finns.
+- Startanalys letar efter linjepassage nära startskottet, interpolerar passagetid/fart/COG och visar osäkerhet.
+- `Grafer` och `Data` är reserverade för kommande analysundersidor.
+- Om inget race är valt visas en tydlig uppmaning att välja race i biblioteket.
+- Om valt race saknar samples visas tydlig tomdata-status i replay/karta.
+
+Framtida analysidéer:
+
+- grafer för fart, VMG, COG och eventuell vind över tid
+- bästa segment idag
+- referenslinje baserad på bästa segment
+- estimerade K1/L1 från vändpunkter när bana saknas eller är osäker
 
 ## 4. UI/UX-principer
 
@@ -352,13 +383,41 @@ Nuvarande state-flöde:
 - `StartTimerView` får banstate, live GPS och filtrerad GPS för TTL/BURN.
 - `StartTimerView` meddelar `AppShell` när timern kör via `onRunningChange`.
 - `StartTimerView` anropar `onFinish` vid -0:10, vilket växlar till Segling.
+- `AppShell` kopplar starttimerflödet till `raceLogger`: start av nedräkning skapar nytt race, startskott markerar `startGunTime` och reset/ny start kan avsluta aktivt race.
 - `RaceDashboardView` får banstate, filtrerad GPS-data och R/S som props.
 - `NavigationBar` visar fem vyknappar och disablar inaktiva vyer när navigationen är låst.
 - Live GPS-watch startas när aktiv vy inte är Analys.
 - `useDeviceAttitude` är aktiv när aktiv vy är Setup eller Segling.
 - `useFilteredGps` håller ungefär 3 sekunders glidande medelvärde för speed over ground och COG.
+- `raceLogger` använder filtrerad live-GPS när start-/raceflödet är aktivt, men Analys startar aldrig logging bara genom att öppnas.
+- `RaceAnalysisView` läser sparade race från storage-service och äger valt race, aktiv analysundersida, replay-state och ghost-val för analysflödet.
 
-Det finns ingen permanent lagring ännu. Vald startlängd, banpunkter, vindriktning och R/S-kalibrering finns bara i React-minne.
+Lokal racepersistens:
+
+- Race storage finns i `src/services/raceStorage.ts`.
+- Datamodellerna ligger i `src/types/race.ts`: `SailingDay`, `Race`, `RaceSample`, `CourseDefinition` och `RaceSummary`.
+- Storage använder `localStorage` med robust normalisering vid läsning och memory fallback om `localStorage` saknas.
+- Race grupperas via `SailingDay` med datumformat `YYYY-MM-DD`.
+- Flera race kan finnas samma datum.
+- `deleteRace` tar även bort race-id från aktuell `SailingDay` och rensar tomma dagar.
+- `appendRaceSample` räknar om summary, inklusive sample count, duration, distance, max speed och average speed när data finns.
+- Exponerade operationer är bland annat `createRace`, `getRace`, `listRaces`, `listSailingDays`, `listRacesByDay`, `updateRace`, `deleteRace`, `renameRace`, `toggleFavorite` och `appendRaceSample`.
+- Vald startlängd, banpunkter, vindriktning och R/S-kalibrering är fortfarande runtime-state och sparas inte permanent som användarinställningar.
+
+Race logging:
+
+- Logging-service finns i `src/services/raceLogger.ts`.
+- Ny startnedräkning betyder nytt race.
+- Aktivt race-id sparas separat från analysens valda race så modellen inte låses till ett enda öppet replay.
+- Sampling är batterisnål och drivs av en central loggingloop via start-/raceflödet.
+- Normal sampling sker var 5:e sekund.
+- Sista minuten före planerat startskott samplas var 1:a sekund.
+- Första 20 sekunderna efter startskott samplas var 1:a sekund.
+- Därefter går sampling tillbaka till 5 sekunder.
+- Om GPS-position saknas skapas inget tomt sample.
+- Auto-stop görs när fart är under 0,8 knop i 10 minuter.
+- Samples sparar minst timestamp, lat/lon och när tillgängligt accuracy, speedKnots och cogDegrees.
+- Loggern sparar också `headingDegrees` om det skickas in samt `vmgCourseKnots` och `vmgWindKnots` när referensdata finns.
 
 ## 6. Beräkningar
 
@@ -405,6 +464,30 @@ fart * cos(vinkeln mellan båtens kurs och bäringen till mål)
 ```
 
 Nuvarande mål är K1 när K1 och L1 är satta. Aktiv växling mellan K1 och L1 är inte implementerad.
+
+## VMG och VMC
+
+`VMG Bana` är appens nuvarande VMC mot ett banmål. Referensen ska normalt vara K1,
+aktivt banmål eller banaxeln, beroende på vilken analysnivå som finns tillgänglig.
+Det här är den mest robusta VMG/VMC-varianten eftersom den bygger på GPS
+course-over-ground och en geografisk referens, inte på telefonens sensorheading.
+
+`VMG Vind` beräknas mot uppmätt vindriktning. I appen betyder vindriktning den
+riktning vinden kommer från. När båten seglar uppvind, alltså mot den riktningen,
+ska VMG Vind därför bli positiv.
+
+Grundformeln är:
+
+```text
+speedKnots * cos(angleBetween(courseOverGround, referenceHeading))
+```
+
+Positivt värde betyder rörelse mot referensriktningen. Negativt värde betyder
+rörelse bort från referensriktningen.
+
+VMG Vind är känsligare än VMG Bana eftersom vindriktningen mäts via telefonens
+sensorer och beror på korrekt montering, nordreferens och hur vindmätningen görs.
+VMG Bana ska inte vara beroende av telefonens sensorheading.
 
 ### TTL/BURN
 
@@ -468,10 +551,25 @@ Vind:
 - Vind mäts med Core Motion via native plugin.
 - Pluginen samplar heading för telefonens bakåtriktade vektor.
 - Eftersom telefonens baksida pekar mot fören motsvarar den vektorn båtens framåtriktning.
-- Samples medelvärdesbildas cirkulärt i `useWindHeadingMeasurement`/`windHeadingService`.
+- Native `WindHeading` använder `getBackVectorHeading` och beräknar heading från telefonens back vector.
+- Back vector projiceras mot horisontalplanet innan heading räknas ut.
+- Projektionen gör att roll, pitch och normal mastlutning inte ska ge ett systematiskt headingfel så länge telefonens back vector har tillräcklig horisontell komponent.
+- Native-koden returnerar ingen heading om den horisontella komponenten är för svag.
+- Vindmätningen är en engångsmätning på 5 sekunder med 100 ms sample-intervall.
+- Minst 25 giltiga heading-samples krävs.
+- Samples medelvärdesbildas cirkulärt i `windHeadingService`.
+- `windHeadingService` beräknar också cirkulär spridning från kortaste vinkelavvikelse mot medelvärdet.
+- Om spridningen är större än 10° underkänns mätningen som ostabil och vindriktningen sparas inte.
 - True north används i första hand.
 - Magnetic north används som fallback när true north saknas.
 - Magnetisk fallback är inte deklinationskorrigerad.
+- `windHeadingService` returnerar även sample count, reference frame och accuracy-fält.
+- Native iOS returnerar `accuracyDegrees: null` eftersom pluginen inte får ett tydligt accuracy-värde från Core Motion i nuvarande implementation.
+- `useWindHeadingMeasurement` exponerar senaste mätresultatet till Bana för fälttest/debug.
+- Bana visar en kompakt sensor-debug efter vindmätning: back-vector heading, reference frame, accuracyDegrees, spreadDegrees, quality, sample count och texten `Montering: baksida mot fören`.
+- För att vindriktningen ska vara korrekt måste användaren mäta när telefonens baksida/fören representerar vindens riktning, normalt genom att båten pekar upp mot vinden vid mätningen.
+- Den sparade vindriktningen ska tolkas som riktningen vinden kommer från, inte riktningen vinden blåser mot.
+- Eftersom skärmen pekar akterut är det viktigt att all vindheading utgår från telefonens baksida. Nuvarande native-kod gör detta med back vector och undviker därmed en 180° skärm-/frontvektor-förväxling.
 
 Rullning/stampning:
 
@@ -495,6 +593,50 @@ Nuvarande sensorstatus:
 - `geolocationService.ts`, `headingService.ts`, `wakeLockService.ts` och `raceRecordingService.ts` är stubs/TODO.
 
 Om Core Motion, pluginen eller nordreferens saknas på native iOS sätts ingen fejkad vind. UI:t visar en kort felstatus och vind förblir ej satt.
+
+Sensorgranskning 2026-05-14:
+
+- `ios/App/App/AppDelegate.swift` registrerar native-pluginen `WindHeading`.
+- `getBackVectorHeading` använder Core Motion attitude med true-north frame när den finns och magnetic-north frame som fallback.
+- `backVectorHeadingDegrees(from:)` läser telefonens back vector från rotation matrix, projicerar den horisontellt och räknar heading med norr som 0°.
+- `getDeviceAttitude` använder samma plugin och rapporterar om heading är tillgänglig.
+- `deviceMotionService.ts` exponerar roll, pitch, reference frame och headingstatus till React.
+- `CourseSetupView.tsx` sätter vindriktning via `useWindHeadingMeasurement`, vilket i sin tur samplar native back-vector heading.
+- `CourseSetupView.tsx` visar enkel debug-info för senaste vindmätningen utan att ändra race-/analysflöden.
+- `RaceDashboardView.tsx` beräknar både VMG Bana och VMG Vind från GPS COG, inte från telefonens sensorheading.
+- `raceLogger.ts` loggar `vmgCourseKnots` och `vmgWindKnots` från filtrerad GPS COG och ban-/vindreferens.
+- `navigation.ts` innehåller den gemensamma VMG-formeln `speed * cos(angleBetween(courseOverGround, referenceHeading))`.
+
+Bedömning:
+
+- Krav 1, back vector: uppfyllt i native-koden.
+- Krav 2, horisontal projektion: uppfyllt i native-koden.
+- Krav 3, roll/pitch/mastlutning: hanteras genom projektionen, men bör fälttestas i faktisk mastmontering.
+- Krav 4, 180°-risk från skärmen akterut: native-koden använder back vector och bör därför inte vara 180° fel på grund av skärmens riktning.
+- Krav 5, VMG Vind-tolkning: kodens formel ger positivt värde vid rörelse mot sparad vindheading. Det är korrekt om sparad heading är vindens `from`-riktning.
+- Krav 6, VMG Bana: uppfyllt; den bygger på GPS COG och geografiskt mål/banaxel, inte på sensorheading.
+
+Kvarvarande risker:
+
+- Magnetic-north fallback är inte deklinationskorrigerad och kan ge systematiskt fel jämfört med GPS true bearing.
+- Native `accuracyDegrees` är för närvarande alltid `null`; debug-UI visar detta som saknat värde.
+- Field test behövs för att bekräfta att mastlutning, vibrationer och magnetisk störning inte ger praktiskt headingfel.
+
+Sensor-debug i Bana:
+
+- aktuell back-vector heading
+- reference frame: true-north eller magnetic-north
+- heading accuracy när native kan leverera den
+- cirkulär spridning och kvalitetsstatus
+- sample count vid vindmätning
+- tydlig text: `Montering: baksida mot fören`
+
+Planerad komplettering i Setup:
+
+- löpande roll/pitch bredvid aktuell headingdiagnostik
+- separat kalibreringsvy för att kontrollera om heading verkar 180° fel
+
+Rekommenderad separat kommande uppgift: `Sensor calibration and heading validation`.
 
 ## 8. iOS / Capacitor
 
@@ -566,16 +708,32 @@ Klart eller delvis klart:
 - Segling visar R/S kompakt när nolläge är kalibrerat.
 - Segling använder filtrerad live GPS för fart, position och COG när data finns.
 - Grundläggande matematik för bearing, VMG, vinklar och TTL/BURN finns.
+- Race storage/datamodell för `SailingDay`, `Race`, `RaceSample`, `CourseDefinition` och `RaceSummary`.
+- Lokal persistens för race med listning, daggruppering, uppdatering, radering, rename, favorit och append av samples.
+- Automatisk race logging kopplad till startnedräkning.
+- Batterisnål sampling: 5 s normalt, 1 s sista minuten före start och 1 s första 20 s efter start.
+- Racebibliotek i Analys med race grupperade per datum.
+- Replay-engine med `currentReplayTime`, play/paus/reset/seek, hastigheter och sampleinterpolation.
+- Analys/Översikt med replaykontroller och datapanel.
+- Banvy/karta i Analys som roterar K1 uppåt och L1 nedåt när banmärken finns.
+- Startanalys med linjepassage, delta mot startskott och konservativ osäkerhet.
+- Ghost replay med ett ghost-race synkat mot samma `currentReplayTime`.
+- Enkel sensor-debug i Bana för senaste vindmätning: back-vector heading, reference frame, accuracyDegrees, sample count och monteringstext.
 
 Inte klart:
 
 - Testad Core Motion-vindmätning på flera fysiska monteringar.
 - Långtidstest av R/S-mappning i faktisk mastmontering och under rörelse.
 - Deklinationskorrigering när magnetic north används.
+- Utökad sensor-debug i Setup med samlad headingdiagnostik och roll/pitch.
+- Sensor calibration and heading validation.
 - Wake lock kopplad till UI/livscykel.
-- Raceinspelning och lokal persistens.
-- Analys/replay med riktig data.
 - Aktivt ben/aktivt mål för VMG Bana.
+- Grafer i Analys.
+- Bästa segment idag.
+- Referenslinje baserad på bästa segment.
+- Estimerade K1/L1 från vändpunkter.
+- Flera ghost-/overlay-spår.
 - Fördjupad felhantering för sensorbehörigheter och dålig signalkvalitet.
 
 ## 10. Kända designbeslut och begränsningar
@@ -589,19 +747,26 @@ Inte klart:
 - K2/L2 är borttagna.
 - Gula punkter används men ska förstås som osäkra.
 - VMG-matematiken ska inte ändras utan separat uppgift och testning.
+- VMG Bana/VMC bygger på GPS COG och geografiskt mål/banaxel.
+- VMG Vind bygger på GPS COG mot uppmätt vindriktning, där vindriktning betyder riktningen vinden kommer från.
 - Timerlogiken är fortfarande komponentbaserad; därför låses navigationen när timern kör.
-- Permanent lagring införs separat. Nuvarande state är medvetet flyktigt.
+- Racepersistens finns lokalt, men banstate, startlängd och R/S-kalibrering är fortfarande medvetet flyktiga runtimevärden.
+- Analys är after-action och får därför vara informationsrikare än de aktiva seglingsvyerna.
+- Replay och ghost replay drivs av relativ race-tid via `currentReplayTime`, inte av absoluta klockslag.
+- Telefonens fysiska montage är ett hårt antagande för sensorlogiken: stående på masten, baksidan mot fören, skärmen mot aktern.
 - Ändringar i branding/färg får inte ändra vystruktur, storlekar, spacing, placering eller logik utan separat beslut.
 
 ## 11. Rekommenderade nästa utvecklingssteg
 
-1. Verifiera vindmätning med fysisk iPhone i faktisk montering.
-2. Långtidstesta R/S under verklig segling.
-3. Koppla `wakeLockService` till aktiv start-/seglingsperiod.
-4. Lägg till raceinspelning som tidsserie.
-5. Bygg Analys som replayvy baserad på inspelad data.
-6. Lägg till aktivt ben och målval för VMG Bana.
-7. Lägg till tester för vinklar, VMG-regler, TTL/BURN, R/S och timer-/navigationsbeteende.
+1. Bygg `Sensor calibration and heading validation` med tydlig debug för back-vector heading, reference frame, sample count, accuracy och roll/pitch.
+2. Verifiera vindmätning med fysisk iPhone i faktisk mastmontering.
+3. Långtidstesta R/S under verklig segling.
+4. Koppla `wakeLockService` till aktiv start-/seglingsperiod.
+5. Lägg till aktivt ben och målval för VMG Bana.
+6. Bygg grafer i Analys för fart, VMG, COG och vind över tid.
+7. Bygg bästa segment idag och referenslinje baserad på bästa segment.
+8. Estimera K1/L1 från vändpunkter när bana saknas.
+9. Lägg till tester för vinklar, VMG-regler, TTL/BURN, R/S, replay, startanalys och timer-/navigationsbeteende.
 
 ## 12. Verifiering för framtida ändringar
 
@@ -628,6 +793,8 @@ Manuell iPhone-verifiering bör kontrollera:
 - Appen roterar inte till landskap.
 - Setup visar GPS, fart, COG, Motion, Heading och R/S.
 - R/S kan kalibreras och visar rimliga värden.
+- Fysisk montering följer kravet: telefonen står på masten med baksidan mot fören och skärmen mot aktern.
+- Vindmätning visar rimlig riktning när fören/baksidan pekar upp mot vinden.
 - Bana visar bara A, B, K1 och L1.
 - Bana kan sätta/rensa punkter och visa grå/grön/gul kvalitet.
 - Bana kan mäta vind med vindpilen och rensa vind med nästa tryck.
@@ -637,3 +804,9 @@ Manuell iPhone-verifiering bör kontrollera:
 - Start kan starta, pausa, återställa och växla till Segling vid intern -0:10.
 - Automatisk växling till Segling vid intern -0:10 fungerar trots navigationslåset och låser upp navigationen efteråt.
 - Segling visar läsbara instrumentvärden, R/S och VMG-växling fungerar när både vind och primär bana finns.
+- Startnedräkning skapar ett race och sätter `startGunTime` vid 0.
+- Racebiblioteket listar sparade race grupperade per datum och kan rename/delete/favorite.
+- Översikt kan spela upp valt race med play/paus, seek och hastighet.
+- Banvyn visar spår, aktuell position och roterar K1 uppåt/L1 nedåt när båda finns.
+- Ghost replay visar ett annat race med samma relativa replaytid.
+- Startanalys visar korrekt saknad-data-status när startlinje, startskott eller samples saknas.

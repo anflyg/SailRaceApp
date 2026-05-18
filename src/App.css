@@ -263,6 +263,18 @@ button:focus-visible {
   color: var(--accent);
 }
 
+.course-display-debug {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 12px;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.15;
+  text-align: center;
+}
+
 .course-mark,
 .course-arrow {
   position: absolute;
@@ -332,7 +344,7 @@ button:focus-visible {
 /* Wind arrow button - positioned at top center of schematic */
 .wind-arrow-button {
   position: absolute;
-  z-index: 1;
+  z-index: 3;
   top: 116px;
   left: 50%;
   width: 80px;
@@ -402,6 +414,19 @@ button:focus-visible {
   background: rgba(185, 198, 211, 0.28);
   border-radius: 1.5px;
   transform: translateY(-50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.course-axis-line {
+  position: absolute;
+  top: 66px;
+  bottom: 66px;
+  left: 50%;
+  width: 2px;
+  border-radius: 1px;
+  transform: translateX(-50%);
+  background: rgba(185, 198, 211, 0.2);
   pointer-events: none;
   z-index: 0;
 }
@@ -697,9 +722,777 @@ button:focus-visible {
   font-variant-numeric: tabular-nums;
 }
 
-.analysis-panel {
-  display: grid;
+.view-section.analysis-view {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
   gap: 12px;
+  padding: 12px;
+  overflow: hidden;
+}
+
+.analysis-header {
+  flex: 0 0 auto;
+  gap: 6px;
+}
+
+.analysis-header h2,
+.analysis-placeholder-panel h3,
+.race-library-empty h3,
+.race-day-heading h3 {
+  margin: 0;
+  color: var(--text-high);
+  letter-spacing: 0;
+}
+
+.analysis-header h2 {
+  font-size: clamp(1.55rem, 5vw, 2.05rem);
+  line-height: 1.05;
+}
+
+.analysis-kicker {
+  margin: 0 0 4px;
+  color: var(--accent);
+  font-size: 0.76rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.placeholder-note {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.analysis-segmented-control {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  flex: 0 0 auto;
+  gap: 5px;
+  padding: 5px;
+  border: 1px solid rgba(185, 198, 211, 0.22);
+  border-radius: 14px;
+  background: rgba(3, 20, 38, 0.72);
+}
+
+.analysis-segmented-control button {
+  min-width: 0;
+  min-height: 38px;
+  padding: 8px 3px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: clamp(0.68rem, 2.3vw, 0.82rem);
+  font-weight: 850;
+}
+
+.analysis-segmented-control button.active {
+  background: #0d6fa8;
+  color: var(--text-high);
+  box-shadow: 0 0 0 1px rgba(53, 194, 255, 0.4) inset;
+}
+
+.race-library {
+  display: grid;
+  flex: 1 1 auto;
+  min-height: 0;
+  align-content: start;
+  gap: 12px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.race-day-group {
+  display: grid;
+  gap: 8px;
+}
+
+.race-day-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 2px;
+}
+
+.race-day-heading h3 {
+  font-size: 1rem;
+  font-weight: 900;
+  text-transform: capitalize;
+}
+
+.race-day-heading span {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.race-card-list {
+  display: grid;
+  gap: 8px;
+}
+
+.race-library-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid rgba(185, 198, 211, 0.22);
+  border-radius: 8px;
+  background: rgba(7, 31, 61, 0.94);
+}
+
+.race-library-card.selected {
+  border-color: rgba(53, 194, 255, 0.62);
+  box-shadow: 0 0 0 1px rgba(53, 194, 255, 0.22) inset;
+}
+
+.race-card-main {
+  display: grid;
+  min-width: 0;
+  gap: 7px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+.race-card-title-row {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.race-card-name {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-high);
+  font-size: 1.03rem;
+  font-weight: 900;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.favorite-badge {
+  flex: 0 0 auto;
+  border: 1px solid rgba(255, 133, 0, 0.52);
+  border-radius: 999px;
+  padding: 3px 7px;
+  background: rgba(255, 133, 0, 0.16);
+  color: #ffb15c;
+  font-size: 0.68rem;
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.race-card-time {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 750;
+}
+
+.race-card-stats,
+.selected-race-basics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.race-card-stats span,
+.selected-race-basics div {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+  padding: 7px 6px;
+  border-radius: 8px;
+  background: rgba(3, 20, 38, 0.58);
+}
+
+.race-card-stats strong,
+.selected-race-basics dd {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: var(--text-high);
+  font-size: 0.9rem;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.race-card-stats small,
+.selected-race-basics dt {
+  color: var(--text-muted);
+  font-size: 0.66rem;
+  font-weight: 850;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.race-card-actions {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.race-card-actions button {
+  min-width: 0;
+  min-height: 34px;
+  padding: 7px 4px;
+  border: 1px solid rgba(185, 198, 211, 0.2);
+  border-radius: 8px;
+  background: rgba(10, 42, 77, 0.86);
+  color: var(--text-high);
+  font-size: 0.75rem;
+  font-weight: 850;
+}
+
+.race-card-actions .danger-action {
+  border-color: rgba(255, 118, 118, 0.42);
+  background: rgba(102, 22, 31, 0.74);
+  color: #ffd1d1;
+}
+
+.race-library-empty,
+.analysis-placeholder-panel {
+  display: grid;
+  flex: 1 1 auto;
+  min-height: 0;
+  align-content: center;
+  gap: 10px;
+  padding: 18px;
+  border: 1px dashed rgba(185, 198, 211, 0.28);
+  border-radius: 8px;
+  background: rgba(3, 20, 38, 0.58);
+}
+
+.race-library-empty h3,
+.analysis-placeholder-panel h3 {
+  font-size: 1.25rem;
+}
+
+.race-library-empty p,
+.analysis-placeholder-panel p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.94rem;
+  font-weight: 650;
+  line-height: 1.4;
+}
+
+.analysis-placeholder-panel {
+  align-content: start;
+  overflow-y: auto;
+}
+
+.analysis-placeholder-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.selected-race-basics {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0;
+}
+
+.race-overview-panel {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+}
+
+.race-track-map {
+  display: grid;
+  min-height: 240px;
+  place-items: center;
+  border: 1px solid rgba(185, 198, 211, 0.22);
+  border-radius: 8px;
+  background: rgba(3, 20, 38, 0.7);
+  overflow: hidden;
+}
+
+.race-track-map-interactive {
+  position: relative;
+}
+
+.race-track-map-interactive:hover,
+.race-track-map-interactive:focus-visible {
+  cursor: pointer;
+  border-color: rgba(53, 194, 255, 0.5);
+}
+
+.race-track-map-hint {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(3, 20, 38, 0.76);
+  color: var(--text-muted);
+  font-size: 0.66rem;
+  font-weight: 850;
+}
+
+.race-map-open-button {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  min-height: 28px;
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: rgba(3, 20, 38, 0.76);
+  color: var(--text-muted);
+  font-size: 0.66rem;
+  font-weight: 850;
+  line-height: 1;
+}
+
+.race-track-map.empty {
+  padding: 18px;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.race-track-map svg {
+  display: block;
+  width: 100%;
+  max-height: min(46dvh, 390px);
+}
+
+.race-map-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  align-items: stretch;
+  justify-items: stretch;
+  height: 100dvh;
+  padding:
+    max(12px, calc(env(safe-area-inset-top, 0px) + 8px))
+    10px
+    max(12px, calc(env(safe-area-inset-bottom, 0px) + 8px));
+  background: rgba(3, 20, 38, 0.86);
+}
+
+.race-map-modal-content {
+  display: grid;
+  min-height: 0;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 8px;
+}
+
+.race-map-modal-controls {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, auto));
+  justify-content: end;
+  gap: 6px;
+}
+
+.race-map-modal-controls button {
+  min-height: 34px;
+  border: 1px solid rgba(185, 198, 211, 0.24);
+  border-radius: 8px;
+  padding: 6px 9px;
+  background: rgba(7, 31, 61, 0.94);
+  color: var(--text-high);
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+.race-map-modal-close {
+  min-width: 64px;
+}
+
+.race-map-modal-track {
+  min-height: 0;
+  border: 1px solid rgba(185, 198, 211, 0.24);
+  border-radius: 8px;
+  background: rgba(3, 20, 38, 0.8);
+  overflow: hidden;
+}
+
+.race-track-map-expanded-svg {
+  width: 100%;
+  height: min(100%, calc(100dvh - 132px));
+  max-height: none;
+}
+
+.race-map-water {
+  fill: rgba(6, 29, 55, 0.98);
+}
+
+.race-map-track {
+  fill: none;
+  stroke: rgba(53, 194, 255, 0.88);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 4;
+}
+
+.race-map-track.primary-track {
+  filter: drop-shadow(0 0 5px rgba(53, 194, 255, 0.25));
+}
+
+.race-map-track.ghost-track {
+  stroke: rgba(255, 177, 92, 0.58);
+  stroke-dasharray: 6 5;
+  stroke-width: 2.5;
+}
+
+.race-map-start-line {
+  stroke: #f7f7f7;
+  stroke-dasharray: 5 4;
+  stroke-linecap: round;
+  stroke-width: 3;
+}
+
+.race-map-start-line.emphasized {
+  stroke: #ffffff;
+  stroke-dasharray: none;
+  stroke-width: 5;
+  filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.35));
+}
+
+.race-map-highlight-segment {
+  stroke: #ffb15c;
+  stroke-linecap: round;
+  stroke-width: 6;
+  filter: drop-shadow(0 0 5px rgba(255, 133, 0, 0.35));
+}
+
+.race-map-mark circle {
+  fill: rgba(255, 133, 0, 0.9);
+  stroke: rgba(255, 255, 255, 0.7);
+  stroke-width: 2;
+}
+
+.race-map-mark.leeward circle {
+  fill: rgba(62, 194, 133, 0.9);
+}
+
+.race-map-mark text,
+.race-map-wind-arrow text {
+  fill: #ffffff;
+  font-size: 9px;
+  font-weight: 900;
+  text-anchor: middle;
+}
+
+.race-map-wind-arrow path {
+  fill: #ffb15c;
+  stroke: rgba(3, 20, 38, 0.8);
+  stroke-width: 1.5;
+}
+
+.race-map-wind-arrow text {
+  fill: #ffb15c;
+  font-size: 8px;
+}
+
+.race-map-boat circle:first-child {
+  fill: #ffffff;
+  stroke: rgba(0, 152, 247, 0.9);
+  stroke-width: 3;
+}
+
+.race-map-boat circle:last-child {
+  fill: #031426;
+}
+
+.race-map-boat.ghost-boat {
+  opacity: 0.78;
+}
+
+.race-map-boat.ghost-boat circle:first-child {
+  fill: rgba(255, 177, 92, 0.92);
+  stroke: rgba(3, 20, 38, 0.9);
+  stroke-width: 2;
+}
+
+.race-map-boat.ghost-boat circle:last-child {
+  fill: rgba(3, 20, 38, 0.92);
+}
+
+.race-map-crossing-point circle {
+  fill: rgba(255, 255, 255, 0.94);
+  stroke: #ff8500;
+  stroke-width: 3;
+}
+
+.race-map-crossing-point path {
+  stroke: #031426;
+  stroke-linecap: round;
+  stroke-width: 2;
+}
+
+.ghost-replay-panel {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid rgba(185, 198, 211, 0.18);
+  border-radius: 8px;
+  background: rgba(3, 20, 38, 0.62);
+}
+
+.ghost-race-labels {
+  display: grid;
+  gap: 3px;
+  color: var(--text-high);
+  font-size: 0.78rem;
+  font-weight: 850;
+  line-height: 1.25;
+}
+
+.ghost-race-labels span:last-child {
+  color: #ffb15c;
+}
+
+.ghost-replay-panel label {
+  display: grid;
+  gap: 5px;
+}
+
+.ghost-replay-panel label span {
+  color: var(--text-muted);
+  font-size: 0.67rem;
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.ghost-replay-panel select {
+  min-width: 0;
+  min-height: 36px;
+  border: 1px solid rgba(185, 198, 211, 0.24);
+  border-radius: 8px;
+  padding: 7px 8px;
+  background: rgba(7, 31, 61, 0.95);
+  color: var(--text-high);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.ghost-replay-panel select:disabled {
+  opacity: 0.5;
+}
+
+.ghost-replay-panel p {
+  margin: 0;
+  color: var(--accent);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.start-analysis-panel {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+}
+
+.start-analysis-result {
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+  border: 1px solid rgba(185, 198, 211, 0.22);
+  border-radius: 8px;
+  background: rgba(7, 31, 61, 0.92);
+}
+
+.start-analysis-result h3,
+.start-analysis-result p {
+  margin: 0;
+}
+
+.start-analysis-result h3 {
+  color: var(--text-high);
+  font-size: 1.2rem;
+  line-height: 1.15;
+}
+
+.start-analysis-result p:last-child {
+  color: var(--text-muted);
+  font-size: 0.86rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.start-analysis-result.ok {
+  border-color: rgba(62, 194, 133, 0.48);
+}
+
+.start-analysis-result.uncertain {
+  border-color: rgba(255, 133, 0, 0.55);
+}
+
+.start-analysis-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  margin: 0;
+}
+
+.start-analysis-grid div {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+  padding: 9px 8px;
+  border: 1px solid rgba(185, 198, 211, 0.14);
+  border-radius: 8px;
+  background: rgba(3, 20, 38, 0.62);
+}
+
+.start-analysis-grid dt {
+  color: var(--text-muted);
+  font-size: 0.67rem;
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.start-analysis-grid dd {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: var(--text-high);
+  font-size: 0.92rem;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.replay-control-bar {
+  display: grid;
+  grid-template-columns: minmax(88px, 0.8fr) minmax(74px, 0.65fr) minmax(132px, 1.25fr);
+  gap: 7px;
+}
+
+.replay-play-button,
+.replay-reset-button {
+  min-height: 42px;
+  border-radius: 10px;
+  font-size: 0.9rem;
+}
+
+.replay-speed-control {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid rgba(185, 198, 211, 0.22);
+  border-radius: 10px;
+  background: rgba(3, 20, 38, 0.7);
+}
+
+.replay-speed-control button {
+  min-width: 0;
+  min-height: 34px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.replay-speed-control button.active {
+  background: rgba(0, 152, 247, 0.82);
+  color: var(--text-high);
+}
+
+.replay-timeline {
+  display: grid;
+  gap: 5px;
+  padding: 10px;
+  border: 1px solid rgba(185, 198, 211, 0.22);
+  border-radius: 8px;
+  background: rgba(7, 31, 61, 0.92);
+}
+
+.replay-time-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--text-high);
+  font-size: 0.82rem;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.replay-timeline input[type='range'] {
+  width: 100%;
+  accent-color: var(--primary-strong);
+}
+
+.replay-data-panel {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  margin: 0;
+}
+
+.replay-data-panel div {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+  padding: 9px 8px;
+  border: 1px solid rgba(185, 198, 211, 0.14);
+  border-radius: 8px;
+  background: rgba(3, 20, 38, 0.62);
+}
+
+.replay-data-panel dt {
+  color: var(--text-muted);
+  font-size: 0.67rem;
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.replay-data-panel dd {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: var(--text-high);
+  font-size: 0.98rem;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.replay-sample-status {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 750;
 }
 
 @media (max-width: 920px) {
@@ -759,6 +1552,11 @@ button:focus-visible {
   .course-schematic::before {
     left: 48px;
     right: 48px;
+  }
+
+  .course-axis-line {
+    top: 58px;
+    bottom: 58px;
   }
 
   .wind-arrow-button {
@@ -830,5 +1628,25 @@ button:focus-visible {
   .metric-context-label {
     font-size: 0.7rem;
     padding: 5px 7px;
+  }
+
+  .race-card-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .selected-race-basics {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .replay-control-bar {
+    grid-template-columns: minmax(72px, 0.85fr) minmax(64px, 0.75fr) minmax(112px, 1.4fr);
+  }
+
+  .replay-data-panel dd {
+    font-size: 0.9rem;
+  }
+
+  .start-analysis-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
