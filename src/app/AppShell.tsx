@@ -18,6 +18,7 @@ import {
   startRaceLogging,
   stopActiveRace,
 } from '../services/raceLogger'
+import { loadAppSettings, saveAppSettings } from '../services/appSettingsStorage'
 import type {
   AppView,
   CountdownDuration,
@@ -91,6 +92,8 @@ export function AppShell() {
   const [isStartTimerRunning, setIsStartTimerRunning] = useState(false)
   const [courseGpsStatus, setCourseGpsStatus] = useState<string | null>(null)
   const [rollPitchCalibration, setRollPitchCalibration] = useState<RollPitchCalibration | null>(null)
+  const [laylineEnabled, setLaylineEnabled] = useState(() => loadAppSettings().layline.enabled)
+  const [laylineAlphaDegrees, setLaylineAlphaDegrees] = useState(() => loadAppSettings().layline.alphaDegrees)
   const liveGps = useLiveGps(activeView !== 'analysis')
   const filteredGps = useFilteredGps(liveGps)
   const deviceAttitude = useDeviceAttitude(activeView === 'setup' || activeView === 'race')
@@ -98,6 +101,15 @@ export function AppShell() {
   const isNavigationLocked = isStartTimerRunning
   const courseDefinition = useMemo(() => getCourseDefinition(course), [course])
   useWakeLock(true)
+
+  useEffect(() => {
+    saveAppSettings({
+      layline: {
+        enabled: laylineEnabled,
+        alphaDegrees: laylineAlphaDegrees,
+      },
+    })
+  }, [laylineAlphaDegrees, laylineEnabled])
 
   const handleManualViewChange = useCallback((nextView: AppView) => {
     if (isNavigationLocked && nextView !== activeView) {
@@ -218,6 +230,10 @@ export function AppShell() {
         rollPitch={rollPitch}
         isCalibrated={rollPitchCalibration !== null}
         onCalibrate={calibrateRollPitch}
+        laylineEnabled={laylineEnabled}
+        laylineAlphaDegrees={laylineAlphaDegrees}
+        onLaylineEnabledChange={setLaylineEnabled}
+        onLaylineAlphaDegreesChange={setLaylineAlphaDegrees}
       />
     ),
     course: (
@@ -244,7 +260,15 @@ export function AppShell() {
         onFinish={handleTimerFinish}
       />
     ),
-    race: <RaceDashboardView course={course} gps={filteredGps} rollPitch={rollPitch} />,
+    race: (
+      <RaceDashboardView
+        course={course}
+        gps={filteredGps}
+        rollPitch={rollPitch}
+        laylineEnabled={laylineEnabled}
+        laylineAlphaDegrees={laylineAlphaDegrees}
+      />
+    ),
     analysis: <RaceAnalysisView />,
   }[activeView]
 

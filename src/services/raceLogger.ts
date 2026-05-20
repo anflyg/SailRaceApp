@@ -1,11 +1,18 @@
 import { calculateBearingDegrees, calculateVelocityMadeGood } from '../domain/navigation'
 import {
+  appendRaceEvent,
   appendRaceSample,
   createRace,
   getRace,
   updateRace,
 } from './raceStorage'
-import type { CourseDefinition, FilteredGpsReading, Race, RaceSample } from '../types'
+import type {
+  CourseDefinition,
+  FilteredGpsReading,
+  LaylineVariant,
+  Race,
+  RaceSample,
+} from '../types'
 
 const LOGGER_STATE_KEY = 'aster-race:race-logger:v1'
 const NORMAL_SAMPLE_INTERVAL_MS = 5000
@@ -37,6 +44,17 @@ export type RecordRaceSampleInput = {
   course?: CourseDefinition
   headingDegrees?: number
   now?: Date
+}
+
+export type RecordLaylineTackEventInput = {
+  timestamp?: string
+  latitude: number
+  longitude: number
+  speedKnots?: number
+  cogDegrees?: number
+  alphaDegrees: number
+  postTackHeadingDegrees: number
+  laylineVariant: LaylineVariant
 }
 
 let memoryLoggerState = createEmptyLoggerState()
@@ -199,6 +217,36 @@ export function recordSampleIfDue({
 
 export function getActiveRaceId(): string | null {
   return loadLoggerState().activeRaceId
+}
+
+export function recordLaylineTackEventIfActive({
+  timestamp = new Date().toISOString(),
+  latitude,
+  longitude,
+  speedKnots,
+  cogDegrees,
+  alphaDegrees,
+  postTackHeadingDegrees,
+  laylineVariant,
+}: RecordLaylineTackEventInput): Race | null {
+  const activeRaceId = getActiveRaceId()
+
+  if (!activeRaceId) {
+    return null
+  }
+
+  return appendRaceEvent(activeRaceId, {
+    type: 'layline-tack',
+    timestamp,
+    latitude,
+    longitude,
+    speedKnots,
+    cogDegrees,
+    alphaDegrees,
+    postTackHeadingDegrees,
+    laylineVariant,
+    target: 'K1',
+  })
 }
 
 function createEmptyLoggerState(): RaceLoggerState {

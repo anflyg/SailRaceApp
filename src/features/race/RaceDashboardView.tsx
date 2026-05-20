@@ -1,10 +1,13 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { formatDegrees, formatKnots, formatSignedDegrees, formatSignedKnots } from '../../domain/format'
 import {
   calculateBearingDegrees,
   calculateVelocityMadeGood,
   hasPrimaryCourse,
 } from '../../domain/navigation'
+import { useLaylineWarning } from './useLaylineWarning'
+import { playLaylineSignal, playLaylineTick } from '../../services/laylineAudio'
+import { recordLaylineTackEventIfActive } from '../../services/raceLogger'
 import type { CourseState, FilteredGpsReading, GeoPoint, RollPitchValues } from '../../types'
 
 type VelocityMode = 'vmg' | 'vmc'
@@ -13,6 +16,8 @@ interface RaceDashboardViewProps {
   course: CourseState
   gps: FilteredGpsReading
   rollPitch: RollPitchValues | null
+  laylineEnabled: boolean
+  laylineAlphaDegrees: number
 }
 
 function getGpsPosition(gps: FilteredGpsReading): GeoPoint | null {
@@ -26,8 +31,15 @@ function getGpsPosition(gps: FilteredGpsReading): GeoPoint | null {
   }
 }
 
-export function RaceDashboardView({ course, gps, rollPitch }: RaceDashboardViewProps) {
+export function RaceDashboardView({
+  course,
+  gps,
+  rollPitch,
+  laylineEnabled,
+  laylineAlphaDegrees,
+}: RaceDashboardViewProps) {
   const [activeVelocityMode, setActiveVelocityMode] = useState<VelocityMode>('vmc')
+  const previousCountdownValueRef = useRef<number | null>(null)
   const speedKnots = gps.speedKnots
   const courseHeading = gps.displayCourseDegrees
   const hasDisplayCourse = courseHeading !== null
@@ -39,6 +51,12 @@ export function RaceDashboardView({ course, gps, rollPitch }: RaceDashboardViewP
     : null
   const hasTargetVmc = hasPrimaryCourse(course)
   const canToggleVelocityMode = hasWindVmg && hasTargetVmc
+  const laylineWarning = useLaylineWarning({
+    course,
+    gps,
+    enabled: laylineEnabled,
+    alphaDegrees: laylineAlphaDegrees,
+  })
 
   const selectedVelocityMode: VelocityMode | null = hasTargetVmc && activeVelocityMode === 'vmc'
     ? 'vmc'
@@ -60,20 +78,81 @@ export function RaceDashboardView({ course, gps, rollPitch }: RaceDashboardViewP
     : selectedVelocityMode === 'vmg'
       ? 'VMG Vind'
       : 'Ej satt'
-  const velocityValue = velocityMadeGood !== null ? formatSignedKnots(velocityMadeGood) : '--'
-  const velocityClassName = selectedVelocityMode === 'vmc'
+  const velocityValue = laylineWarning.isActive
+    ? `${laylineWarning.countdownValue ?? '--'}`
+    : velocityMadeGood !== null
+      ? formatSignedKnots(velocityMadeGood)
+      : '--'
+  const velocityClassName = laylineWarning.isActive
+    ? 'velocity-mode-layline'
+    : selectedVelocityMode === 'vmc'
     ? 'velocity-mode-vmc'
     : selectedVelocityMode === 'vmg'
       ? 'velocity-mode-vmg'
       : 'velocity-mode-unset'
+  const velocityLabelForDisplay = laylineWarning.isActive ? 'LAYLINE' : velocityLabel
+  const canInteractVelocityMode = canToggleVelocityMode && !laylineWarning.isActive
 
   const toggleVelocityMode = () => {
-    if (!canToggleVelocityMode) {
+    if (!canInteractVelocityMode) {
       return
     }
 
     setActiveVelocityMode((current) => (current === 'vmc' ? 'vmg' : 'vmc'))
   }
+
+  useEffect(() => {
+    const countdownValue = laylineWarning.countdownValue
+
+    if (countdownValue === null) {
+      previousCountdownValueRef.current = null
+      return
+    }
+
+    if (previousCountdownValueRef.current === countdownValue) {
+      return
+    }
+
+    if (countdownValue >= 0) {
+      if (countdownValue === 10 || countdownValue === 0) {
+        playLaylineSignal()
+      } else {
+        playLaylineTick()
+      }
+    }
+
+    if (
+      countdownValue === 0 &&
+      previousCountdownValueRef.current !== 0 &&
+      gps.latitude !== null &&
+      gps.longitude !== null &&
+      laylineWarning.laylineVariant !== null &&
+      laylineWarning.postTackHeadingDegrees !== null
+    ) {
+      recordLaylineTackEventIfActive({
+        timestamp: gps.timestamp !== null ? new Date(gps.timestamp).toISOString() : new Date().toISOString(),
+        latitude: gps.latitude,
+        longitude: gps.longitude,
+        speedKnots: gps.speedKnots ?? undefined,
+        cogDegrees: gps.courseDegrees ?? undefined,
+        alphaDegrees: laylineAlphaDegrees,
+        postTackHeadingDegrees: laylineWarning.postTackHeadingDegrees,
+        laylineVariant: laylineWarning.laylineVariant,
+      })
+    }
+
+    previousCountdownValueRef.current = countdownValue
+  }, [
+    gps.courseDegrees,
+    gps.latitude,
+    gps.longitude,
+    gps.speedKnots,
+    gps.timestamp,
+    laylineAlphaDegrees,
+    laylineWarning.countdownValue,
+    laylineWarning.laylineVariant,
+    laylineWarning.postTackHeadingDegrees,
+  ])
 
   return (
     <section className="view-section race-view">
@@ -89,10 +168,10 @@ export function RaceDashboardView({ course, gps, rollPitch }: RaceDashboardViewP
         </div>
 
         <div
-          className={`metric-box velocity-made-good ${velocityClassName} ${canToggleVelocityMode ? 'can-toggle' : ''}`}
-          aria-label={velocityLabel}
-          role={canToggleVelocityMode ? 'button' : undefined}
-          tabIndex={canToggleVelocityMode ? 0 : undefined}
+          className={`metric-box velocity-made-good ${velocityClassName} ${canInteractVelocityMode ? 'can-toggle' : ''}`}
+          aria-label={velocityLabelForDisplay}
+          role={canInteractVelocityMode ? 'button' : undefined}
+          tabIndex={canInteractVelocityMode ? 0 : undefined}
           onClick={toggleVelocityMode}
           onKeyDown={(event) => {
             if (event.key === 'Enter' || event.key === ' ') {
@@ -102,7 +181,7 @@ export function RaceDashboardView({ course, gps, rollPitch }: RaceDashboardViewP
           }}
         >
           <span className="metric-value">{velocityValue}</span>
-          <span className="metric-label">{velocityLabel}</span>
+          <span className="metric-label">{velocityLabelForDisplay}</span>
         </div>
       </div>
 

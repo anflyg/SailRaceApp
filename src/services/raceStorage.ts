@@ -1,4 +1,12 @@
-import type { CourseDefinition, Race, RaceSample, RaceSummary, SailingDay } from '../types'
+import type {
+  CourseDefinition,
+  LaylineVariant,
+  Race,
+  RaceEvent,
+  RaceSample,
+  RaceSummary,
+  SailingDay,
+} from '../types'
 
 const STORAGE_KEY = 'aster-race:race-storage:v1'
 const STORAGE_VERSION = 1
@@ -19,6 +27,7 @@ export type CreateRaceInput = {
   endTime?: string
   course?: CourseDefinition
   samples?: RaceSample[]
+  events?: RaceEvent[]
   isFavorite?: boolean
 }
 
@@ -63,6 +72,7 @@ export function createRace(input: CreateRaceInput = {}): Race {
     endTime: input.endTime,
     course: input.course,
     samples: input.samples ? [...input.samples] : [],
+    events: input.events ? [...input.events] : [],
     isFavorite: input.isFavorite ?? false,
   }
 
@@ -118,6 +128,7 @@ export function updateRace(id: string, patch: RacePatch): Race | null {
     id: currentRace.id,
     dayId: currentRace.dayId,
     samples: patch.samples ? [...patch.samples] : currentRace.samples,
+    events: patch.events ? [...patch.events] : currentRace.events,
   }
 
   nextRace.summary = calculateRaceSummary(nextRace)
@@ -185,6 +196,21 @@ export function appendRaceSample(raceId: string, sample: RaceSample): Race | nul
 
   race.samples = [...race.samples, addElapsedSecondsIfAvailable(race, sample)]
   race.summary = calculateRaceSummary(race)
+  state.racesById[raceId] = race
+  saveStorageState(state)
+
+  return clone(race)
+}
+
+export function appendRaceEvent(raceId: string, event: RaceEvent): Race | null {
+  const state = loadStorageState()
+  const race = state.racesById[raceId]
+
+  if (!race) {
+    return null
+  }
+
+  race.events = [...race.events, event]
   state.racesById[raceId] = race
   saveStorageState(state)
 
@@ -308,6 +334,7 @@ function compactStorageState(state: RaceStorageState): RaceStorageState {
     const normalizedRace = {
       ...race,
       samples: [...race.samples],
+      events: [...race.events],
       summary: calculateRaceSummary(race),
     }
 
@@ -352,6 +379,11 @@ function readRace(value: unknown): Race | null {
       ? value.samples
         .map(readRaceSample)
         .filter((sample): sample is RaceSample => sample !== null)
+      : [],
+    events: Array.isArray(value.events)
+      ? value.events
+        .map(readRaceEvent)
+        .filter((event): event is RaceEvent => event !== null)
       : [],
     isFavorite: typeof value.isFavorite === 'boolean' ? value.isFavorite : false,
   }
@@ -409,6 +441,40 @@ function readRaceSample(value: unknown): RaceSample | null {
   }
 
   return sample
+}
+
+function readRaceEvent(value: unknown): RaceEvent | null {
+  if (!isRecord(value) || !isString(value.type)) {
+    return null
+  }
+
+  if (value.type !== 'layline-tack') {
+    return null
+  }
+
+  if (
+    !isString(value.timestamp) ||
+    !isFiniteNumber(value.latitude) ||
+    !isFiniteNumber(value.longitude) ||
+    !isFiniteNumber(value.alphaDegrees) ||
+    !isFiniteNumber(value.postTackHeadingDegrees) ||
+    !isLaylineVariant(value.laylineVariant)
+  ) {
+    return null
+  }
+
+  return {
+    type: 'layline-tack',
+    timestamp: value.timestamp,
+    latitude: value.latitude,
+    longitude: value.longitude,
+    cogDegrees: readNumber(value.cogDegrees),
+    speedKnots: readNumber(value.speedKnots),
+    alphaDegrees: value.alphaDegrees,
+    postTackHeadingDegrees: value.postTackHeadingDegrees,
+    laylineVariant: value.laylineVariant,
+    target: 'K1',
+  }
 }
 
 function readCourseDefinition(value: unknown): CourseDefinition | undefined {
@@ -626,6 +692,10 @@ function isFiniteNumber(value: unknown): value is number {
 
 function isString(value: unknown): value is string {
   return typeof value === 'string'
+}
+
+function isLaylineVariant(value: unknown): value is LaylineVariant {
+  return value === 'plus-alpha' || value === 'minus-alpha'
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

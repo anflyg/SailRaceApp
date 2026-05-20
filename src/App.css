@@ -197,6 +197,97 @@ button {
   opacity: 0.45;
 }
 
+.setup-layline-panel {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 18px;
+  background: rgba(7, 31, 61, 0.92);
+}
+
+.setup-layline-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.setup-layline-header h2 {
+  margin: 0;
+  color: var(--text-high);
+  font-size: 1.05rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.setup-layline-toggle {
+  min-height: 38px;
+  min-width: 72px;
+  border-radius: 999px;
+  border: 1px solid rgba(185, 198, 211, 0.24);
+  font-size: 0.9rem;
+  font-weight: 850;
+}
+
+.setup-layline-toggle.enabled {
+  background: rgba(53, 194, 255, 0.22);
+  border-color: rgba(53, 194, 255, 0.52);
+  color: #bdeeff;
+}
+
+.setup-layline-toggle.disabled {
+  background: rgba(3, 20, 38, 0.78);
+  color: var(--text-muted);
+}
+
+.setup-layline-alpha-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.setup-layline-alpha-row > span {
+  color: var(--text-muted);
+  font-size: 0.86rem;
+  font-weight: 850;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.setup-layline-alpha-control {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.setup-layline-alpha-control button {
+  min-width: 40px;
+  min-height: 40px;
+  border-radius: 10px;
+  border: 1px solid rgba(185, 198, 211, 0.24);
+  background: rgba(3, 20, 38, 0.8);
+  color: var(--text-high);
+  font-size: 1.4rem;
+  font-weight: 850;
+  line-height: 1;
+}
+
+.setup-layline-alpha-control button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.setup-layline-alpha-control strong {
+  min-width: 74px;
+  color: var(--text-high);
+  font-size: 1.35rem;
+  font-weight: 900;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
 .primary-button,
 .secondary-button {
   min-height: 58px;
@@ -644,6 +735,16 @@ button:focus-visible {
   box-shadow: 0 0 0 1px rgba(255, 133, 0, 0.12) inset;
 }
 
+.race-view .velocity-mode-layline {
+  background: linear-gradient(
+    180deg,
+    rgba(223, 55, 189, 0.38),
+    rgba(87, 18, 82, 0.96)
+  );
+  border: 1px solid rgba(255, 118, 220, 0.62);
+  box-shadow: 0 0 0 1px rgba(255, 118, 220, 0.18) inset;
+}
+
 .race-view .velocity-mode-unset {
   background: rgba(7, 31, 61, 0.82);
   border: 1px dashed rgba(185, 198, 211, 0.22);
@@ -704,6 +805,10 @@ button:focus-visible {
 
 .race-view .velocity-made-good .metric-label {
   color: rgba(255, 250, 242, 0.86);
+}
+
+.race-view .velocity-mode-layline .metric-label {
+  color: rgba(255, 228, 248, 0.94);
 }
 
 .roll-pitch-strip {

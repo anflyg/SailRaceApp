@@ -2,7 +2,7 @@ import { Capacitor } from '@capacitor/core'
 import { Directory, Filesystem } from '@capacitor/filesystem'
 import { Share } from '@capacitor/share'
 import { strToU8, zipSync } from 'fflate'
-import type { Race, RaceSample } from '../types'
+import type { Race, RaceEvent, RaceSample } from '../types'
 
 const EXPORT_VERSION = 1
 const FILE_PREFIX = 'aster-race'
@@ -42,6 +42,7 @@ interface RaceExportPayload {
   } | null
   summary: Race['summary'] | null
   windMeasurement: null
+  events: RaceEvent[]
   samples: RaceSample[]
 }
 
@@ -97,6 +98,7 @@ function toJsonPayload(race: Race): RaceExportPayload {
       : null,
     summary: race.summary ?? null,
     windMeasurement: null,
+    events: race.events,
     samples: race.samples,
   }
 }

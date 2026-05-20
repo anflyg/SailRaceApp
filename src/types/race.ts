@@ -13,8 +13,26 @@ export type Race = {
   endTime?: string
   course?: CourseDefinition
   samples: RaceSample[]
+  events: RaceEvent[]
   summary?: RaceSummary
   isFavorite?: boolean
+}
+
+export type RaceEvent = LaylineTackEvent
+
+export type LaylineVariant = 'plus-alpha' | 'minus-alpha'
+
+export type LaylineTackEvent = {
+  type: 'layline-tack'
+  timestamp: string
+  latitude: number
+  longitude: number
+  cogDegrees?: number
+  speedKnots?: number
+  alphaDegrees: number
+  postTackHeadingDegrees: number
+  laylineVariant: LaylineVariant
+  target: 'K1'
 }
 
 export type RaceSample = {

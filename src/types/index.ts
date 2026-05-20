@@ -2,12 +2,13 @@ export type AppView = 'setup' | 'course' | 'timer' | 'race' | 'analysis'
 
 export type {
   CourseDefinition,
+  LaylineVariant,
   Race,
+  RaceEvent,
   RaceSample,
   RaceSummary,
   SailingDay,
 } from './race'
-
 export type CountdownDuration = 5 | 4 | 3 | 2 | 1
 
 export type LiveGpsStatus = 'idle' | 'requesting' | 'watching' | 'error' | 'unavailable'
@@ -76,4 +77,13 @@ export interface RaceMetrics {
   speedKnots: string
   headingDegrees: string
   vmg: string
+}
+
+export const MIN_LAYLINE_ALPHA_DEGREES = 70
+export const MAX_LAYLINE_ALPHA_DEGREES = 110
+export const DEFAULT_LAYLINE_ALPHA_DEGREES = 90
+
+export interface LaylineSettings {
+  enabled: boolean
+  alphaDegrees: number
 }

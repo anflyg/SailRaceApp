@@ -1,5 +1,10 @@
 import { formatDegrees, formatKnots, formatSignedDegrees } from '../../domain/format'
 import { getGpsStatusDisplay } from '../../domain/gps'
+import { clampLaylineAlphaDegrees } from '../../services/appSettingsStorage'
+import {
+  MAX_LAYLINE_ALPHA_DEGREES,
+  MIN_LAYLINE_ALPHA_DEGREES,
+} from '../../types'
 import type {
   DeviceAttitudeReading,
   FilteredGpsReading,
@@ -14,6 +19,10 @@ interface SetupViewProps {
   rollPitch: RollPitchValues | null
   isCalibrated: boolean
   onCalibrate: () => void
+  laylineEnabled: boolean
+  laylineAlphaDegrees: number
+  onLaylineEnabledChange: (enabled: boolean) => void
+  onLaylineAlphaDegreesChange: (alphaDegrees: number) => void
 }
 
 function sensorStatusLabel(isAvailable: boolean): string {
@@ -27,6 +36,10 @@ export function SetupView({
   rollPitch,
   isCalibrated,
   onCalibrate,
+  laylineEnabled,
+  laylineAlphaDegrees,
+  onLaylineEnabledChange,
+  onLaylineAlphaDegreesChange,
 }: SetupViewProps) {
   const gpsStatus = getGpsStatusDisplay(gps)
   const gpsStatusText = gpsStatus.statusText ?? 'OK'
@@ -80,6 +93,47 @@ export function SetupView({
       >
         Kalibrera nolläge
       </button>
+
+      <div className="setup-layline-panel" aria-label="Layline-inställningar">
+        <div className="setup-layline-header">
+          <h2>Layline</h2>
+          <button
+            type="button"
+            className={`setup-layline-toggle ${laylineEnabled ? 'enabled' : 'disabled'}`}
+            onClick={() => onLaylineEnabledChange(!laylineEnabled)}
+            aria-pressed={laylineEnabled}
+          >
+            {laylineEnabled ? 'På' : 'Av'}
+          </button>
+        </div>
+
+        <div className="setup-layline-alpha-row">
+          <span>Alpha</span>
+          <div className="setup-layline-alpha-control">
+            <button
+              type="button"
+              aria-label="Minska alpha"
+              onClick={() => onLaylineAlphaDegreesChange(
+                clampLaylineAlphaDegrees(laylineAlphaDegrees - 1),
+              )}
+              disabled={laylineAlphaDegrees <= MIN_LAYLINE_ALPHA_DEGREES}
+            >
+              −
+            </button>
+            <strong>{laylineAlphaDegrees}°</strong>
+            <button
+              type="button"
+              aria-label="Öka alpha"
+              onClick={() => onLaylineAlphaDegreesChange(
+                clampLaylineAlphaDegrees(laylineAlphaDegrees + 1),
+              )}
+              disabled={laylineAlphaDegrees >= MAX_LAYLINE_ALPHA_DEGREES}
+            >
+              +
+            </button>
+          </div>
+        </div>
+      </div>
     </section>
   )
 }
