@@ -18,6 +18,7 @@ interface RaceDashboardViewProps {
   rollPitch: RollPitchValues | null
   laylineEnabled: boolean
   laylineAlphaDegrees: number
+  manualLaylineCountdownValue?: number | null
 }
 
 function getGpsPosition(gps: FilteredGpsReading): GeoPoint | null {
@@ -37,6 +38,7 @@ export function RaceDashboardView({
   rollPitch,
   laylineEnabled,
   laylineAlphaDegrees,
+  manualLaylineCountdownValue = null,
 }: RaceDashboardViewProps) {
   const [activeVelocityMode, setActiveVelocityMode] = useState<VelocityMode>('vmc')
   const previousCountdownValueRef = useRef<number | null>(null)
@@ -57,6 +59,15 @@ export function RaceDashboardView({
     enabled: laylineEnabled,
     alphaDegrees: laylineAlphaDegrees,
   })
+  const isManualLaylinePreview = manualLaylineCountdownValue !== null
+  const activeLaylineWarning = isManualLaylinePreview
+    ? {
+      isActive: true,
+      countdownValue: manualLaylineCountdownValue,
+      laylineVariant: null,
+      postTackHeadingDegrees: null,
+    }
+    : laylineWarning
 
   const selectedVelocityMode: VelocityMode | null = hasTargetVmc && activeVelocityMode === 'vmc'
     ? 'vmc'
@@ -78,20 +89,20 @@ export function RaceDashboardView({
     : selectedVelocityMode === 'vmg'
       ? 'VMG Vind'
       : 'Ej satt'
-  const velocityValue = laylineWarning.isActive
-    ? `${laylineWarning.countdownValue ?? '--'}`
+  const velocityValue = activeLaylineWarning.isActive
+    ? `${activeLaylineWarning.countdownValue ?? '--'}`
     : velocityMadeGood !== null
       ? formatSignedKnots(velocityMadeGood)
       : '--'
-  const velocityClassName = laylineWarning.isActive
+  const velocityClassName = activeLaylineWarning.isActive
     ? 'velocity-mode-layline'
     : selectedVelocityMode === 'vmc'
     ? 'velocity-mode-vmc'
     : selectedVelocityMode === 'vmg'
       ? 'velocity-mode-vmg'
       : 'velocity-mode-unset'
-  const velocityLabelForDisplay = laylineWarning.isActive ? 'LAYLINE' : velocityLabel
-  const canInteractVelocityMode = canToggleVelocityMode && !laylineWarning.isActive
+  const velocityLabelForDisplay = activeLaylineWarning.isActive ? 'LAYLINE' : velocityLabel
+  const canInteractVelocityMode = canToggleVelocityMode && !activeLaylineWarning.isActive
 
   const toggleVelocityMode = () => {
     if (!canInteractVelocityMode) {
@@ -102,7 +113,12 @@ export function RaceDashboardView({
   }
 
   useEffect(() => {
-    const countdownValue = laylineWarning.countdownValue
+    if (isManualLaylinePreview) {
+      previousCountdownValueRef.current = activeLaylineWarning.countdownValue
+      return
+    }
+
+    const countdownValue = activeLaylineWarning.countdownValue
 
     if (countdownValue === null) {
       previousCountdownValueRef.current = null
@@ -126,8 +142,8 @@ export function RaceDashboardView({
       previousCountdownValueRef.current !== 0 &&
       gps.latitude !== null &&
       gps.longitude !== null &&
-      laylineWarning.laylineVariant !== null &&
-      laylineWarning.postTackHeadingDegrees !== null
+      activeLaylineWarning.laylineVariant !== null &&
+      activeLaylineWarning.postTackHeadingDegrees !== null
     ) {
       recordLaylineTackEventIfActive({
         timestamp: gps.timestamp !== null ? new Date(gps.timestamp).toISOString() : new Date().toISOString(),
@@ -136,8 +152,8 @@ export function RaceDashboardView({
         speedKnots: gps.speedKnots ?? undefined,
         cogDegrees: gps.courseDegrees ?? undefined,
         alphaDegrees: laylineAlphaDegrees,
-        postTackHeadingDegrees: laylineWarning.postTackHeadingDegrees,
-        laylineVariant: laylineWarning.laylineVariant,
+        postTackHeadingDegrees: activeLaylineWarning.postTackHeadingDegrees,
+        laylineVariant: activeLaylineWarning.laylineVariant,
       })
     }
 
@@ -148,10 +164,11 @@ export function RaceDashboardView({
     gps.longitude,
     gps.speedKnots,
     gps.timestamp,
+    isManualLaylinePreview,
     laylineAlphaDegrees,
-    laylineWarning.countdownValue,
-    laylineWarning.laylineVariant,
-    laylineWarning.postTackHeadingDegrees,
+    activeLaylineWarning.countdownValue,
+    activeLaylineWarning.laylineVariant,
+    activeLaylineWarning.postTackHeadingDegrees,
   ])
 
   return (

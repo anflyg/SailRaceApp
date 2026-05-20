@@ -8,6 +8,7 @@ import { RaceAnalysisView } from '../features/analysis/RaceAnalysisView'
 import { calculateRollPitchRelativeToCalibration } from '../domain/motion'
 import { getPointQuality } from '../domain/gps'
 import { getCourseAxisHeading } from '../domain/navigation'
+import { getManualModeConfig, MANUAL_FIXTURES } from './manualMode'
 import { useDeviceAttitude } from '../hooks/useDeviceAttitude'
 import { useFilteredGps } from '../hooks/useFilteredGps'
 import { useLiveGps } from '../hooks/useLiveGps'
@@ -86,30 +87,42 @@ function getCourseDefinition(course: CourseState): CourseDefinition | undefined 
 }
 
 export function AppShell() {
-  const [activeView, setActiveView] = useState<AppView>('setup')
-  const [course, setCourse] = useState<CourseState>(defaultCourseState)
+  const manualMode = useMemo(getManualModeConfig, [])
+  const [activeView, setActiveView] = useState<AppView>(manualMode.initialView ?? 'setup')
+  const [course, setCourse] = useState<CourseState>(() => (
+    manualMode.enabled ? MANUAL_FIXTURES.course : defaultCourseState
+  ))
   const [selectedCountdownMinutes, setSelectedCountdownMinutes] = useState<CountdownDuration>(5)
   const [isStartTimerRunning, setIsStartTimerRunning] = useState(false)
   const [courseGpsStatus, setCourseGpsStatus] = useState<string | null>(null)
   const [rollPitchCalibration, setRollPitchCalibration] = useState<RollPitchCalibration | null>(null)
   const [laylineEnabled, setLaylineEnabled] = useState(() => loadAppSettings().layline.enabled)
   const [laylineAlphaDegrees, setLaylineAlphaDegrees] = useState(() => loadAppSettings().layline.alphaDegrees)
-  const liveGps = useLiveGps(activeView !== 'analysis')
-  const filteredGps = useFilteredGps(liveGps)
-  const deviceAttitude = useDeviceAttitude(activeView === 'setup' || activeView === 'race')
-  const rollPitch = calculateRollPitchRelativeToCalibration(deviceAttitude, rollPitchCalibration)
+  const liveGpsDevice = useLiveGps(!manualMode.enabled && activeView !== 'analysis')
+  const filteredGpsDevice = useFilteredGps(liveGpsDevice)
+  const deviceAttitudeDevice = useDeviceAttitude(!manualMode.enabled && (activeView === 'setup' || activeView === 'race'))
+  const liveGps = manualMode.enabled ? MANUAL_FIXTURES.liveGps : liveGpsDevice
+  const filteredGps = manualMode.enabled ? MANUAL_FIXTURES.filteredGps : filteredGpsDevice
+  const deviceAttitude = manualMode.enabled ? MANUAL_FIXTURES.attitude : deviceAttitudeDevice
+  const rollPitch = manualMode.enabled
+    ? MANUAL_FIXTURES.rollPitch
+    : calculateRollPitchRelativeToCalibration(deviceAttitude, rollPitchCalibration)
   const isNavigationLocked = isStartTimerRunning
   const courseDefinition = useMemo(() => getCourseDefinition(course), [course])
   useWakeLock(true)
 
   useEffect(() => {
+    if (manualMode.enabled) {
+      return
+    }
+
     saveAppSettings({
       layline: {
         enabled: laylineEnabled,
         alphaDegrees: laylineAlphaDegrees,
       },
     })
-  }, [laylineAlphaDegrees, laylineEnabled])
+  }, [laylineAlphaDegrees, laylineEnabled, manualMode.enabled])
 
   const handleManualViewChange = useCallback((nextView: AppView) => {
     if (isNavigationLocked && nextView !== activeView) {
@@ -140,7 +153,7 @@ export function AppShell() {
   }, [])
 
   useEffect(() => {
-    if (activeView === 'analysis') {
+    if (manualMode.enabled || activeView === 'analysis') {
       return
     }
 
@@ -148,7 +161,7 @@ export function AppShell() {
       gps: filteredGps,
       course: courseDefinition,
     })
-  }, [activeView, courseDefinition, filteredGps])
+  }, [activeView, courseDefinition, filteredGps, manualMode.enabled])
 
   const getLiveGpsPosition = (): CoursePoint | null => {
     if (liveGps.latitude === null || liveGps.longitude === null) {
@@ -267,6 +280,7 @@ export function AppShell() {
         rollPitch={rollPitch}
         laylineEnabled={laylineEnabled}
         laylineAlphaDegrees={laylineAlphaDegrees}
+        manualLaylineCountdownValue={manualMode.enabled ? manualMode.laylineCountdownValue : null}
       />
     ),
     analysis: <RaceAnalysisView />,
