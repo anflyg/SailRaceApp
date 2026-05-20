@@ -88,6 +88,7 @@ export function useLaylineWarning({
     }
 
     const nowMs = machineState.phase === 'countdown' ? countdownClockMs : Date.now()
+    let didStartCountdown = false
 
     setMachineState((current) => {
       const nextStep = stepLaylineWarningMachine(current, {
@@ -98,15 +99,20 @@ export function useLaylineWarning({
         currentCogDegrees: laylineInput.currentCogDegrees,
         movingTowardTarget: laylineInput.movingTowardTarget,
       })
+      didStartCountdown = nextStep.didStartCountdown
 
       return areLaylineStatesEqual(current, nextStep.state) ? current : nextStep.state
     })
+
+    if (didStartCountdown) {
+      setCountdownClockMs(nowMs)
+    }
   }, [countdownClockMs, enabled, laylineInput, machineState.phase])
 
-  const countdownValue = machineState.phase === 'countdown' && machineState.countdownStartedAtMs !== null
+  const countdownValue = machineState.phase === 'countdown' && machineState.predictedTackAtMs !== null
     ? Math.max(
       LAYLINE_WARNING_END_SECONDS,
-      getLaylineCountdownValue(machineState.countdownStartedAtMs, countdownClockMs),
+      getLaylineCountdownValue(machineState.predictedTackAtMs, countdownClockMs),
     )
     : null
 
@@ -135,7 +141,7 @@ function areLaylineStatesEqual(
 ): boolean {
   return first.phase === second.phase &&
     first.stableTriggerHits === second.stableTriggerHits &&
-    first.countdownStartedAtMs === second.countdownStartedAtMs &&
+    first.predictedTackAtMs === second.predictedTackAtMs &&
     first.countdownReferenceCogDegrees === second.countdownReferenceCogDegrees &&
     first.countdownLaylineVariant === second.countdownLaylineVariant &&
     first.countdownPostTackHeadingDegrees === second.countdownPostTackHeadingDegrees &&

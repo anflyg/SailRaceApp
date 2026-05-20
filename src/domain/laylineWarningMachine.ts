@@ -14,7 +14,7 @@ export type LaylineWarningPhase = 'idle' | 'countdown' | 'cooldown'
 export interface LaylineWarningState {
   phase: LaylineWarningPhase
   stableTriggerHits: number
-  countdownStartedAtMs: number | null
+  predictedTackAtMs: number | null
   countdownReferenceCogDegrees: number | null
   countdownLaylineVariant: LaylineVariant | null
   countdownPostTackHeadingDegrees: number | null
@@ -39,7 +39,7 @@ export function createInitialLaylineWarningState(): LaylineWarningState {
   return {
     phase: 'idle',
     stableTriggerHits: 0,
-    countdownStartedAtMs: null,
+    predictedTackAtMs: null,
     countdownReferenceCogDegrees: null,
     countdownLaylineVariant: null,
     countdownPostTackHeadingDegrees: null,
@@ -51,8 +51,8 @@ export function stepLaylineWarningMachine(
   state: LaylineWarningState,
   input: LaylineMachineInput,
 ): LaylineMachineStepResult {
-  if (state.phase === 'countdown' && state.countdownStartedAtMs !== null) {
-    if (getLaylineCountdownValue(state.countdownStartedAtMs, input.nowMs) < LAYLINE_WARNING_END_SECONDS) {
+  if (state.phase === 'countdown' && state.predictedTackAtMs !== null) {
+    if (getLaylineCountdownValue(state.predictedTackAtMs, input.nowMs) < LAYLINE_WARNING_END_SECONDS) {
       return {
         didStartCountdown: false,
         state: {
@@ -92,13 +92,15 @@ export function stepLaylineWarningMachine(
   if (shouldTrigger(input)) {
     const stableTriggerHits = state.stableTriggerHits + 1
 
-    if (stableTriggerHits >= LAYLINE_TRIGGER_STABLE_UPDATES) {
+    if (stableTriggerHits >= LAYLINE_TRIGGER_STABLE_UPDATES && input.timeToTackSeconds !== null) {
+      const predictedTackAtMs = input.nowMs + input.timeToTackSeconds * 1000
+
       return {
         didStartCountdown: true,
         state: {
           phase: 'countdown',
           stableTriggerHits: 0,
-          countdownStartedAtMs: input.nowMs,
+          predictedTackAtMs,
           countdownReferenceCogDegrees: input.currentCogDegrees,
           countdownLaylineVariant: input.laylineVariant,
           countdownPostTackHeadingDegrees: input.postTackHeadingDegrees,
@@ -125,10 +127,10 @@ export function stepLaylineWarningMachine(
   }
 }
 
-export function getLaylineCountdownValue(countdownStartedAtMs: number, nowMs: number): number {
-  const elapsedSeconds = (nowMs - countdownStartedAtMs) / 1000
+export function getLaylineCountdownValue(predictedTackAtMs: number, nowMs: number): number {
+  const secondsToTack = Math.ceil((predictedTackAtMs - nowMs) / 1000)
 
-  return LAYLINE_WARNING_START_SECONDS - Math.floor(Math.max(0, elapsedSeconds))
+  return secondsToTack === 0 ? 0 : secondsToTack
 }
 
 function shouldTrigger(input: LaylineMachineInput): boolean {
