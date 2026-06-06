@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { RaceLibrary } from '../../components/RaceLibrary'
 import { RaceTrackMap } from '../../components/RaceTrackMap'
+import { DEFAULT_RACE_MAP_PAN_OFFSET, type RaceMapPanOffset } from '../../components/raceTrackMapPan'
 import { useRaceReplay, type ReplaySpeed } from '../../hooks/useRaceReplay'
 import { exportRaceDownloads } from '../../services/raceExport'
 import { buildReplayTimeline, getReplayFrame } from '../../services/raceReplay'
@@ -400,6 +401,7 @@ function RaceOverview({
 }) {
   const [isMapExpanded, setIsMapExpanded] = useState(false)
   const [expandedMapZoomScale, setExpandedMapZoomScale] = useState(MAP_MIN_ZOOM)
+  const [expandedMapPanOffset, setExpandedMapPanOffset] = useState<RaceMapPanOffset>(DEFAULT_RACE_MAP_PAN_OFFSET)
   const currentSample = replay.replayFrame?.sample ?? null
   const ghostOptions = useMemo(() => (
     race ? allRaces.filter((candidate) => candidate.id !== race.id) : []
@@ -444,7 +446,7 @@ function RaceOverview({
   }
   const closeMap = () => {
     setIsMapExpanded(false)
-    setExpandedMapZoomScale(MAP_MIN_ZOOM)
+    resetMapView()
   }
   const zoomIn = () => {
     setExpandedMapZoomScale((currentZoomScale) => (
@@ -456,8 +458,9 @@ function RaceOverview({
       Math.max(MAP_MIN_ZOOM, currentZoomScale - MAP_ZOOM_STEP)
     ))
   }
-  const resetZoom = () => {
+  const resetMapView = () => {
     setExpandedMapZoomScale(MAP_MIN_ZOOM)
+    setExpandedMapPanOffset(DEFAULT_RACE_MAP_PAN_OFFSET)
   }
 
   useEffect(() => {
@@ -476,6 +479,11 @@ function RaceOverview({
     window.addEventListener('keydown', handleEscapeKey)
     return () => window.removeEventListener('keydown', handleEscapeKey)
   }, [isMapExpanded])
+
+  useEffect(() => {
+    setIsMapExpanded(false)
+    resetMapView()
+  }, [race?.id])
 
   if (!race) {
     return (
@@ -518,7 +526,7 @@ function RaceOverview({
             <div className="race-map-modal-controls">
               <button type="button" onClick={zoomOut} disabled={expandedMapZoomScale <= MAP_MIN_ZOOM}>−</button>
               <button type="button" onClick={zoomIn} disabled={expandedMapZoomScale >= MAP_MAX_ZOOM}>+</button>
-              <button type="button" onClick={resetZoom}>Återställ</button>
+              <button type="button" onClick={resetMapView}>Återställ vy</button>
               <button type="button" className="race-map-modal-close" onClick={closeMap}>Stäng</button>
             </div>
 
@@ -529,6 +537,9 @@ function RaceOverview({
                 currentMarkers={ghostMarkers}
                 tracks={mapTracks}
                 zoomScale={expandedMapZoomScale}
+                panEnabled
+                panOffset={expandedMapPanOffset}
+                onPanOffsetChange={setExpandedMapPanOffset}
                 className="race-track-map-expanded-svg"
               />
             </div>

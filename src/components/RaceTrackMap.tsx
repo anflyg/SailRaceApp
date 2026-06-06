@@ -1,10 +1,15 @@
-import { useMemo, type KeyboardEvent } from 'react'
+import { useMemo, useRef, type KeyboardEvent, type PointerEvent } from 'react'
 import { createRaceMapProjection, type MapGeoPoint, type ProjectedMapPoint } from '../services/raceMapProjection'
 import type { CourseDefinition, Race, RaceSample } from '../types'
+import {
+  buildRaceMapTransform,
+  clampRaceMapPanOffset,
+  DEFAULT_RACE_MAP_PAN_OFFSET,
+  type RaceMapPanOffset,
+} from './raceTrackMapPan'
 
 const VIEWBOX_SIZE = 320
 const VIEWBOX_PADDING = 26
-const VIEWBOX_CENTER = VIEWBOX_SIZE / 2
 const MIN_ZOOM_SCALE = 1
 
 export type RaceTrackMapTrack = {
@@ -33,6 +38,9 @@ interface RaceTrackMapProps {
   highlightPoint?: MapGeoPoint | null
   emphasizeStartLine?: boolean
   zoomScale?: number
+  panOffset?: RaceMapPanOffset
+  onPanOffsetChange?: (offset: RaceMapPanOffset) => void
+  panEnabled?: boolean
   onActivate?: () => void
   activationLabel?: string
   className?: string
@@ -52,10 +60,19 @@ export function RaceTrackMap({
   highlightPoint,
   emphasizeStartLine = false,
   zoomScale = MIN_ZOOM_SCALE,
+  panOffset = DEFAULT_RACE_MAP_PAN_OFFSET,
+  onPanOffsetChange,
+  panEnabled = false,
   onActivate,
   activationLabel = 'Racekarta',
   className = '',
 }: RaceTrackMapProps) {
+  const dragStateRef = useRef<{
+    pointerId: number
+    startClientX: number
+    startClientY: number
+    startOffset: RaceMapPanOffset
+  } | null>(null)
   const mapTracks = useMemo(() => (
     tracks ?? [{
       id: race.id,
@@ -117,6 +134,11 @@ export function RaceTrackMap({
   const windwardMark = getCourseMark(race.course?.windwardMark, projection.project, screenProjector)
   const leewardMark = getCourseMark(race.course?.leewardMark, projection.project, screenProjector)
   const windArrow = getWindArrow(race.course, projection.project, projection.projectHeadingDegrees, screenProjector)
+  const canPan = panEnabled && Boolean(onPanOffsetChange)
+  const clampedPanOffset = canPan
+    ? clampRaceMapPanOffset(panOffset, zoomScale, VIEWBOX_SIZE, VIEWBOX_PADDING)
+    : DEFAULT_RACE_MAP_PAN_OFFSET
+  const mapTransform = buildRaceMapTransform(zoomScale, clampedPanOffset, VIEWBOX_SIZE)
 
   const svg = (
     <svg
@@ -126,11 +148,7 @@ export function RaceTrackMap({
       aria-label="Racebana och spår"
     >
       <rect className="race-map-water" x="0" y="0" width={VIEWBOX_SIZE} height={VIEWBOX_SIZE} rx="10" />
-      <g
-        transform={zoomScale === MIN_ZOOM_SCALE
-          ? undefined
-          : `translate(${VIEWBOX_CENTER} ${VIEWBOX_CENTER}) scale(${zoomScale}) translate(-${VIEWBOX_CENTER} -${VIEWBOX_CENTER})`}
-      >
+      <g transform={mapTransform}>
         {mapTracks.map((track) => {
           const path = createTrackPath(track.samples, projection.project, screenProjector)
 
@@ -203,9 +221,56 @@ export function RaceTrackMap({
     </svg>
   )
 
+  function handlePointerDown(event: PointerEvent<HTMLDivElement>) {
+    if (!canPan || (event.pointerType === 'mouse' && event.button !== 0)) {
+      return
+    }
+
+    dragStateRef.current = {
+      pointerId: event.pointerId,
+      startClientX: event.clientX,
+      startClientY: event.clientY,
+      startOffset: clampedPanOffset,
+    }
+    event.currentTarget.setPointerCapture(event.pointerId)
+  }
+
+  function handlePointerMove(event: PointerEvent<HTMLDivElement>) {
+    const dragState = dragStateRef.current
+
+    if (!canPan || !dragState || dragState.pointerId !== event.pointerId) {
+      return
+    }
+
+    onPanOffsetChange?.(clampRaceMapPanOffset({
+      x: dragState.startOffset.x + (event.clientX - dragState.startClientX),
+      y: dragState.startOffset.y + (event.clientY - dragState.startClientY),
+    }, zoomScale, VIEWBOX_SIZE, VIEWBOX_PADDING))
+  }
+
+  function handlePointerUp(event: PointerEvent<HTMLDivElement>) {
+    const dragState = dragStateRef.current
+
+    if (!dragState || dragState.pointerId !== event.pointerId) {
+      return
+    }
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    }
+
+    dragStateRef.current = null
+  }
+
   if (!onActivate) {
     return (
-      <div className="race-track-map">
+      <div
+        className={`race-track-map${canPan ? ' race-track-map-pannable' : ''}`}
+        onPointerDown={canPan ? handlePointerDown : undefined}
+        onPointerMove={canPan ? handlePointerMove : undefined}
+        onPointerUp={canPan ? handlePointerUp : undefined}
+        onPointerCancel={canPan ? handlePointerUp : undefined}
+      >
         {svg}
       </div>
     )

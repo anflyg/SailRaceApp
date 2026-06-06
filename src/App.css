@@ -1138,6 +1138,19 @@ button:focus-visible {
   position: relative;
 }
 
+.race-track-map-pannable {
+  touch-action: none;
+  user-select: none;
+}
+
+.race-track-map-pannable:hover {
+  cursor: grab;
+}
+
+.race-track-map-pannable:active {
+  cursor: grabbing;
+}
+
 .race-track-map-interactive:hover,
 .race-track-map-interactive:focus-visible {
   cursor: pointer;
@@ -1207,6 +1220,8 @@ button:focus-visible {
 }
 
 .race-map-modal-controls {
+  position: relative;
+  z-index: 1;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, auto));
   justify-content: end;
