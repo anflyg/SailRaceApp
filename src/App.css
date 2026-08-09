@@ -140,6 +140,31 @@ button {
   letter-spacing: 0;
 }
 
+.setup-display-mode-control {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+  padding: 5px;
+  border: 1px solid rgba(185, 198, 211, 0.22);
+  border-radius: 14px;
+  background: rgba(3, 20, 38, 0.72);
+}
+
+.setup-display-mode-control button {
+  min-height: 38px;
+  padding: 8px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.setup-display-mode-control button.active {
+  background: #0d6fa8;
+  color: var(--text-high);
+  box-shadow: 0 0 0 1px rgba(53, 194, 255, 0.4) inset;
+}
+
 .setup-status-grid {
   display: grid;
   grid-template-columns: minmax(76px, 0.7fr) minmax(82px, 1fr) minmax(86px, 0.9fr);
@@ -1769,4 +1794,330 @@ button:focus-visible {
   .start-analysis-grid {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+
+:root[data-theme='sun'],
+:root[data-theme='sun'] body,
+:root[data-theme='sun'] #root {
+  color: var(--theme-text);
+  background: var(--theme-page-background);
+}
+
+.app-shell[data-theme='sun'] {
+  color: var(--theme-text);
+  background: var(--theme-page-background);
+}
+
+.app-shell[data-theme='sun'] .view-section {
+  background: var(--theme-panel-background);
+  border-color: var(--theme-border);
+}
+
+.app-shell[data-theme='sun'] .nav-button,
+.app-shell[data-theme='sun'] .secondary-button,
+.app-shell[data-theme='sun'] .duration-button {
+  background: var(--theme-panel-muted);
+  border-color: var(--theme-border);
+  color: var(--theme-text);
+}
+
+.app-shell[data-theme='sun'] .nav-button.active,
+.app-shell[data-theme='sun'] .primary-button,
+.app-shell[data-theme='sun'] .duration-button.active {
+  background: var(--theme-panel-background);
+  border-color: var(--theme-blue);
+  color: var(--theme-text);
+  box-shadow: 0 0 0 2px rgba(0, 111, 148, 0.22) inset;
+}
+
+.app-shell[data-theme='sun'] .setup-display-mode-control,
+.app-shell[data-theme='sun'] .analysis-segmented-control,
+.app-shell[data-theme='sun'] .replay-speed-control {
+  background: var(--theme-panel-subtle);
+  border-color: var(--theme-border);
+}
+
+.app-shell[data-theme='sun'] .setup-display-mode-control button,
+.app-shell[data-theme='sun'] .analysis-segmented-control button,
+.app-shell[data-theme='sun'] .replay-speed-control button {
+  color: var(--theme-text-muted);
+}
+
+.app-shell[data-theme='sun'] .setup-display-mode-control button.active,
+.app-shell[data-theme='sun'] .analysis-segmented-control button.active,
+.app-shell[data-theme='sun'] .replay-speed-control button.active {
+  background: var(--theme-panel-background);
+  color: var(--theme-text);
+  box-shadow: 0 0 0 2px rgba(0, 111, 148, 0.48) inset;
+}
+
+.app-shell[data-theme='sun'] .setup-status-grid,
+.app-shell[data-theme='sun'] .setup-calibration-panel,
+.app-shell[data-theme='sun'] .setup-layline-panel,
+.app-shell[data-theme='sun'] .setup-layline-alpha-control button {
+  background: var(--theme-panel-muted);
+  border-color: var(--theme-border);
+  color: var(--theme-text);
+}
+
+.app-shell[data-theme='sun'] .setup-status-grid span:nth-child(3n + 3) {
+  color: var(--theme-orange);
+}
+
+.app-shell[data-theme='sun'] .setup-calibration-status.calibrated {
+  color: var(--theme-green);
+}
+
+.app-shell[data-theme='sun'] .setup-layline-toggle.enabled {
+  background: rgba(0, 111, 148, 0.08);
+  border-color: var(--theme-blue);
+  color: var(--theme-blue);
+}
+
+.app-shell[data-theme='sun'] .setup-layline-toggle.disabled {
+  background: var(--theme-panel-subtle);
+  border-color: var(--theme-border);
+  color: var(--theme-text-muted);
+}
+
+.app-shell[data-theme='sun'] .course-status,
+.app-shell[data-theme='sun'] .course-gps-status span:last-child {
+  color: var(--theme-orange);
+}
+
+.app-shell[data-theme='sun'] .course-schematic {
+  background: var(--theme-panel-muted);
+  border-color: var(--theme-border);
+}
+
+.app-shell[data-theme='sun'] .course-axis-line {
+  background: rgba(34, 40, 44, 0.32);
+}
+
+.app-shell[data-theme='sun'] .course-schematic::before {
+  background: var(--theme-border-strong);
+}
+
+.app-shell[data-theme='sun'] .course-schematic.start-line-good::before {
+  background: var(--theme-green);
+}
+
+.app-shell[data-theme='sun'] .course-schematic.start-line-poor::before {
+  background: var(--theme-orange);
+}
+
+.app-shell[data-theme='sun'] .course-mark {
+  background: var(--theme-panel-background);
+  border-color: var(--theme-border-strong);
+  color: var(--theme-text);
+}
+
+.app-shell[data-theme='sun'] .course-mark.unset {
+  background: var(--theme-panel-muted);
+  border-color: var(--theme-border-strong);
+  color: var(--theme-text-muted);
+  opacity: 0.72;
+}
+
+.app-shell[data-theme='sun'] .course-mark.good {
+  background: var(--theme-panel-background);
+  border-color: var(--theme-green);
+}
+
+.app-shell[data-theme='sun'] .course-mark.poor {
+  background: var(--theme-panel-background);
+  border-color: var(--theme-orange);
+}
+
+.app-shell[data-theme='sun'] .wind-arrow-button {
+  background: var(--theme-panel-background);
+  border-color: var(--theme-border-strong);
+  color: var(--theme-text);
+}
+
+.app-shell[data-theme='sun'] .wind-arrow-button.unset {
+  background: var(--theme-panel-muted);
+  border-color: var(--theme-border-strong);
+  opacity: 0.62;
+}
+
+.app-shell[data-theme='sun'] .wind-arrow-button.set {
+  background: var(--theme-panel-background);
+  border-color: var(--theme-blue);
+  color: var(--theme-blue);
+}
+
+.app-shell[data-theme='sun'] .wind-arrow-button.measuring {
+  background: var(--theme-panel-background);
+  border-color: var(--theme-orange);
+  color: var(--theme-orange);
+}
+
+.app-shell[data-theme='sun'] .large-timer {
+  color: var(--theme-text);
+  text-shadow: none;
+}
+
+.app-shell[data-theme='sun'] .large-timer.timer-idle {
+  background: var(--theme-panel-muted);
+  border-color: var(--theme-border-strong);
+}
+
+.app-shell[data-theme='sun'] .large-timer.timer-running {
+  background: var(--theme-panel-muted);
+  border-color: var(--theme-green);
+}
+
+.app-shell[data-theme='sun'] .large-timer.timer-negative {
+  background: var(--theme-panel-muted);
+  border-color: var(--theme-red);
+}
+
+.app-shell[data-theme='sun'] .start-run-panel,
+.app-shell[data-theme='sun'] .race-view .metric-box,
+.app-shell[data-theme='sun'] .roll-pitch-strip {
+  background: var(--theme-panel-muted);
+  border-color: var(--theme-border);
+  color: var(--theme-text);
+  box-shadow: none;
+}
+
+.app-shell[data-theme='sun'] .race-view .metric-box.velocity-made-good {
+  background: var(--theme-panel-muted);
+  color: var(--theme-text);
+}
+
+.app-shell[data-theme='sun'] .race-view .velocity-mode-vmg {
+  border-color: var(--theme-blue);
+}
+
+.app-shell[data-theme='sun'] .race-view .velocity-mode-vmc {
+  border-color: var(--theme-orange);
+}
+
+.app-shell[data-theme='sun'] .race-view .velocity-mode-layline {
+  border-color: var(--theme-magenta);
+}
+
+.app-shell[data-theme='sun'] .race-view .velocity-mode-unset {
+  border-color: var(--theme-border-strong);
+  color: var(--theme-text-muted);
+}
+
+.app-shell[data-theme='sun'] .race-view .velocity-made-good .metric-label,
+.app-shell[data-theme='sun'] .race-view .velocity-mode-layline .metric-label {
+  color: var(--theme-text-muted);
+}
+
+.app-shell[data-theme='sun'] .race-view .velocity-mode-vmg .metric-context-label {
+  background: rgba(0, 111, 148, 0.08);
+  border-color: var(--theme-blue);
+  color: var(--theme-blue);
+}
+
+.app-shell[data-theme='sun'] .race-view .velocity-mode-vmc .metric-context-label {
+  background: rgba(168, 79, 0, 0.08);
+  border-color: var(--theme-orange);
+  color: var(--theme-orange);
+}
+
+.app-shell[data-theme='sun'] .race-library-card,
+.app-shell[data-theme='sun'] .race-card-stats span,
+.app-shell[data-theme='sun'] .selected-race-basics div,
+.app-shell[data-theme='sun'] .race-library-empty,
+.app-shell[data-theme='sun'] .analysis-placeholder-panel,
+.app-shell[data-theme='sun'] .race-track-map,
+.app-shell[data-theme='sun'] .ghost-replay-panel,
+.app-shell[data-theme='sun'] .start-analysis-result,
+.app-shell[data-theme='sun'] .start-analysis-grid div,
+.app-shell[data-theme='sun'] .replay-timeline,
+.app-shell[data-theme='sun'] .replay-data-panel div {
+  background: var(--theme-panel-muted);
+  border-color: var(--theme-border);
+}
+
+.app-shell[data-theme='sun'] .race-library-card.selected,
+.app-shell[data-theme='sun'] .race-track-map-interactive:hover,
+.app-shell[data-theme='sun'] .race-track-map-interactive:focus-visible {
+  border-color: var(--theme-blue);
+  box-shadow: 0 0 0 1px rgba(0, 111, 148, 0.3) inset;
+}
+
+.app-shell[data-theme='sun'] .favorite-badge {
+  background: rgba(168, 79, 0, 0.08);
+  border-color: var(--theme-orange);
+  color: var(--theme-orange);
+}
+
+.app-shell[data-theme='sun'] .race-card-actions button,
+.app-shell[data-theme='sun'] .race-map-modal-controls button,
+.app-shell[data-theme='sun'] .ghost-replay-panel select {
+  background: var(--theme-panel-background);
+  border-color: var(--theme-border);
+  color: var(--theme-text);
+}
+
+.app-shell[data-theme='sun'] .race-card-actions .danger-action {
+  background: var(--theme-panel-background);
+  border-color: var(--theme-red);
+  color: var(--theme-text);
+}
+
+.app-shell[data-theme='sun'] .start-analysis-result.ok {
+  border-color: var(--theme-green);
+}
+
+.app-shell[data-theme='sun'] .start-analysis-result.uncertain {
+  border-color: var(--theme-orange);
+}
+
+:root[data-theme='sun'] .race-map-modal {
+  background: rgba(243, 242, 237, 0.92);
+}
+
+.app-shell[data-theme='sun'] .race-map-modal-track,
+.app-shell[data-theme='sun'] .race-map-open-button,
+.app-shell[data-theme='sun'] .race-track-map-hint {
+  background: var(--theme-panel-muted);
+  border-color: var(--theme-border);
+  color: var(--theme-text-muted);
+}
+
+.app-shell[data-theme='sun'] .race-map-water {
+  fill: #E8F2F3;
+}
+
+.app-shell[data-theme='sun'] .race-map-track {
+  stroke: #005A82;
+}
+
+.app-shell[data-theme='sun'] .race-map-track.primary-track {
+  filter: drop-shadow(0 0 3px rgba(0, 90, 130, 0.22));
+}
+
+.app-shell[data-theme='sun'] .race-map-track.ghost-track {
+  stroke: var(--theme-orange);
+}
+
+.app-shell[data-theme='sun'] .race-map-start-line,
+.app-shell[data-theme='sun'] .race-map-start-line.emphasized {
+  stroke: var(--theme-border-strong);
+  filter: none;
+}
+
+.app-shell[data-theme='sun'] .race-map-mark circle,
+.app-shell[data-theme='sun'] .race-map-boat circle:first-child,
+.app-shell[data-theme='sun'] .race-map-crossing-point circle {
+  stroke: var(--theme-border-strong);
+}
+
+.app-shell[data-theme='sun'] .race-map-mark text,
+.app-shell[data-theme='sun'] .race-map-wind-arrow text {
+  fill: var(--theme-text);
+}
+
+.app-shell[data-theme='sun'] .race-map-boat circle:last-child,
+.app-shell[data-theme='sun'] .race-map-crossing-point path {
+  fill: var(--theme-text);
+  stroke: var(--theme-text);
 }

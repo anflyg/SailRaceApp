@@ -7,6 +7,8 @@ import {
 
 const STORAGE_KEY = 'aster-race:app-settings:v1'
 
+export type DisplayMode = 'standard' | 'sun'
+
 export const DEFAULT_LAYLINE_SETTINGS: LaylineSettings = {
   enabled: true,
   alphaDegrees: DEFAULT_LAYLINE_ALPHA_DEGREES,
@@ -14,11 +16,13 @@ export const DEFAULT_LAYLINE_SETTINGS: LaylineSettings = {
 
 interface AppSettingsState {
   layline: LaylineSettings
+  displayMode: DisplayMode
 }
 
 function createDefaultSettingsState(): AppSettingsState {
   return {
     layline: DEFAULT_LAYLINE_SETTINGS,
+    displayMode: 'standard',
   }
 }
 
@@ -76,6 +80,7 @@ function normalizeSettingsState(value: unknown): AppSettingsState {
         ? clampLaylineAlphaDegrees(laylineValue.alphaDegrees)
         : DEFAULT_LAYLINE_SETTINGS.alphaDegrees,
     },
+    displayMode: value.displayMode === 'sun' ? 'sun' : 'standard',
   }
 }
 

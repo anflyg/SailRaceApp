@@ -98,6 +98,7 @@ export function AppShell() {
   const [rollPitchCalibration, setRollPitchCalibration] = useState<RollPitchCalibration | null>(null)
   const [laylineEnabled, setLaylineEnabled] = useState(() => loadAppSettings().layline.enabled)
   const [laylineAlphaDegrees, setLaylineAlphaDegrees] = useState(() => loadAppSettings().layline.alphaDegrees)
+  const [displayMode, setDisplayMode] = useState(() => loadAppSettings().displayMode)
   const liveGpsDevice = useLiveGps(!manualMode.enabled && activeView !== 'analysis')
   const filteredGpsDevice = useFilteredGps(liveGpsDevice)
   const deviceAttitudeDevice = useDeviceAttitude(!manualMode.enabled && (activeView === 'setup' || activeView === 'race'))
@@ -112,6 +113,10 @@ export function AppShell() {
   useWakeLock(true)
 
   useEffect(() => {
+    document.documentElement.dataset.theme = displayMode
+  }, [displayMode])
+
+  useEffect(() => {
     if (manualMode.enabled) {
       return
     }
@@ -121,8 +126,9 @@ export function AppShell() {
         enabled: laylineEnabled,
         alphaDegrees: laylineAlphaDegrees,
       },
+      displayMode,
     })
-  }, [laylineAlphaDegrees, laylineEnabled, manualMode.enabled])
+  }, [displayMode, laylineAlphaDegrees, laylineEnabled, manualMode.enabled])
 
   const handleManualViewChange = useCallback((nextView: AppView) => {
     if (isNavigationLocked && nextView !== activeView) {
@@ -247,6 +253,8 @@ export function AppShell() {
         laylineAlphaDegrees={laylineAlphaDegrees}
         onLaylineEnabledChange={setLaylineEnabled}
         onLaylineAlphaDegreesChange={setLaylineAlphaDegrees}
+        displayMode={displayMode}
+        onDisplayModeChange={setDisplayMode}
       />
     ),
     course: (
@@ -287,7 +295,7 @@ export function AppShell() {
   }[activeView]
 
   return (
-    <div className={`app-shell ${activeView}`}>
+    <div className={`app-shell ${activeView}`} data-theme={displayMode}>
       <NavigationBar
         currentView={activeView}
         isLocked={isNavigationLocked}

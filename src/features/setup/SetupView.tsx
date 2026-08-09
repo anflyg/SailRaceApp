@@ -1,6 +1,9 @@
 import { formatDegrees, formatKnots, formatSignedDegrees } from '../../domain/format'
 import { getGpsStatusDisplay } from '../../domain/gps'
-import { clampLaylineAlphaDegrees } from '../../services/appSettingsStorage'
+import {
+  clampLaylineAlphaDegrees,
+  type DisplayMode,
+} from '../../services/appSettingsStorage'
 import {
   MAX_LAYLINE_ALPHA_DEGREES,
   MIN_LAYLINE_ALPHA_DEGREES,
@@ -23,6 +26,8 @@ interface SetupViewProps {
   laylineAlphaDegrees: number
   onLaylineEnabledChange: (enabled: boolean) => void
   onLaylineAlphaDegreesChange: (alphaDegrees: number) => void
+  displayMode: DisplayMode
+  onDisplayModeChange: (displayMode: DisplayMode) => void
 }
 
 function sensorStatusLabel(isAvailable: boolean): string {
@@ -40,6 +45,8 @@ export function SetupView({
   laylineAlphaDegrees,
   onLaylineEnabledChange,
   onLaylineAlphaDegreesChange,
+  displayMode,
+  onDisplayModeChange,
 }: SetupViewProps) {
   const gpsStatus = getGpsStatusDisplay(gps)
   const gpsStatusText = gpsStatus.statusText ?? 'OK'
@@ -52,6 +59,25 @@ export function SetupView({
   return (
     <section className="view-section setup-view">
       <h1 className="setup-title">SETUP</h1>
+
+      <div className="setup-display-mode-control" role="group" aria-label="Visningsläge">
+        <button
+          type="button"
+          className={displayMode === 'standard' ? 'active' : ''}
+          aria-pressed={displayMode === 'standard'}
+          onClick={() => onDisplayModeChange('standard')}
+        >
+          STANDARD
+        </button>
+        <button
+          type="button"
+          className={displayMode === 'sun' ? 'active' : ''}
+          aria-pressed={displayMode === 'sun'}
+          onClick={() => onDisplayModeChange('sun')}
+        >
+          SOL
+        </button>
+      </div>
 
       <div className="setup-status-grid">
         <span>GPS</span>
