@@ -1,5 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { averageAnglesDegrees, normalizeDegrees, shortestAngleDeltaDegrees } from '../domain/angles'
+import {
+  calculatePositionSpeedKnots,
+  filterGpsSpeedKnots,
+  fuseGpsSpeedKnots,
+  isReliableGpsSpeedPosition,
+  type GpsSpeedPosition,
+} from '../domain/gpsSpeed'
 import { MIN_RELIABLE_COURSE_SPEED_KNOTS } from './useLiveGps'
 import type { FilteredGpsReading, LiveGpsReading } from '../types'
 
@@ -11,7 +18,12 @@ export const COURSE_DISPLAY_MIN_SPEED_KNOTS = 1.0
 
 interface GpsSample {
   timestamp: number
+  gpsTimestamp: number | null
+  latitude: number | null
+  longitude: number | null
+  accuracyMeters: number | null
   speedKnots: number | null
+  fusedSpeedKnots: number | null
   courseDegrees: number | null
 }
 
@@ -41,14 +53,65 @@ export function useFilteredGps(gps: LiveGpsReading): FilteredGpsReading {
     const timestamp = gps.timestamp ?? Date.now()
     const cutoff = timestamp - GPS_FILTER_WINDOW_MS
     const timeoutId = window.setTimeout(() => {
-      setSamples((current) => [
-        ...current.filter((sample) => sample.timestamp >= cutoff),
-        {
-          timestamp,
-          speedKnots: gps.speedKnots,
-          courseDegrees: gps.courseDegrees,
-        },
-      ])
+      setSamples((current) => {
+        const currentPosition: GpsSpeedPosition = {
+          latitude: gps.latitude,
+          longitude: gps.longitude,
+          accuracyMeters: gps.accuracyMeters,
+          timestamp: gps.timestamp,
+        }
+        let previousPosition: GpsSpeedPosition | null = null
+        let previousSpeedKnots: number | null = null
+
+        for (let index = current.length - 1; index >= 0; index -= 1) {
+          const sample = current[index]
+
+          if (previousSpeedKnots === null && sample.fusedSpeedKnots !== null) {
+            previousSpeedKnots = sample.fusedSpeedKnots
+          }
+
+          if (previousPosition === null) {
+            const candidate: GpsSpeedPosition = {
+              latitude: sample.latitude,
+              longitude: sample.longitude,
+              accuracyMeters: sample.accuracyMeters,
+              timestamp: sample.gpsTimestamp,
+            }
+
+            if (isReliableGpsSpeedPosition(candidate)) {
+              previousPosition = candidate
+            }
+          }
+
+          if (previousPosition !== null && previousSpeedKnots !== null) {
+            break
+          }
+        }
+
+        const positionSpeedKnots = calculatePositionSpeedKnots(
+          previousPosition,
+          currentPosition,
+        )
+        const speedKnots = fuseGpsSpeedKnots(
+          gps.speedKnots,
+          positionSpeedKnots,
+          previousSpeedKnots,
+        )
+
+        return [
+          ...current.filter((sample) => sample.timestamp >= cutoff),
+          {
+            timestamp,
+            gpsTimestamp: gps.timestamp,
+            latitude: gps.latitude,
+            longitude: gps.longitude,
+            accuracyMeters: gps.accuracyMeters,
+            speedKnots: gps.speedKnots,
+            fusedSpeedKnots: speedKnots,
+            courseDegrees: gps.courseDegrees,
+          },
+        ]
+      })
     }, 0)
 
     return () => window.clearTimeout(timeoutId)
@@ -67,6 +130,10 @@ export function useFilteredGps(gps: LiveGpsReading): FilteredGpsReading {
       .filter((speedKnots): speedKnots is number => speedKnots !== null)
 
     return averageNumbers(speedValues)
+  }, [samples])
+
+  const filteredDisplaySpeedKnots = useMemo(() => {
+    return filterGpsSpeedKnots(samples.map((sample) => sample.fusedSpeedKnots))
   }, [samples])
 
   const filteredCourseDegrees = useMemo(() => {
@@ -123,25 +190,32 @@ export function useFilteredGps(gps: LiveGpsReading): FilteredGpsReading {
         sampleCount: 0,
       }
     }
-    const speedKnots = filteredSpeedKnots
+    const speedKnots = filteredDisplaySpeedKnots
     const courseDegrees = filteredCourseDegrees
     const courseReliable =
       courseDegrees !== null &&
-      speedKnots !== null &&
-      speedKnots >= MIN_RELIABLE_COURSE_SPEED_KNOTS
+      filteredSpeedKnots !== null &&
+      filteredSpeedKnots >= MIN_RELIABLE_COURSE_SPEED_KNOTS
 
     return {
       ...gps,
       speedKnots,
       courseDegrees,
       displayCourseDegrees:
-        speedKnots !== null &&
-          speedKnots >= COURSE_DISPLAY_FREEZE_SPEED_KNOTS &&
+        filteredSpeedKnots !== null &&
+          filteredSpeedKnots >= COURSE_DISPLAY_FREEZE_SPEED_KNOTS &&
           displayCourseDegrees !== null
           ? normalizeDegrees(displayCourseDegrees)
           : null,
       courseReliable,
       sampleCount: samples.length,
     }
-  }, [displayCourseDegrees, filteredCourseDegrees, filteredSpeedKnots, gps, samples.length])
+  }, [
+    displayCourseDegrees,
+    filteredCourseDegrees,
+    filteredDisplaySpeedKnots,
+    filteredSpeedKnots,
+    gps,
+    samples.length,
+  ])
 }
