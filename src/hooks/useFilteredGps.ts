@@ -4,6 +4,8 @@ import {
   calculatePositionSpeedKnots,
   filterGpsSpeedKnots,
   fuseGpsSpeedKnots,
+  GPS_SPEED_MAX_POSITION_BASELINE_MS,
+  GPS_SPEED_MIN_POSITION_BASELINE_MS,
   isReliableGpsSpeedPosition,
   type GpsSpeedPosition,
 } from '../domain/gpsSpeed'
@@ -78,8 +80,18 @@ export function useFilteredGps(gps: LiveGpsReading): FilteredGpsReading {
               timestamp: sample.gpsTimestamp,
             }
 
-            if (isReliableGpsSpeedPosition(candidate)) {
-              previousPosition = candidate
+            if (
+              isReliableGpsSpeedPosition(candidate) &&
+              isReliableGpsSpeedPosition(currentPosition)
+            ) {
+              const baselineMs = currentPosition.timestamp - candidate.timestamp
+
+              if (
+                baselineMs >= GPS_SPEED_MIN_POSITION_BASELINE_MS &&
+                baselineMs <= GPS_SPEED_MAX_POSITION_BASELINE_MS
+              ) {
+                previousPosition = candidate
+              }
             }
           }
 

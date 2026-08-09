@@ -5,6 +5,8 @@ export const GPS_SPEED_SOURCE_AGREEMENT_KNOTS = 1.5
 export const GPS_SPEED_COORDS_WEIGHT = 0.7
 export const GPS_SPEED_MAX_REASONABLE_KNOTS = 60
 export const GPS_SPEED_MAX_POSITION_ACCURACY_METERS = 25
+export const GPS_SPEED_MIN_POSITION_BASELINE_MS = 3000
+export const GPS_SPEED_MAX_POSITION_BASELINE_MS = 5000
 
 export interface GpsSpeedPosition {
   latitude: number | null
