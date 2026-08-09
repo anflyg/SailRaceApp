@@ -1965,11 +1965,13 @@ button:focus-visible {
 
 .app-shell[data-theme='sun'] .large-timer.timer-running {
   background: var(--theme-panel-muted);
+  border-width: 4px;
   border-color: var(--theme-green);
 }
 
 .app-shell[data-theme='sun'] .large-timer.timer-negative {
   background: var(--theme-panel-muted);
+  border-width: 4px;
   border-color: var(--theme-red);
 }
 
@@ -1988,14 +1990,17 @@ button:focus-visible {
 }
 
 .app-shell[data-theme='sun'] .race-view .velocity-mode-vmg {
+  border-width: 4px;
   border-color: var(--theme-blue);
 }
 
 .app-shell[data-theme='sun'] .race-view .velocity-mode-vmc {
+  border-width: 4px;
   border-color: var(--theme-orange);
 }
 
 .app-shell[data-theme='sun'] .race-view .velocity-mode-layline {
+  border-width: 4px;
   border-color: var(--theme-magenta);
 }
 
