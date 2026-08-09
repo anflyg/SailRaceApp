@@ -1,12 +1,15 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { averageAnglesDegrees, normalizeDegrees, shortestAngleDeltaDegrees } from '../domain/angles'
 import {
   calculatePositionSpeedKnots,
   filterGpsSpeedKnots,
   fuseGpsSpeedKnots,
+  GPS_SPEED_LAST_KNOWN_GRACE_MS,
   GPS_SPEED_MAX_POSITION_BASELINE_MS,
   GPS_SPEED_MIN_POSITION_BASELINE_MS,
   isReliableGpsSpeedPosition,
+  keepLastKnownGpsSpeedKnots,
+  type LastKnownGpsSpeed,
   type GpsSpeedPosition,
 } from '../domain/gpsSpeed'
 import { MIN_RELIABLE_COURSE_SPEED_KNOTS } from './useLiveGps'
@@ -29,6 +32,10 @@ interface GpsSample {
   courseDegrees: number | null
 }
 
+interface LastKnownDisplaySpeed extends LastKnownGpsSpeed {
+  sourceSample: GpsSample
+}
+
 function averageNumbers(values: number[]): number | null {
   if (values.length === 0) {
     return null
@@ -40,6 +47,8 @@ function averageNumbers(values: number[]): number | null {
 export function useFilteredGps(gps: LiveGpsReading): FilteredGpsReading {
   const [samples, setSamples] = useState<GpsSample[]>([])
   const [displayCourseDegrees, setDisplayCourseDegrees] = useState<number | null>(null)
+  const [speedGraceTick, setSpeedGraceTick] = useState(0)
+  const lastKnownDisplaySpeedRef = useRef<LastKnownDisplaySpeed | null>(null)
 
   useEffect(() => {
     if (
@@ -104,7 +113,7 @@ export function useFilteredGps(gps: LiveGpsReading): FilteredGpsReading {
           previousPosition,
           currentPosition,
         )
-        const speedKnots = fuseGpsSpeedKnots(
+        const fusedSpeedKnots = fuseGpsSpeedKnots(
           gps.speedKnots,
           positionSpeedKnots,
           previousSpeedKnots,
@@ -119,7 +128,7 @@ export function useFilteredGps(gps: LiveGpsReading): FilteredGpsReading {
             longitude: gps.longitude,
             accuracyMeters: gps.accuracyMeters,
             speedKnots: gps.speedKnots,
-            fusedSpeedKnots: speedKnots,
+            fusedSpeedKnots,
             courseDegrees: gps.courseDegrees,
           },
         ]
@@ -147,6 +156,66 @@ export function useFilteredGps(gps: LiveGpsReading): FilteredGpsReading {
   const filteredDisplaySpeedKnots = useMemo(() => {
     return filterGpsSpeedKnots(samples.map((sample) => sample.fusedSpeedKnots))
   }, [samples])
+
+  const latestFusedSpeedSample = useMemo(() => {
+    for (let index = samples.length - 1; index >= 0; index -= 1) {
+      if (samples[index].fusedSpeedKnots !== null) {
+        return samples[index]
+      }
+    }
+
+    return null
+  }, [samples])
+
+  useEffect(() => {
+    if (
+      latestFusedSpeedSample === null ||
+      filteredDisplaySpeedKnots === null ||
+      lastKnownDisplaySpeedRef.current?.sourceSample === latestFusedSpeedSample
+    ) {
+      return
+    }
+
+    lastKnownDisplaySpeedRef.current = {
+      speedKnots: filteredDisplaySpeedKnots,
+      observedAt: Date.now(),
+      sourceSample: latestFusedSpeedSample,
+    }
+    setSpeedGraceTick((current) => current + 1)
+  }, [filteredDisplaySpeedKnots, latestFusedSpeedSample])
+
+  const displaySpeedKnots = useMemo(() => {
+    const hasNewFusedSpeed =
+      latestFusedSpeedSample !== null &&
+      lastKnownDisplaySpeedRef.current?.sourceSample !== latestFusedSpeedSample
+
+    return keepLastKnownGpsSpeedKnots(
+      hasNewFusedSpeed ? filteredDisplaySpeedKnots : null,
+      lastKnownDisplaySpeedRef.current,
+      Date.now(),
+    )
+  }, [filteredDisplaySpeedKnots, latestFusedSpeedSample, speedGraceTick])
+
+  useEffect(() => {
+    const lastKnownSpeed = lastKnownDisplaySpeedRef.current
+
+    if (lastKnownSpeed === null) {
+      return
+    }
+
+    const remainingMs =
+      lastKnownSpeed.observedAt + GPS_SPEED_LAST_KNOWN_GRACE_MS - Date.now()
+
+    if (remainingMs <= 0) {
+      return
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setSpeedGraceTick((current) => current + 1)
+    }, remainingMs)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [speedGraceTick])
 
   const filteredCourseDegrees = useMemo(() => {
     const courseValues = samples
@@ -202,7 +271,7 @@ export function useFilteredGps(gps: LiveGpsReading): FilteredGpsReading {
         sampleCount: 0,
       }
     }
-    const speedKnots = filteredDisplaySpeedKnots
+    const speedKnots = displaySpeedKnots
     const courseDegrees = filteredCourseDegrees
     const courseReliable =
       courseDegrees !== null &&
@@ -225,7 +294,7 @@ export function useFilteredGps(gps: LiveGpsReading): FilteredGpsReading {
   }, [
     displayCourseDegrees,
     filteredCourseDegrees,
-    filteredDisplaySpeedKnots,
+    displaySpeedKnots,
     filteredSpeedKnots,
     gps,
     samples.length,

@@ -7,12 +7,18 @@ export const GPS_SPEED_MAX_REASONABLE_KNOTS = 60
 export const GPS_SPEED_MAX_POSITION_ACCURACY_METERS = 25
 export const GPS_SPEED_MIN_POSITION_BASELINE_MS = 3000
 export const GPS_SPEED_MAX_POSITION_BASELINE_MS = 5000
+export const GPS_SPEED_LAST_KNOWN_GRACE_MS = 4000
 
 export interface GpsSpeedPosition {
   latitude: number | null
   longitude: number | null
   accuracyMeters: number | null
   timestamp: number | null
+}
+
+export interface LastKnownGpsSpeed {
+  speedKnots: number
+  observedAt: number
 }
 
 function toRadians(degrees: number): number {
@@ -146,4 +152,28 @@ export function filterGpsSpeedKnots(speedValues: Array<number | null>): number |
   }
 
   return (sortedValues[middleIndex - 1] + sortedValues[middleIndex]) / 2
+}
+
+export function keepLastKnownGpsSpeedKnots(
+  speedKnots: number | null,
+  lastKnownSpeed: LastKnownGpsSpeed | null,
+  now: number,
+): number | null {
+  if (isReasonableSpeed(speedKnots)) {
+    return speedKnots
+  }
+
+  if (
+    lastKnownSpeed === null ||
+    !isReasonableSpeed(lastKnownSpeed.speedKnots) ||
+    !Number.isFinite(lastKnownSpeed.observedAt)
+  ) {
+    return null
+  }
+
+  const elapsedMs = now - lastKnownSpeed.observedAt
+
+  return elapsedMs >= 0 && elapsedMs <= GPS_SPEED_LAST_KNOWN_GRACE_MS
+    ? lastKnownSpeed.speedKnots
+    : null
 }

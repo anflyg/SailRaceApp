@@ -3,9 +3,11 @@ import {
   calculatePositionSpeedKnots,
   filterGpsSpeedKnots,
   fuseGpsSpeedKnots,
+  GPS_SPEED_LAST_KNOWN_GRACE_MS,
   GPS_SPEED_MAX_POSITION_BASELINE_MS,
   GPS_SPEED_MIN_POSITION_BASELINE_MS,
   isReliableGpsSpeedPosition,
+  keepLastKnownGpsSpeedKnots,
   type GpsSpeedPosition,
 } from './gpsSpeed'
 
@@ -97,6 +99,65 @@ function simulateSpeed(inputs: SpeedInput[]): {
 }
 
 describe('GPS speed fusion and filtering', () => {
+  it('keeps a 0.4 kn coords speed visible below the course reliability threshold', () => {
+    const result = simulateSpeed([{ coordsSpeedKnots: 0.4, positionSpeedKnots: 0.4 }])
+
+    expect(result.displayedSpeeds[0]).toBeCloseTo(0.4, 1)
+  })
+
+  it('keeps a 1.0 kn coords speed visible below the course reliability threshold', () => {
+    const result = simulateSpeed([{ coordsSpeedKnots: 1.0, positionSpeedKnots: 1.0 }])
+
+    expect(result.displayedSpeeds[0]).toBeCloseTo(1.0, 1)
+  })
+
+  it('keeps a 1.4 kn coords speed visible below the course reliability threshold', () => {
+    const result = simulateSpeed([{ coordsSpeedKnots: 1.4, positionSpeedKnots: 1.4 }])
+
+    expect(result.displayedSpeeds[0]).toBeCloseTo(1.4, 1)
+  })
+
+  it('keeps the last stable low speed through a brief dropout', () => {
+    const result = simulateSpeed([
+      { coordsSpeedKnots: 0.8, positionSpeedKnots: 0.8 },
+      { coordsSpeedKnots: 0.8, positionSpeedKnots: 0.8 },
+    ])
+    const lastKnownSpeed = result.displayedSpeeds.at(-1)!
+
+    expect(
+      keepLastKnownGpsSpeedKnots(null, { speedKnots: lastKnownSpeed, observedAt: 1_000 }, 4_999),
+    ).toBeCloseTo(0.8, 1)
+  })
+
+  it('keeps the last stable sailing speed through a brief dropout', () => {
+    const result = simulateSpeed([
+      { coordsSpeedKnots: 5, positionSpeedKnots: 5 },
+      { coordsSpeedKnots: 5, positionSpeedKnots: 5 },
+    ])
+    const lastKnownSpeed = result.displayedSpeeds.at(-1)!
+
+    expect(
+      keepLastKnownGpsSpeedKnots(null, { speedKnots: lastKnownSpeed, observedAt: 1_000 }, 4_999),
+    ).toBeCloseTo(5, 1)
+  })
+
+  it('clears the displayed speed after the last-known-speed grace period', () => {
+    expect(
+      keepLastKnownGpsSpeedKnots(
+        null,
+        { speedKnots: 5, observedAt: 1_000 },
+        1_000 + GPS_SPEED_LAST_KNOWN_GRACE_MS + 1,
+      ),
+    ).toBeNull()
+  })
+
+  it('treats zero knots as a valid displayed speed', () => {
+    expect(filterGpsSpeedKnots([0, null])).toBe(0)
+    expect(
+      keepLastKnownGpsSpeedKnots(0, { speedKnots: 5, observedAt: 1_000 }, 2_000),
+    ).toBe(0)
+  })
+
   it('does not use position speed from positions only one second apart', () => {
     const result = simulateSpeed([
       { coordsSpeedKnots: 5, positionSpeedKnots: 5 },
