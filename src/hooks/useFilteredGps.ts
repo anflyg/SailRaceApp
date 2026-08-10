@@ -36,6 +36,16 @@ interface LastKnownDisplaySpeed extends LastKnownGpsSpeed {
   sourceSample: GpsSample
 }
 
+export interface ProcessedGpsTimestampSample {
+  gpsTimestamp: number | null
+}
+
+export function getLatestProcessedGpsTimestamp(
+  samples: ReadonlyArray<ProcessedGpsTimestampSample>,
+): number | null {
+  return samples.length > 0 ? samples[samples.length - 1].gpsTimestamp : null
+}
+
 function averageNumbers(values: number[]): number | null {
   if (values.length === 0) {
     return null
@@ -47,6 +57,7 @@ function averageNumbers(values: number[]): number | null {
 export function useFilteredGps(gps: LiveGpsReading): FilteredGpsReading {
   const [samples, setSamples] = useState<GpsSample[]>([])
   const [displayCourseDegrees, setDisplayCourseDegrees] = useState<number | null>(null)
+  const [presentationTimestamp, setPresentationTimestamp] = useState<number | null>(null)
   const [speedGraceTick, setSpeedGraceTick] = useState(0)
   const lastKnownDisplaySpeedRef = useRef<LastKnownDisplaySpeed | null>(null)
 
@@ -225,6 +236,11 @@ export function useFilteredGps(gps: LiveGpsReading): FilteredGpsReading {
     return averageAnglesDegrees(courseValues)
   }, [samples])
 
+  const latestSamplePresentationTimestamp = useMemo(
+    () => getLatestProcessedGpsTimestamp(samples),
+    [samples],
+  )
+
   useEffect(() => {
     setDisplayCourseDegrees((currentDisplayCourse) => {
       const speedKnots = filteredSpeedKnots
@@ -252,7 +268,8 @@ export function useFilteredGps(gps: LiveGpsReading): FilteredGpsReading {
 
       return normalizeDegrees(currentDisplayCourse + smoothingAlpha * delta)
     })
-  }, [filteredCourseDegrees, filteredSpeedKnots, gps.timestamp])
+    setPresentationTimestamp(latestSamplePresentationTimestamp)
+  }, [filteredCourseDegrees, filteredSpeedKnots, latestSamplePresentationTimestamp])
 
   return useMemo(() => {
     if (
@@ -267,6 +284,7 @@ export function useFilteredGps(gps: LiveGpsReading): FilteredGpsReading {
         speedKnots: null,
         courseDegrees: null,
         displayCourseDegrees: null,
+        presentationTimestamp: null,
         courseReliable: false,
         sampleCount: 0,
       }
@@ -288,6 +306,7 @@ export function useFilteredGps(gps: LiveGpsReading): FilteredGpsReading {
           displayCourseDegrees !== null
           ? normalizeDegrees(displayCourseDegrees)
           : null,
+      presentationTimestamp,
       courseReliable,
       sampleCount: samples.length,
     }
@@ -297,6 +316,7 @@ export function useFilteredGps(gps: LiveGpsReading): FilteredGpsReading {
     displaySpeedKnots,
     filteredSpeedKnots,
     gps,
+    presentationTimestamp,
     samples.length,
   ])
 }

@@ -65,6 +65,7 @@ const manualFilteredGps: FilteredGpsReading = {
   ...manualLiveGps,
   sampleCount: 6,
   displayCourseDegrees: 18,
+  presentationTimestamp: MANUAL_NOW,
 }
 
 const manualAttitude: DeviceAttitudeReading = {

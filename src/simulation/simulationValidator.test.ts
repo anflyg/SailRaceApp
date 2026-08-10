@@ -25,11 +25,17 @@ function sampleAt(elapsedTimeSeconds: number, overrides: Partial<SailingSimulati
   }
 }
 
-function appOutput(sample: SailingSimulationSample, overrides: { speedKnots?: number | null, displayCourseDegrees?: number | null, timestamp?: number | null } = {}) {
+function appOutput(sample: SailingSimulationSample, overrides: {
+  speedKnots?: number | null
+  displayCourseDegrees?: number | null
+  timestamp?: number | null
+  presentationTimestamp?: number | null
+} = {}) {
   return {
     speedKnots: 'speedKnots' in overrides ? overrides.speedKnots! : 6,
     displayCourseDegrees: 'displayCourseDegrees' in overrides ? overrides.displayCourseDegrees! : 0,
     timestamp: 'timestamp' in overrides ? overrides.timestamp! : sample.timestamp,
+    presentationTimestamp: 'presentationTimestamp' in overrides ? overrides.presentationTimestamp! : sample.timestamp,
   }
 }
 
@@ -88,12 +94,48 @@ describe('simulation validator', () => {
     expect(simulationValidator.getReport().checks).toHaveLength(2)
   })
 
-  it('waits for a timestamp-matched app output rather than comparing stale values', () => {
+  it('waits for a presentation timestamp rather than comparing stale raw GPS output', () => {
     const simulationValidator = validator()
     const sample = sampleAt(6)
 
-    expect(simulationValidator.observe(sample, appOutput(sample, { timestamp: sample.timestamp - 1_000 }))).toBeNull()
+    expect(simulationValidator.observe(sample, appOutput(sample, {
+      timestamp: sample.timestamp,
+      presentationTimestamp: sample.timestamp - 1_000,
+    }))).toBeNull()
     expect(simulationValidator.observe(sample, appOutput(sample))).not.toBeNull()
+  })
+
+  it('keeps a scheduled sample pending until a later presentation reaches its timestamp', () => {
+    const simulationValidator = validator()
+    const scheduledSample = sampleAt(6)
+    const laterSimulatorSample = sampleAt(7)
+
+    expect(simulationValidator.observe(scheduledSample, appOutput(scheduledSample, {
+      presentationTimestamp: scheduledSample.timestamp - 1_000,
+    }))).toBeNull()
+
+    const check = simulationValidator.observe(laterSimulatorSample, appOutput(scheduledSample))
+    expect(check).toMatchObject({ elapsedTimeSeconds: 6, timestamp: scheduledSample.timestamp })
+    expect(simulationValidator.observe(sampleAt(8), appOutput(scheduledSample))).toBeNull()
+    expect(simulationValidator.getReport().completedChecks).toBe(1)
+  })
+
+  it('does not validate a changed course against a stale presentation timestamp', () => {
+    const simulationValidator = validator()
+    const northbound = sampleAt(6, { courseDegrees: 0 })
+    const eastbound = sampleAt(9, { courseDegrees: 90 })
+    const laterSample = sampleAt(10, { courseDegrees: 90 })
+
+    simulationValidator.observe(northbound, appOutput(northbound))
+    expect(simulationValidator.observe(eastbound, appOutput(northbound, {
+      presentationTimestamp: northbound.timestamp,
+      displayCourseDegrees: 0,
+    }))).toBeNull()
+
+    const check = simulationValidator.observe(laterSample, appOutput(eastbound, {
+      displayCourseDegrees: 90,
+    }))
+    expect(check).toMatchObject({ elapsedTimeSeconds: 9, appCourseDegrees: 90, coursePassed: true })
   })
 
   it('produces the 19 planned checks from t=6 through t=60', () => {
@@ -107,8 +149,29 @@ describe('simulation validator', () => {
     const report = simulationValidator.getReport()
     expect(report.speedChecks).toBe(19)
     expect(report.courseChecks).toBe(19)
+    expect(report.plannedChecks).toBe(19)
+    expect(report.completedChecks).toBe(19)
+    expect(report.missingChecks).toBe(0)
     expect(report.overallPassed).toBe(true)
     expect(simulationValidator.isComplete()).toBe(true)
+  })
+
+  it('does not pass an incomplete report with only 18 of 19 correct checks', () => {
+    const simulationValidator = validator()
+
+    for (let elapsedTimeSeconds = 6; elapsedTimeSeconds < 60; elapsedTimeSeconds += 3) {
+      const sample = sampleAt(elapsedTimeSeconds)
+      simulationValidator.observe(sample, appOutput(sample))
+    }
+
+    const report = simulationValidator.getReport()
+    expect(report).toMatchObject({
+      plannedChecks: 19,
+      completedChecks: 18,
+      missingChecks: 1,
+      overallPassed: false,
+    })
+    expect(simulationValidator.isComplete()).toBe(false)
   })
 
   it('fails missing app speed or displayed course after warm-up', () => {
@@ -174,6 +237,7 @@ describe('simulation validator', () => {
       speedKnots: mappedLiveGps?.speedKnots ?? null,
       displayCourseDegrees: mappedLiveGps?.courseDegrees ?? null,
       timestamp: mappedLiveGps?.timestamp ?? null,
+      presentationTimestamp: mappedLiveGps?.timestamp ?? null,
     })
 
     expect(check).toMatchObject({ overallPassed: true, appCourseDegrees: 0 })

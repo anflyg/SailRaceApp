@@ -38,6 +38,9 @@ export interface SimulationValidationReport {
   warmupSeconds: number
   tolerances: SimulationValidationTolerances
   checks: SimulationValidationCheck[]
+  plannedChecks: number
+  completedChecks: number
+  missingChecks: number
   speedChecks: number
   speedPassed: number
   courseChecks: number
@@ -52,7 +55,10 @@ export interface SimulationValidationReport {
 export interface SimulationValidator {
   observe(
     sample: SailingSimulationSample,
-    filteredGps: Pick<FilteredGpsReading, 'speedKnots' | 'displayCourseDegrees' | 'timestamp'>,
+    filteredGps: Pick<
+      FilteredGpsReading,
+      'speedKnots' | 'displayCourseDegrees' | 'timestamp' | 'presentationTimestamp'
+    >,
   ): SimulationValidationCheck | null
   getReport(): SimulationValidationReport
   isComplete(): boolean
@@ -109,6 +115,18 @@ function isScheduledElapsedTime(
   )
 }
 
+function getPlannedChecks(
+  validationIntervalSeconds: number,
+  warmupSeconds: number,
+  endSeconds: number,
+): number {
+  const firstScheduledSecond = Math.ceil(warmupSeconds / validationIntervalSeconds) * validationIntervalSeconds
+
+  return firstScheduledSecond > endSeconds
+    ? 0
+    : Math.floor((endSeconds - firstScheduledSecond) / validationIntervalSeconds) + 1
+}
+
 export function createSimulationValidator(config: SimulationValidatorConfig): SimulationValidator {
   const validationIntervalSeconds = config.validationIntervalSeconds ?? STRAIGHT_SIMULATION_VALIDATION.validationIntervalSeconds
   const warmupSeconds = config.warmupSeconds ?? STRAIGHT_SIMULATION_VALIDATION.warmupSeconds
@@ -119,6 +137,9 @@ export function createSimulationValidator(config: SimulationValidatorConfig): Si
   }
   const checks: SimulationValidationCheck[] = []
   const checkedTimestamps = new Set<number>()
+  const completedElapsedTimes = new Set<number>()
+  const pendingSamples = new Map<number, SailingSimulationSample>()
+  const plannedChecks = getPlannedChecks(validationIntervalSeconds, warmupSeconds, endSeconds)
 
   const getReport = (): SimulationValidationReport => {
     const speedErrors = checks
@@ -134,6 +155,9 @@ export function createSimulationValidator(config: SimulationValidatorConfig): Si
       warmupSeconds,
       tolerances: { ...tolerances },
       checks: checks.map((check) => ({ ...check })),
+      plannedChecks,
+      completedChecks: completedElapsedTimes.size,
+      missingChecks: Math.max(0, plannedChecks - completedElapsedTimes.size),
       speedChecks: checks.length,
       speedPassed: checks.filter((check) => check.speedPassed).length,
       courseChecks: checks.length,
@@ -142,62 +166,78 @@ export function createSimulationValidator(config: SimulationValidatorConfig): Si
       maxSpeedErrorKnots: maximum(speedErrors),
       meanCourseErrorDegrees: average(courseErrors),
       maxCourseErrorDegrees: maximum(courseErrors),
-      overallPassed: checks.length > 0 && checks.every((check) => check.overallPassed),
+      overallPassed:
+        plannedChecks > 0 &&
+        completedElapsedTimes.size === plannedChecks &&
+        checks.every((check) => check.overallPassed),
     }
   }
 
   return {
     observe(sample, filteredGps) {
-      if (
-        !isScheduledElapsedTime(
-          sample.elapsedTimeSeconds,
-          validationIntervalSeconds,
-          warmupSeconds,
-          endSeconds,
-        ) ||
-        checkedTimestamps.has(sample.timestamp) ||
-        filteredGps.timestamp !== sample.timestamp
-      ) {
+      if (isScheduledElapsedTime(
+        sample.elapsedTimeSeconds,
+        validationIntervalSeconds,
+        warmupSeconds,
+        endSeconds,
+      ) &&
+        !checkedTimestamps.has(sample.timestamp) &&
+        !completedElapsedTimes.has(sample.elapsedTimeSeconds)) {
+        pendingSamples.set(sample.timestamp, sample)
+      }
+
+      const presentationTimestamp = filteredGps.presentationTimestamp
+
+      if (presentationTimestamp === null || checkedTimestamps.has(presentationTimestamp)) {
+        return null
+      }
+
+      const pendingSample = pendingSamples.get(presentationTimestamp)
+
+      if (!pendingSample || completedElapsedTimes.has(pendingSample.elapsedTimeSeconds)) {
+        pendingSamples.delete(presentationTimestamp)
         return null
       }
 
       const appSpeedKnots = filteredGps.speedKnots
       const appCourseDegrees = filteredGps.displayCourseDegrees
-      const groundTruthSpeedKnots = sample.groundTruthSpeedKnots
+      const groundTruthSpeedKnots = pendingSample.groundTruthSpeedKnots
       const speedErrorKnots =
         isFiniteNumber(groundTruthSpeedKnots) && isFiniteNumber(appSpeedKnots)
           ? Math.abs(appSpeedKnots - groundTruthSpeedKnots)
           : null
       const courseErrorDegrees = isFiniteNumber(appCourseDegrees)
-        ? getCourseErrorDegrees(sample.courseDegrees, appCourseDegrees)
+        ? getCourseErrorDegrees(pendingSample.courseDegrees, appCourseDegrees)
         : null
       const speedPassed = speedErrorKnots !== null && speedErrorKnots <= tolerances.speedToleranceKnots
       const coursePassed = courseErrorDegrees !== null && courseErrorDegrees <= tolerances.courseToleranceDegrees
       const check: SimulationValidationCheck = {
-        elapsedTimeSeconds: sample.elapsedTimeSeconds,
-        timestamp: sample.timestamp,
-        targetSpeedKnots: sample.targetSpeedKnots,
+        elapsedTimeSeconds: pendingSample.elapsedTimeSeconds,
+        timestamp: pendingSample.timestamp,
+        targetSpeedKnots: pendingSample.targetSpeedKnots,
         groundTruthSpeedKnots,
-        gpsReportedSpeedKnots: sample.speedMetersPerSecond === null
+        gpsReportedSpeedKnots: pendingSample.speedMetersPerSecond === null
           ? null
-          : sample.speedMetersPerSecond * KNOTS_PER_METER_PER_SECOND,
+          : pendingSample.speedMetersPerSecond * KNOTS_PER_METER_PER_SECOND,
         appSpeedKnots,
         speedErrorKnots,
         speedPassed,
-        groundTruthCourseDegrees: sample.courseDegrees,
+        groundTruthCourseDegrees: pendingSample.courseDegrees,
         appCourseDegrees,
         courseErrorDegrees,
         coursePassed,
         overallPassed: speedPassed && coursePassed,
       }
 
-      checkedTimestamps.add(sample.timestamp)
+      checkedTimestamps.add(pendingSample.timestamp)
+      completedElapsedTimes.add(pendingSample.elapsedTimeSeconds)
+      pendingSamples.delete(pendingSample.timestamp)
       checks.push(check)
       return check
     },
 
     getReport,
 
-    isComplete: () => checks.some((check) => check.elapsedTimeSeconds === endSeconds),
+    isComplete: () => plannedChecks > 0 && completedElapsedTimes.size === plannedChecks,
   }
 }
