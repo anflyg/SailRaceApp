@@ -2,7 +2,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { gpsReadingFromPosition } from '../hooks/useLiveGps'
 import {
   createSimulationGpsSource,
+  getSimulationRate,
   getSimulationModeConfig,
+  getSimulationTickIntervalMs,
   SIMULATION_TICK_MS,
   startSimulationTicker,
 } from './simulationMode'
@@ -20,7 +22,7 @@ describe('simulation mode', () => {
       false,
       developmentEnvironment,
       new URLSearchParams('simulation=straight'),
-    )).toEqual({ enabled: true, scenario: 'straight' })
+    )).toEqual({ enabled: true, scenario: 'straight', simulationRate: 1, tickIntervalMs: 1_000 })
   })
 
   it('enables the variable-speed scenario only for an allowed build and query', () => {
@@ -28,7 +30,7 @@ describe('simulation mode', () => {
       false,
       developmentEnvironment,
       new URLSearchParams('simulation=variable-speed'),
-    )).toEqual({ enabled: true, scenario: 'variable-speed' })
+    )).toEqual({ enabled: true, scenario: 'variable-speed', simulationRate: 1, tickIntervalMs: 1_000 })
   })
 
   it('ignores the simulation query in a normal production build', () => {
@@ -36,7 +38,7 @@ describe('simulation mode', () => {
       false,
       productionEnvironment,
       new URLSearchParams('simulation=straight'),
-    )).toEqual({ enabled: false, scenario: null })
+    )).toEqual({ enabled: false, scenario: null, simulationRate: 1, tickIntervalMs: 1_000 })
   })
 
   it('ignores the variable-speed query in a normal production build', () => {
@@ -44,7 +46,7 @@ describe('simulation mode', () => {
       false,
       productionEnvironment,
       new URLSearchParams('simulation=variable-speed'),
-    )).toEqual({ enabled: false, scenario: null })
+    )).toEqual({ enabled: false, scenario: null, simulationRate: 1, tickIntervalMs: 1_000 })
   })
 
   it('allows the straight scenario in the explicit simulation build mode', () => {
@@ -52,13 +54,15 @@ describe('simulation mode', () => {
       false,
       { DEV: false, MODE: 'simulation' },
       new URLSearchParams('simulation=straight'),
-    )).toEqual({ enabled: true, scenario: 'straight' })
+    )).toEqual({ enabled: true, scenario: 'straight', simulationRate: 1, tickIntervalMs: 1_000 })
   })
 
   it('stays disabled without a simulation query', () => {
     expect(getSimulationModeConfig(false, developmentEnvironment, new URLSearchParams())).toEqual({
       enabled: false,
       scenario: null,
+      simulationRate: 1,
+      tickIntervalMs: 1_000,
     })
   })
 
@@ -67,7 +71,31 @@ describe('simulation mode', () => {
       true,
       developmentEnvironment,
       new URLSearchParams('simulation=straight'),
-    )).toEqual({ enabled: false, scenario: null })
+    )).toEqual({ enabled: false, scenario: null, simulationRate: 1, tickIntervalMs: 1_000 })
+  })
+
+  it.each([
+    [null, 1, 1_000],
+    ['1', 1, 1_000],
+    ['10', 10, 100],
+    ['20', 20, 50],
+    ['2', 1, 1_000],
+  ] as const)('uses rate %s as %ix / %ims', (rate, expectedRate, expectedIntervalMs) => {
+    expect(getSimulationRate(rate)).toBe(expectedRate)
+    expect(getSimulationTickIntervalMs(getSimulationRate(rate))).toBe(expectedIntervalMs)
+  })
+
+  it('uses the requested rate only when simulation mode is enabled', () => {
+    expect(getSimulationModeConfig(
+      false,
+      developmentEnvironment,
+      new URLSearchParams('simulation=straight&simulationRate=10'),
+    )).toEqual({ enabled: true, scenario: 'straight', simulationRate: 10, tickIntervalMs: 100 })
+    expect(getSimulationModeConfig(
+      false,
+      productionEnvironment,
+      new URLSearchParams('simulation=straight&simulationRate=10'),
+    )).toEqual({ enabled: false, scenario: null, simulationRate: 1, tickIntervalMs: 1_000 })
   })
 
   it('feeds simulated GPS through the GpsSource to useLiveGps mapping', async () => {
@@ -127,5 +155,16 @@ describe('simulation mode', () => {
     cleanup()
     vi.advanceTimersByTime(SIMULATION_TICK_MS * 2)
     expect(source.advance).toHaveBeenCalledTimes(3)
+  })
+
+  it('accelerates only the wall-clock ticker interval, not simulator advances', () => {
+    vi.useFakeTimers()
+    const source = createSimulationGpsSource('straight')
+    const cleanup = startSimulationTicker(source, getSimulationTickIntervalMs(10))
+
+    vi.advanceTimersByTime(100)
+    expect(source.currentSample().elapsedTimeSeconds).toBe(1)
+
+    cleanup()
   })
 })

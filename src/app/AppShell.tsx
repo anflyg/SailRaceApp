@@ -132,8 +132,8 @@ export function AppShell() {
       return
     }
 
-    return startSimulationTicker(simulationGpsSource)
-  }, [simulationGpsSource])
+    return startSimulationTicker(simulationGpsSource, simulationMode.tickIntervalMs)
+  }, [simulationGpsSource, simulationMode.tickIntervalMs])
 
   useEffect(() => {
     if (simulationGpsSource === null || simulationValidator === null) {

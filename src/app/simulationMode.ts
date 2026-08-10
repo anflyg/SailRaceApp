@@ -8,12 +8,16 @@ import { createSimulatedGpsSource, type SimulatedGpsSource } from '../simulation
 const SIMULATION_QUERY_KEY = 'simulation'
 
 export const SIMULATION_TICK_MS = 1_000
+const SIMULATION_RATES = [1, 10, 20] as const
 
 export type SimulationScenario = 'straight' | 'variable-speed'
+export type SimulationRate = (typeof SIMULATION_RATES)[number]
 
 export interface SimulationModeConfig {
   enabled: boolean
   scenario: SimulationScenario | null
+  simulationRate: SimulationRate
+  tickIntervalMs: number
 }
 
 interface SimulationEnvironment {
@@ -34,10 +38,17 @@ export function getSimulationModeConfig(
   const simulationBuildAllowed = environment.DEV || environment.MODE === 'simulation'
 
   if (manualModeEnabled || !simulationBuildAllowed || scenario === null) {
-    return { enabled: false, scenario: null }
+    return { enabled: false, scenario: null, simulationRate: 1, tickIntervalMs: SIMULATION_TICK_MS }
   }
 
-  return { enabled: true, scenario }
+  const simulationRate = getSimulationRate(search?.get('simulationRate') ?? null)
+
+  return {
+    enabled: true,
+    scenario,
+    simulationRate,
+    tickIntervalMs: getSimulationTickIntervalMs(simulationRate),
+  }
 }
 
 export function createSimulationGpsSource(scenario: SimulationScenario): SimulatedGpsSource {
@@ -49,10 +60,23 @@ export function createSimulationGpsSource(scenario: SimulationScenario): Simulat
   }
 }
 
-export function startSimulationTicker(source: Pick<SimulatedGpsSource, 'advance'>): () => void {
+export function getSimulationRate(value: string | null): SimulationRate {
+  const parsedRate = Number(value)
+
+  return SIMULATION_RATES.includes(parsedRate as SimulationRate) ? parsedRate as SimulationRate : 1
+}
+
+export function getSimulationTickIntervalMs(simulationRate: SimulationRate): number {
+  return SIMULATION_TICK_MS / simulationRate
+}
+
+export function startSimulationTicker(
+  source: Pick<SimulatedGpsSource, 'advance'>,
+  tickIntervalMs = SIMULATION_TICK_MS,
+): () => void {
   const intervalId = globalThis.setInterval(() => {
     source.advance()
-  }, SIMULATION_TICK_MS)
+  }, tickIntervalMs)
 
   return () => globalThis.clearInterval(intervalId)
 }
