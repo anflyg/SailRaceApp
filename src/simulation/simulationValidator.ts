@@ -19,6 +19,14 @@ export const VARIABLE_SPEED_SIMULATION_VALIDATION = {
   courseToleranceDegrees: 1,
 } as const
 
+export const VARIABLE_COURSE_SIMULATION_VALIDATION = {
+  validationIntervalSeconds: 3,
+  warmupSeconds: 6,
+  endSeconds: 120,
+  speedToleranceKnots: 0.15,
+  courseToleranceDegrees: 6,
+} as const
+
 export interface SimulationValidationTolerances {
   speedToleranceKnots: number
   courseToleranceDegrees: number
@@ -33,7 +41,9 @@ export interface SimulationValidationCheck {
   appSpeedKnots: number | null
   speedErrorKnots: number | null
   speedPassed: boolean
-  groundTruthCourseDegrees: number
+  targetCourseDegrees: number
+  groundTruthCourseDegrees: number | null
+  gpsReportedCourseDegrees: number
   appCourseDegrees: number | null
   courseErrorDegrees: number | null
   coursePassed: boolean
@@ -138,7 +148,9 @@ function getPlannedChecks(
 export function createSimulationValidator(config: SimulationValidatorConfig): SimulationValidator {
   const scenarioValidation = config.scenario === 'variable-speed'
     ? VARIABLE_SPEED_SIMULATION_VALIDATION
-    : STRAIGHT_SIMULATION_VALIDATION
+    : config.scenario === 'variable-course'
+      ? VARIABLE_COURSE_SIMULATION_VALIDATION
+      : STRAIGHT_SIMULATION_VALIDATION
   const validationIntervalSeconds = config.validationIntervalSeconds ?? scenarioValidation.validationIntervalSeconds
   const warmupSeconds = config.warmupSeconds ?? scenarioValidation.warmupSeconds
   const endSeconds = config.endSeconds ?? scenarioValidation.endSeconds
@@ -217,8 +229,9 @@ export function createSimulationValidator(config: SimulationValidatorConfig): Si
         isFiniteNumber(groundTruthSpeedKnots) && isFiniteNumber(appSpeedKnots)
           ? Math.abs(appSpeedKnots - groundTruthSpeedKnots)
           : null
-      const courseErrorDegrees = isFiniteNumber(appCourseDegrees)
-        ? getCourseErrorDegrees(pendingSample.courseDegrees, appCourseDegrees)
+      const groundTruthCourseDegrees = pendingSample.groundTruthCourseDegrees
+      const courseErrorDegrees = isFiniteNumber(groundTruthCourseDegrees) && isFiniteNumber(appCourseDegrees)
+        ? getCourseErrorDegrees(groundTruthCourseDegrees, appCourseDegrees)
         : null
       const speedPassed = speedErrorKnots !== null && speedErrorKnots <= tolerances.speedToleranceKnots
       const coursePassed = courseErrorDegrees !== null && courseErrorDegrees <= tolerances.courseToleranceDegrees
@@ -233,7 +246,9 @@ export function createSimulationValidator(config: SimulationValidatorConfig): Si
         appSpeedKnots,
         speedErrorKnots,
         speedPassed,
-        groundTruthCourseDegrees: pendingSample.courseDegrees,
+        targetCourseDegrees: pendingSample.targetCourseDegrees,
+        groundTruthCourseDegrees,
+        gpsReportedCourseDegrees: pendingSample.courseDegrees,
         appCourseDegrees,
         courseErrorDegrees,
         coursePassed,

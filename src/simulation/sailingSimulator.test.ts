@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   NORTHBOUND_SIX_KNOTS_SCENARIO,
+  NORTHBOUND_VARIABLE_COURSE_SCENARIO,
   NORTHBOUND_VARIABLE_SPEED_SCENARIO,
 } from './sailingSimulator.fixtures'
 import { createSailingSimulator } from './sailingSimulator'
@@ -24,6 +25,7 @@ describe('SailingSimulator', () => {
     expect(sample.latitude).toBeGreaterThan(NORTHBOUND_SIX_KNOTS_SCENARIO.origin.latitude)
     expect(sample.longitude).toBeCloseTo(NORTHBOUND_SIX_KNOTS_SCENARIO.origin.longitude, 10)
     expect(sample.groundTruthSpeedKnots).toBeCloseTo(6, 10)
+    expect(sample.groundTruthCourseDegrees).toBeCloseTo(0, 10)
     expect(sample.speedMetersPerSecond).toBeCloseTo(6 / KNOTS_PER_METER_PER_SECOND, 10)
     expect(sample.accuracyMeters).toBe(3)
   })
@@ -76,6 +78,7 @@ describe('SailingSimulator', () => {
 
     expect(simulator.currentSample()).toMatchObject({ elapsedTimeSeconds: 60, targetSpeedKnots: 6, courseDegrees: 0 })
     expect(simulator.currentSample().groundTruthSpeedKnots).toBeCloseTo(6, 10)
+    expect(simulator.currentSample().groundTruthCourseDegrees).toBeCloseTo(0, 10)
   })
 
   it('linearly interpolates the variable speed profile at control points and midpoints', () => {
@@ -119,5 +122,57 @@ describe('SailingSimulator', () => {
     }
 
     expect(simulator.currentSample().localYmeters).toBeGreaterThan(initialSample.localYmeters)
+  })
+
+  it.each([
+    [350, 10],
+    [10, 350],
+  ])('interpolates course profiles across the 0/360 boundary in the shortest direction', (start, end) => {
+    const simulator = createSailingSimulator({
+      ...NORTHBOUND_SIX_KNOTS_SCENARIO,
+      courseProfile: [
+        { elapsedTimeSeconds: 0, courseDegrees: start },
+        { elapsedTimeSeconds: 10, courseDegrees: end },
+      ],
+    })
+
+    for (let second = 0; second < 5; second += 1) {
+      simulator.step()
+    }
+
+    const targetCourse = simulator.currentSample().targetCourseDegrees
+    expect(targetCourse).toBeCloseTo(0, 10)
+    expect(simulator.currentSample().groundTruthCourseDegrees).toBeCloseTo(targetCourse, 10)
+  })
+
+  it('derives ground-truth course independently from local displacement', () => {
+    const simulator = createSailingSimulator({
+      ...NORTHBOUND_SIX_KNOTS_SCENARIO,
+      courseDegrees: 90,
+    })
+    const initialSample = simulator.currentSample()
+    const movedSample = simulator.step()
+    const deltaX = movedSample.localXmeters - initialSample.localXmeters
+    const deltaY = movedSample.localYmeters - initialSample.localYmeters
+    const expectedBearing = (Math.atan2(deltaX, deltaY) * 180) / Math.PI
+
+    expect(movedSample.targetCourseDegrees).toBe(90)
+    expect(movedSample.groundTruthCourseDegrees).toBeCloseTo(expectedBearing, 10)
+    expect(movedSample.groundTruthCourseDegrees).toBeCloseTo(90, 10)
+    expect(movedSample.courseDegrees).toBeCloseTo(movedSample.groundTruthCourseDegrees!, 10)
+  })
+
+  it('runs the variable-course fixture at constant speed with derived course truth', () => {
+    const simulator = createSailingSimulator(NORTHBOUND_VARIABLE_COURSE_SCENARIO)
+
+    for (let second = 0; second < 120; second += 1) {
+      simulator.step()
+    }
+
+    const sample = simulator.currentSample()
+    expect(sample.targetSpeedKnots).toBe(6)
+    expect(sample.groundTruthSpeedKnots).toBeCloseTo(6, 10)
+    expect(sample.targetCourseDegrees).toBe(350)
+    expect(sample.groundTruthCourseDegrees).toBeCloseTo(350, 10)
   })
 })

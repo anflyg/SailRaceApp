@@ -21,6 +21,13 @@ const scenarios = [
     timeoutMs: 25_000,
     expected: { plannedChecks: 39, speedPassed: 39, coursePassed: 39 },
   },
+  {
+    name: 'variable-course',
+    label: 'VARIABLE COURSE',
+    timeoutMs: 25_000,
+    expected: { plannedChecks: 39, speedPassed: 39, coursePassed: 39 },
+    stableCheckpoints: [9, 57, 117],
+  },
 ]
 
 function sleep(milliseconds) {
@@ -108,7 +115,39 @@ function validateReport(report, scenario) {
   assertEqual(report.speedPassed, scenario.expected.speedPassed, `${scenario.label} speed passed`)
   assertEqual(report.courseChecks, scenario.expected.plannedChecks, `${scenario.label} course checks`)
   assertEqual(report.coursePassed, scenario.expected.coursePassed, `${scenario.label} course passed`)
+
+  const failedCheck = report.checks.find((check) => !check.overallPassed)
+  if (failedCheck) {
+    throw new Error(`${scenario.label} failed check: ${JSON.stringify({
+      elapsedTimeSeconds: failedCheck.elapsedTimeSeconds,
+      targetCourseDegrees: failedCheck.targetCourseDegrees,
+      groundTruthCourseDegrees: failedCheck.groundTruthCourseDegrees,
+      gpsReportedCourseDegrees: failedCheck.gpsReportedCourseDegrees,
+      appCourseDegrees: failedCheck.appCourseDegrees,
+      courseErrorDegrees: failedCheck.courseErrorDegrees,
+      coursePassed: failedCheck.coursePassed,
+    })}`)
+  }
+
   assertEqual(report.overallPassed, true, `${scenario.label} overall result`)
+
+  for (const elapsedTimeSeconds of scenario.stableCheckpoints ?? []) {
+    const check = report.checks.find((candidate) => candidate.elapsedTimeSeconds === elapsedTimeSeconds)
+    if (!check) {
+      throw new Error(`${scenario.label} stable checkpoint t=${elapsedTimeSeconds}: check not found`)
+    }
+
+    if (check.courseErrorDegrees === null || check.courseErrorDegrees > 1) {
+      throw new Error(`${scenario.label} stable checkpoint failed: ${JSON.stringify({
+        elapsedTimeSeconds,
+        targetCourseDegrees: check.targetCourseDegrees,
+        groundTruthCourseDegrees: check.groundTruthCourseDegrees,
+        gpsReportedCourseDegrees: check.gpsReportedCourseDegrees,
+        appCourseDegrees: check.appCourseDegrees,
+        courseErrorDegrees: check.courseErrorDegrees,
+      })}`)
+    }
+  }
 }
 
 async function validateDashboard(page, scenario) {
@@ -117,6 +156,11 @@ async function validateDashboard(page, scenario) {
 
   if (scenario.name === 'straight') {
     assertEqual(await speed.textContent(), '6,0', 'STRAIGHT dashboard speed')
+  } else if (scenario.name === 'variable-course') {
+    const speedText = (await speed.textContent())?.trim() ?? ''
+    if (speedText === '--' || !/^\d+(,\d+)?$/.test(speedText)) {
+      throw new Error(`VARIABLE COURSE dashboard speed: expected a numeric value, received ${JSON.stringify(speedText)}`)
+    }
   } else {
     const speedText = (await speed.textContent())?.trim() ?? ''
     if (speedText === '--' || !/^\d+(,\d+)?$/.test(speedText)) {
@@ -124,7 +168,7 @@ async function validateDashboard(page, scenario) {
     }
   }
 
-  assertEqual(await course.textContent(), '000°', `${scenario.label} dashboard course`)
+  assertEqual(await course.textContent(), scenario.name === 'variable-course' ? '350°' : '000°', `${scenario.label} dashboard course`)
 }
 
 async function runScenario(browser, scenario) {

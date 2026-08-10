@@ -33,6 +33,14 @@ describe('simulation mode', () => {
     )).toEqual({ enabled: true, scenario: 'variable-speed', simulationRate: 1, tickIntervalMs: 1_000 })
   })
 
+  it('enables the variable-course scenario only for an allowed build and query', () => {
+    expect(getSimulationModeConfig(
+      false,
+      developmentEnvironment,
+      new URLSearchParams('simulation=variable-course&simulationRate=10'),
+    )).toEqual({ enabled: true, scenario: 'variable-course', simulationRate: 10, tickIntervalMs: 100 })
+  })
+
   it('ignores the simulation query in a normal production build', () => {
     expect(getSimulationModeConfig(
       false,
@@ -46,6 +54,14 @@ describe('simulation mode', () => {
       false,
       productionEnvironment,
       new URLSearchParams('simulation=variable-speed'),
+    )).toEqual({ enabled: false, scenario: null, simulationRate: 1, tickIntervalMs: 1_000 })
+  })
+
+  it('ignores the variable-course query in a normal production build', () => {
+    expect(getSimulationModeConfig(
+      false,
+      productionEnvironment,
+      new URLSearchParams('simulation=variable-course'),
     )).toEqual({ enabled: false, scenario: null, simulationRate: 1, tickIntervalMs: 1_000 })
   })
 

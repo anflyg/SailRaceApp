@@ -4,6 +4,7 @@ import { createSimulatedGpsSource } from './simulatedGpsSource'
 import { createSailingSimulator, type SailingSimulationSample } from './sailingSimulator'
 import {
   NORTHBOUND_SIX_KNOTS_SCENARIO,
+  NORTHBOUND_VARIABLE_COURSE_SCENARIO,
   NORTHBOUND_VARIABLE_SPEED_SCENARIO,
 } from './sailingSimulator.fixtures'
 import { createSimulationValidator, getCourseErrorDegrees } from './simulationValidator'
@@ -21,6 +22,8 @@ function sampleAt(elapsedTimeSeconds: number, overrides: Partial<SailingSimulati
     longitude: 18.0686,
     targetSpeedKnots: 6,
     groundTruthSpeedKnots: 6,
+    targetCourseDegrees: 0,
+    groundTruthCourseDegrees: 0,
     courseDegrees: 0,
     speedMetersPerSecond: 6 / KNOTS_PER_METER_PER_SECOND,
     accuracyMeters: 3,
@@ -126,7 +129,11 @@ describe('simulation validator', () => {
   it('does not validate a changed course against a stale presentation timestamp', () => {
     const simulationValidator = validator()
     const northbound = sampleAt(6, { courseDegrees: 0 })
-    const eastbound = sampleAt(9, { courseDegrees: 90 })
+    const eastbound = sampleAt(9, {
+      courseDegrees: 90,
+      targetCourseDegrees: 90,
+      groundTruthCourseDegrees: 90,
+    })
     const laterSample = sampleAt(10, { courseDegrees: 90 })
 
     simulationValidator.observe(northbound, appOutput(northbound))
@@ -179,6 +186,53 @@ describe('simulation validator', () => {
       speedChecks: 39,
       courseChecks: 39,
       overallPassed: true,
+    })
+  })
+
+  it('uses variable-course metadata, derived course truth and 39 planned checks', () => {
+    const simulationValidator = createSimulationValidator({ scenario: 'variable-course' })
+    const simulator = createSailingSimulator(NORTHBOUND_VARIABLE_COURSE_SCENARIO)
+
+    for (let elapsedTimeSeconds = 0; elapsedTimeSeconds <= 120; elapsedTimeSeconds += 1) {
+      const sample = elapsedTimeSeconds === 0 ? simulator.currentSample() : simulator.step()
+      simulationValidator.observe(sample, appOutput(sample))
+    }
+
+    const report = simulationValidator.getReport()
+    const checkpoint = report.checks.find((check) => check.elapsedTimeSeconds === 117)
+    expect(report).toMatchObject({
+      scenario: 'variable-course',
+      plannedChecks: 39,
+      completedChecks: 39,
+      missingChecks: 0,
+      speedPassed: 39,
+      coursePassed: 39,
+      overallPassed: true,
+      tolerances: { speedToleranceKnots: 0.15, courseToleranceDegrees: 6 },
+    })
+    expect(checkpoint?.courseErrorDegrees).toBeCloseTo(0, 10)
+    expect(checkpoint?.targetCourseDegrees).toBeCloseTo(350, 10)
+    expect(checkpoint?.groundTruthCourseDegrees).toBeCloseTo(350, 10)
+    expect(checkpoint?.gpsReportedCourseDegrees).toBeCloseTo(350, 10)
+    expect(checkpoint?.appCourseDegrees).toBeCloseTo(350, 10)
+  })
+
+  it('keeps target, ground-truth and GPS-reported course fields separate', () => {
+    const sample = sampleAt(6, {
+      targetCourseDegrees: 350,
+      groundTruthCourseDegrees: 350,
+      courseDegrees: 350,
+    })
+    const check = createSimulationValidator({ scenario: 'variable-course' }).observe(sample, appOutput(sample, {
+      displayCourseDegrees: 349,
+    }))
+
+    expect(check).toMatchObject({
+      targetCourseDegrees: 350,
+      groundTruthCourseDegrees: 350,
+      appCourseDegrees: 349,
+      courseErrorDegrees: 1,
+      coursePassed: true,
     })
   })
 
