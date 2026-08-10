@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Capacitor } from '@capacitor/core'
-import { Geolocation, type Position } from '@capacitor/geolocation'
 import { normalizeDegrees } from '../domain/angles'
+import { capacitorGpsSource } from '../services/gps/capacitorGpsSource'
+import type { GpsPosition, GpsSource, GpsSourceOptions } from '../services/gps/gpsSource'
 import type { LiveGpsReading, LiveGpsStatus } from '../types'
 
 const METERS_PER_SECOND_TO_KNOTS = 1.943844
@@ -20,7 +20,7 @@ const initialReading: LiveGpsReading = {
   timestamp: null,
 }
 
-const liveGpsOptions = {
+const liveGpsOptions: GpsSourceOptions = {
   enableHighAccuracy: true,
   timeout: 10000,
   maximumAge: 1000,
@@ -48,23 +48,9 @@ function normalizeGpsCourse(courseDegrees: number | null): number | null {
   return normalizeDegrees(courseDegrees)
 }
 
-function getPositionCourse(position: Position): number | null {
-  const course = finiteNumberOrNull(position.coords.course)
-
-  if (course !== null) {
-    return normalizeGpsCourse(course)
-  }
-
-  if (!Capacitor.isNativePlatform()) {
-    return normalizeGpsCourse(finiteNumberOrNull(position.coords.heading))
-  }
-
-  return null
-}
-
-function gpsReadingFromPosition(position: Position, status: LiveGpsStatus): LiveGpsReading {
-  const speedKnots = speedMetersPerSecondToKnots(finiteNumberOrNull(position.coords.speed))
-  const courseDegrees = getPositionCourse(position)
+export function gpsReadingFromPosition(position: GpsPosition, status: LiveGpsStatus): LiveGpsReading {
+  const speedKnots = speedMetersPerSecondToKnots(position.speedMetersPerSecond)
+  const courseDegrees = normalizeGpsCourse(position.courseDegrees)
   const courseReliable =
     courseDegrees !== null &&
     speedKnots !== null &&
@@ -73,9 +59,9 @@ function gpsReadingFromPosition(position: Position, status: LiveGpsStatus): Live
   return {
     status,
     error: null,
-    latitude: finiteNumberOrNull(position.coords.latitude),
-    longitude: finiteNumberOrNull(position.coords.longitude),
-    accuracyMeters: finiteNumberOrNull(position.coords.accuracy),
+    latitude: finiteNumberOrNull(position.latitude),
+    longitude: finiteNumberOrNull(position.longitude),
+    accuracyMeters: finiteNumberOrNull(position.accuracyMeters),
     speedKnots,
     courseDegrees,
     courseReliable,
@@ -98,14 +84,7 @@ function getErrorMessage(error: unknown): string {
   return 'GPS är inte tillgänglig.'
 }
 
-function geolocationAvailable(): boolean {
-  return (
-    Capacitor.isPluginAvailable('Geolocation') ||
-    (typeof navigator !== 'undefined' && typeof navigator.geolocation !== 'undefined')
-  )
-}
-
-export function useLiveGps(enabled = true): LiveGpsReading {
+export function useLiveGps(enabled = true, gpsSource: GpsSource = capacitorGpsSource): LiveGpsReading {
   const [reading, setReading] = useState<LiveGpsReading>(initialReading)
 
   useEffect(() => {
@@ -127,7 +106,7 @@ export function useLiveGps(enabled = true): LiveGpsReading {
     }
 
     const startWatching = async () => {
-      if (!geolocationAvailable()) {
+      if (!gpsSource.isAvailable()) {
         updateStatus('unavailable', 'GPS stöds inte på den här enheten.')
         return
       }
@@ -135,22 +114,20 @@ export function useLiveGps(enabled = true): LiveGpsReading {
       try {
         updateStatus('requesting')
 
-        if (Capacitor.isNativePlatform()) {
-          const permissions = await Geolocation.requestPermissions({ permissions: ['location'] })
+        const permission = await gpsSource.requestPermission()
 
-          if (permissions.location !== 'granted') {
-            updateStatus('error', 'GPS-behörighet nekades.')
-            return
-          }
+        if (permission !== 'granted') {
+          updateStatus('error', 'GPS-behörighet nekades.')
+          return
         }
 
-        const currentPosition = await Geolocation.getCurrentPosition(liveGpsOptions)
+        const currentPosition = await gpsSource.getCurrentPosition(liveGpsOptions)
 
         if (!cancelled) {
           setReading(gpsReadingFromPosition(currentPosition, 'requesting'))
         }
 
-        watchId = await Geolocation.watchPosition(liveGpsOptions, (position, error) => {
+        watchId = await gpsSource.watchPosition(liveGpsOptions, (position, error) => {
           if (cancelled) {
             return
           }
@@ -169,7 +146,7 @@ export function useLiveGps(enabled = true): LiveGpsReading {
         })
 
         if (cancelled && watchId) {
-          await Geolocation.clearWatch({ id: watchId })
+          await gpsSource.clearWatch(watchId)
           return
         }
 
@@ -185,10 +162,10 @@ export function useLiveGps(enabled = true): LiveGpsReading {
       cancelled = true
 
       if (watchId) {
-        void Geolocation.clearWatch({ id: watchId }).catch(() => undefined)
+        void gpsSource.clearWatch(watchId).catch(() => undefined)
       }
     }
-  }, [enabled])
+  }, [enabled, gpsSource])
 
   return enabled ? reading : initialReading
 }
