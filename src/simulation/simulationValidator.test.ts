@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest'
 import { gpsReadingFromPosition } from '../hooks/useLiveGps'
 import { createSimulatedGpsSource } from './simulatedGpsSource'
 import { createSailingSimulator, type SailingSimulationSample } from './sailingSimulator'
-import { NORTHBOUND_SIX_KNOTS_SCENARIO } from './sailingSimulator.fixtures'
+import {
+  NORTHBOUND_SIX_KNOTS_SCENARIO,
+  NORTHBOUND_VARIABLE_SPEED_SCENARIO,
+} from './sailingSimulator.fixtures'
 import { createSimulationValidator, getCourseErrorDegrees } from './simulationValidator'
 
 const KNOTS_PER_METER_PER_SECOND = 1.943844
@@ -32,8 +35,8 @@ function appOutput(sample: SailingSimulationSample, overrides: {
   presentationTimestamp?: number | null
 } = {}) {
   return {
-    speedKnots: 'speedKnots' in overrides ? overrides.speedKnots! : 6,
-    displayCourseDegrees: 'displayCourseDegrees' in overrides ? overrides.displayCourseDegrees! : 0,
+    speedKnots: 'speedKnots' in overrides ? overrides.speedKnots! : sample.groundTruthSpeedKnots,
+    displayCourseDegrees: 'displayCourseDegrees' in overrides ? overrides.displayCourseDegrees! : sample.courseDegrees,
     timestamp: 'timestamp' in overrides ? overrides.timestamp! : sample.timestamp,
     presentationTimestamp: 'presentationTimestamp' in overrides ? overrides.presentationTimestamp! : sample.timestamp,
   }
@@ -154,6 +157,51 @@ describe('simulation validator', () => {
     expect(report.missingChecks).toBe(0)
     expect(report.overallPassed).toBe(true)
     expect(simulationValidator.isComplete()).toBe(true)
+  })
+
+  it('uses variable-speed metadata with 39 planned checks from t=6 through t=120', () => {
+    const simulationValidator = createSimulationValidator({ scenario: 'variable-speed' })
+    const simulator = createSailingSimulator(NORTHBOUND_VARIABLE_SPEED_SCENARIO)
+
+    for (let elapsedTimeSeconds = 0; elapsedTimeSeconds <= 120; elapsedTimeSeconds += 1) {
+      const sample = elapsedTimeSeconds === 0 ? simulator.currentSample() : simulator.step()
+      simulationValidator.observe(sample, appOutput(sample))
+    }
+
+    const report = simulationValidator.getReport()
+    expect(report).toMatchObject({
+      scenario: 'variable-speed',
+      validationIntervalSeconds: 3,
+      warmupSeconds: 6,
+      plannedChecks: 39,
+      completedChecks: 39,
+      missingChecks: 0,
+      speedChecks: 39,
+      courseChecks: 39,
+      overallPassed: true,
+    })
+  })
+
+  it('keeps target, ground-truth, GPS-reported and app speed as separate report fields', () => {
+    const simulator = createSailingSimulator(NORTHBOUND_VARIABLE_SPEED_SCENARIO)
+
+    for (let second = 1; second <= 6; second += 1) {
+      simulator.step()
+    }
+
+    const sample = simulator.currentSample()
+    const check = createSimulationValidator({ scenario: 'variable-speed' }).observe(sample, appOutput(sample, {
+      speedKnots: sample.groundTruthSpeedKnots! - 0.05,
+    }))
+
+    expect(check).toMatchObject({
+      targetSpeedKnots: sample.targetSpeedKnots,
+      groundTruthSpeedKnots: sample.groundTruthSpeedKnots,
+      gpsReportedSpeedKnots: sample.speedMetersPerSecond! * KNOTS_PER_METER_PER_SECOND,
+      appSpeedKnots: sample.groundTruthSpeedKnots! - 0.05,
+    })
+    expect(check?.appSpeedKnots).not.toBe(check?.groundTruthSpeedKnots)
+    expect(check?.speedErrorKnots).toBeCloseTo(0.05, 10)
   })
 
   it('does not pass an incomplete report with only 18 of 19 correct checks', () => {

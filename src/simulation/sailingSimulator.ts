@@ -5,11 +5,17 @@ import { localPositionToGeoPoint, type LocalPosition } from './localCoordinates'
 
 const KNOTS_PER_METER_PER_SECOND = 1.943844
 
+export interface SpeedProfilePoint {
+  elapsedTimeSeconds: number
+  speedKnots: number
+}
+
 export interface SailingSimulatorConfig {
   origin: GeoPoint
   initialPosition?: LocalPosition
   courseDegrees: number
-  targetSpeedKnots: number
+  targetSpeedKnots?: number
+  speedProfile?: readonly SpeedProfilePoint[]
   timeStepSeconds?: number
   startTimestamp?: number
   accuracyMeters?: number
@@ -39,10 +45,11 @@ function toRadians(degrees: number): number {
 }
 
 function createSample(
-  config: Required<Pick<SailingSimulatorConfig, 'origin' | 'targetSpeedKnots' | 'timeStepSeconds' | 'startTimestamp' | 'accuracyMeters'>>,
+  config: Required<Pick<SailingSimulatorConfig, 'origin' | 'timeStepSeconds' | 'startTimestamp' | 'accuracyMeters'>>,
   position: LocalPosition,
   elapsedTimeSeconds: number,
   courseDegrees: number,
+  targetSpeedKnots: number,
   groundTruthSpeedKnots: number | null,
 ): SailingSimulationSample {
   const point = localPositionToGeoPoint(config.origin, position)
@@ -54,7 +61,7 @@ function createSample(
     localYmeters: position.yMeters,
     latitude: point.latitude,
     longitude: point.longitude,
-    targetSpeedKnots: config.targetSpeedKnots,
+    targetSpeedKnots,
     groundTruthSpeedKnots,
     courseDegrees,
     speedMetersPerSecond: groundTruthSpeedKnots === null
@@ -62,6 +69,45 @@ function createSample(
       : groundTruthSpeedKnots / KNOTS_PER_METER_PER_SECOND,
     accuracyMeters: config.accuracyMeters,
   }
+}
+
+function getTargetSpeedKnots(
+  speedProfile: readonly SpeedProfilePoint[] | undefined,
+  fallbackSpeedKnots: number | undefined,
+  elapsedTimeSeconds: number,
+): number {
+  if (!speedProfile || speedProfile.length === 0) {
+    if (fallbackSpeedKnots === undefined) {
+      throw new Error('SailingSimulator requires targetSpeedKnots or a speedProfile')
+    }
+
+    return fallbackSpeedKnots
+  }
+
+  const firstPoint = speedProfile[0]
+  const lastPoint = speedProfile[speedProfile.length - 1]
+
+  if (elapsedTimeSeconds <= firstPoint.elapsedTimeSeconds) {
+    return firstPoint.speedKnots
+  }
+
+  if (elapsedTimeSeconds >= lastPoint.elapsedTimeSeconds) {
+    return lastPoint.speedKnots
+  }
+
+  for (let index = 1; index < speedProfile.length; index += 1) {
+    const nextPoint = speedProfile[index]
+    const previousPoint = speedProfile[index - 1]
+
+    if (elapsedTimeSeconds <= nextPoint.elapsedTimeSeconds) {
+      const progress =
+        (elapsedTimeSeconds - previousPoint.elapsedTimeSeconds) /
+        (nextPoint.elapsedTimeSeconds - previousPoint.elapsedTimeSeconds)
+      return previousPoint.speedKnots + (nextPoint.speedKnots - previousPoint.speedKnots) * progress
+    }
+  }
+
+  return lastPoint.speedKnots
 }
 
 export function sampleToGpsPosition(sample: SailingSimulationSample): GpsPosition {
@@ -81,14 +127,15 @@ export function createSailingSimulator(config: SailingSimulatorConfig): SailingS
   const accuracyMeters = config.accuracyMeters ?? 3
   const startTimestamp = config.startTimestamp ?? 0
   const courseDegrees = normalizeDegrees(config.courseDegrees)
-  const targetSpeedMetersPerSecond = config.targetSpeedKnots / KNOTS_PER_METER_PER_SECOND
   let position: LocalPosition = config.initialPosition ?? { xMeters: 0, yMeters: 0 }
   let elapsedTimeSeconds = 0
+  let targetSpeedKnots = getTargetSpeedKnots(config.speedProfile, config.targetSpeedKnots, elapsedTimeSeconds)
   let sample = createSample(
     { ...config, timeStepSeconds, accuracyMeters, startTimestamp },
     position,
     elapsedTimeSeconds,
     courseDegrees,
+    targetSpeedKnots,
     null,
   )
 
@@ -98,13 +145,14 @@ export function createSailingSimulator(config: SailingSimulatorConfig): SailingS
     step: () => {
       const courseRadians = toRadians(courseDegrees)
       const previousPosition = position
+      elapsedTimeSeconds += timeStepSeconds
+      targetSpeedKnots = getTargetSpeedKnots(config.speedProfile, config.targetSpeedKnots, elapsedTimeSeconds)
+      const targetSpeedMetersPerSecond = targetSpeedKnots / KNOTS_PER_METER_PER_SECOND
       const distanceMeters = targetSpeedMetersPerSecond * timeStepSeconds
       position = {
         xMeters: previousPosition.xMeters + distanceMeters * Math.sin(courseRadians),
         yMeters: previousPosition.yMeters + distanceMeters * Math.cos(courseRadians),
       }
-      elapsedTimeSeconds += timeStepSeconds
-
       const movedDistanceMeters = Math.hypot(
         position.xMeters - previousPosition.xMeters,
         position.yMeters - previousPosition.yMeters,
@@ -117,6 +165,7 @@ export function createSailingSimulator(config: SailingSimulatorConfig): SailingS
         position,
         elapsedTimeSeconds,
         courseDegrees,
+        targetSpeedKnots,
         groundTruthSpeedKnots,
       )
 

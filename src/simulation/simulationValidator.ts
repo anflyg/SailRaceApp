@@ -11,6 +11,14 @@ export const STRAIGHT_SIMULATION_VALIDATION = {
   courseToleranceDegrees: 1,
 } as const
 
+export const VARIABLE_SPEED_SIMULATION_VALIDATION = {
+  validationIntervalSeconds: 3,
+  warmupSeconds: 6,
+  endSeconds: 120,
+  speedToleranceKnots: 0.15,
+  courseToleranceDegrees: 1,
+} as const
+
 export interface SimulationValidationTolerances {
   speedToleranceKnots: number
   courseToleranceDegrees: number
@@ -128,12 +136,15 @@ function getPlannedChecks(
 }
 
 export function createSimulationValidator(config: SimulationValidatorConfig): SimulationValidator {
-  const validationIntervalSeconds = config.validationIntervalSeconds ?? STRAIGHT_SIMULATION_VALIDATION.validationIntervalSeconds
-  const warmupSeconds = config.warmupSeconds ?? STRAIGHT_SIMULATION_VALIDATION.warmupSeconds
-  const endSeconds = config.endSeconds ?? STRAIGHT_SIMULATION_VALIDATION.endSeconds
+  const scenarioValidation = config.scenario === 'variable-speed'
+    ? VARIABLE_SPEED_SIMULATION_VALIDATION
+    : STRAIGHT_SIMULATION_VALIDATION
+  const validationIntervalSeconds = config.validationIntervalSeconds ?? scenarioValidation.validationIntervalSeconds
+  const warmupSeconds = config.warmupSeconds ?? scenarioValidation.warmupSeconds
+  const endSeconds = config.endSeconds ?? scenarioValidation.endSeconds
   const tolerances = config.tolerances ?? {
-    speedToleranceKnots: STRAIGHT_SIMULATION_VALIDATION.speedToleranceKnots,
-    courseToleranceDegrees: STRAIGHT_SIMULATION_VALIDATION.courseToleranceDegrees,
+    speedToleranceKnots: scenarioValidation.speedToleranceKnots,
+    courseToleranceDegrees: scenarioValidation.courseToleranceDegrees,
   }
   const checks: SimulationValidationCheck[] = []
   const checkedTimestamps = new Set<number>()

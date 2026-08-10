@@ -23,11 +23,27 @@ describe('simulation mode', () => {
     )).toEqual({ enabled: true, scenario: 'straight' })
   })
 
+  it('enables the variable-speed scenario only for an allowed build and query', () => {
+    expect(getSimulationModeConfig(
+      false,
+      developmentEnvironment,
+      new URLSearchParams('simulation=variable-speed'),
+    )).toEqual({ enabled: true, scenario: 'variable-speed' })
+  })
+
   it('ignores the simulation query in a normal production build', () => {
     expect(getSimulationModeConfig(
       false,
       productionEnvironment,
       new URLSearchParams('simulation=straight'),
+    )).toEqual({ enabled: false, scenario: null })
+  })
+
+  it('ignores the variable-speed query in a normal production build', () => {
+    expect(getSimulationModeConfig(
+      false,
+      productionEnvironment,
+      new URLSearchParams('simulation=variable-speed'),
     )).toEqual({ enabled: false, scenario: null })
   })
 
@@ -74,6 +90,30 @@ describe('simulation mode', () => {
       courseDegrees: 0,
       courseReliable: true,
     })
+  })
+
+  it('creates the variable-speed GPS source with a stable northbound course', async () => {
+    const source = createSimulationGpsSource('variable-speed')
+    const callback = vi.fn()
+    await source.watchPosition({
+      enableHighAccuracy: true,
+      timeout: 10_000,
+      maximumAge: 1_000,
+      minimumUpdateInterval: 1_000,
+      interval: 1_000,
+    }, callback)
+
+    for (let second = 0; second < 30; second += 1) {
+      source.advance()
+    }
+
+    expect(source.currentSample()).toMatchObject({
+      elapsedTimeSeconds: 30,
+      targetSpeedKnots: 5,
+      courseDegrees: 0,
+      accuracyMeters: 3,
+    })
+    expect(source.currentSample().groundTruthSpeedKnots).toBeCloseTo(5, 10)
   })
 
   it('advances once per second and stops after cleanup', () => {

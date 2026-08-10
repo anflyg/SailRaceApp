@@ -1,4 +1,7 @@
-import { NORTHBOUND_SIX_KNOTS_SCENARIO } from '../simulation/sailingSimulator.fixtures'
+import {
+  NORTHBOUND_SIX_KNOTS_SCENARIO,
+  NORTHBOUND_VARIABLE_SPEED_SCENARIO,
+} from '../simulation/sailingSimulator.fixtures'
 import { createSailingSimulator } from '../simulation/sailingSimulator'
 import { createSimulatedGpsSource, type SimulatedGpsSource } from '../simulation/simulatedGpsSource'
 
@@ -6,7 +9,7 @@ const SIMULATION_QUERY_KEY = 'simulation'
 
 export const SIMULATION_TICK_MS = 1_000
 
-export type SimulationScenario = 'straight'
+export type SimulationScenario = 'straight' | 'variable-speed'
 
 export interface SimulationModeConfig {
   enabled: boolean
@@ -23,7 +26,11 @@ export function getSimulationModeConfig(
   environment: SimulationEnvironment = import.meta.env,
   search: URLSearchParams | null = getSearchParams(),
 ): SimulationModeConfig {
-  const scenario = search?.get(SIMULATION_QUERY_KEY) === 'straight' ? 'straight' : null
+  const requestedScenario = search?.get(SIMULATION_QUERY_KEY)
+  const scenario: SimulationScenario | null =
+    requestedScenario === 'straight' || requestedScenario === 'variable-speed'
+      ? requestedScenario
+      : null
   const simulationBuildAllowed = environment.DEV || environment.MODE === 'simulation'
 
   if (manualModeEnabled || !simulationBuildAllowed || scenario === null) {
@@ -37,6 +44,8 @@ export function createSimulationGpsSource(scenario: SimulationScenario): Simulat
   switch (scenario) {
     case 'straight':
       return createSimulatedGpsSource(createSailingSimulator(NORTHBOUND_SIX_KNOTS_SCENARIO))
+    case 'variable-speed':
+      return createSimulatedGpsSource(createSailingSimulator(NORTHBOUND_VARIABLE_SPEED_SCENARIO))
   }
 }
 
