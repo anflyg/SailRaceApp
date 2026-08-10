@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { NavigationBar } from '../components/NavigationBar'
 import { SetupView } from '../features/setup/SetupView'
 import { CourseSetupView } from '../features/course/CourseSetupView'
@@ -10,6 +10,7 @@ import { getPointQuality } from '../domain/gps'
 import { getCourseAxisHeading } from '../domain/navigation'
 import { getManualModeConfig, MANUAL_FIXTURES } from './manualMode'
 import { createSimulationGpsSource, getSimulationModeConfig, startSimulationTicker } from './simulationMode'
+import { createSimulationValidator } from '../simulation/simulationValidator'
 import { useDeviceAttitude } from '../hooks/useDeviceAttitude'
 import { useFilteredGps } from '../hooks/useFilteredGps'
 import { useLiveGps } from '../hooks/useLiveGps'
@@ -93,6 +94,10 @@ export function AppShell() {
   const simulationGpsSource = useMemo(() => (
     simulationMode.scenario === null ? null : createSimulationGpsSource(simulationMode.scenario)
   ), [simulationMode.scenario])
+  const simulationValidator = useMemo(() => (
+    simulationMode.scenario === null ? null : createSimulationValidator({ scenario: simulationMode.scenario })
+  ), [simulationMode.scenario])
+  const simulationReportLoggedRef = useRef(false)
   const [activeView, setActiveView] = useState<AppView>(
     simulationMode.enabled ? 'race' : (manualMode.initialView ?? 'setup'),
   )
@@ -129,6 +134,23 @@ export function AppShell() {
 
     return startSimulationTicker(simulationGpsSource)
   }, [simulationGpsSource])
+
+  useEffect(() => {
+    if (simulationGpsSource === null || simulationValidator === null) {
+      return
+    }
+
+    simulationValidator.observe(simulationGpsSource.currentSample(), filteredGps)
+
+    if (!simulationValidator.isComplete() || simulationReportLoggedRef.current) {
+      return
+    }
+
+    const report = simulationValidator.getReport()
+    window.__SAILRACE_SIMULATION_REPORT__ = report
+    console.info('SailRace simulation validation report', report)
+    simulationReportLoggedRef.current = true
+  }, [filteredGps, simulationGpsSource, simulationValidator])
 
   useEffect(() => {
     document.documentElement.dataset.theme = displayMode

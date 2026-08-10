@@ -25,7 +25,10 @@ describe('simulatedGpsSource', () => {
     })
 
     const watchId = await source.watchPosition(sourceOptions, callback)
+    expect(source.currentSample()).toMatchObject({ elapsedTimeSeconds: 0 })
     const sample = source.advance()
+
+    expect(source.currentSample()).toEqual(sample)
 
     expect(callback).toHaveBeenCalledWith(expect.objectContaining({
       latitude: sample.latitude,

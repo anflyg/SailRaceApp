@@ -6,6 +6,7 @@ import {
 } from './sailingSimulator'
 
 export interface SimulatedGpsSource extends GpsSource {
+  currentSample(): SailingSimulationSample
   advance(): SailingSimulationSample
 }
 
@@ -26,6 +27,7 @@ export function createSimulatedGpsSource(simulator: SailingSimulator): Simulated
     clearWatch: async (watchId: string) => {
       callbacks.delete(watchId)
     },
+    currentSample: () => simulator.currentSample(),
     advance: () => {
       const sample = simulator.step()
       const position = sampleToGpsPosition(sample)
