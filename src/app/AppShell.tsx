@@ -9,6 +9,7 @@ import { calculateRollPitchRelativeToCalibration } from '../domain/motion'
 import { getPointQuality } from '../domain/gps'
 import { getCourseAxisHeading } from '../domain/navigation'
 import { getManualModeConfig, MANUAL_FIXTURES } from './manualMode'
+import { createSimulationGpsSource, getSimulationModeConfig, startSimulationTicker } from './simulationMode'
 import { useDeviceAttitude } from '../hooks/useDeviceAttitude'
 import { useFilteredGps } from '../hooks/useFilteredGps'
 import { useLiveGps } from '../hooks/useLiveGps'
@@ -88,7 +89,13 @@ function getCourseDefinition(course: CourseState): CourseDefinition | undefined 
 
 export function AppShell() {
   const manualMode = useMemo(getManualModeConfig, [])
-  const [activeView, setActiveView] = useState<AppView>(manualMode.initialView ?? 'setup')
+  const simulationMode = useMemo(() => getSimulationModeConfig(manualMode.enabled), [manualMode.enabled])
+  const simulationGpsSource = useMemo(() => (
+    simulationMode.scenario === null ? null : createSimulationGpsSource(simulationMode.scenario)
+  ), [simulationMode.scenario])
+  const [activeView, setActiveView] = useState<AppView>(
+    simulationMode.enabled ? 'race' : (manualMode.initialView ?? 'setup'),
+  )
   const [course, setCourse] = useState<CourseState>(() => (
     manualMode.enabled ? MANUAL_FIXTURES.course : defaultCourseState
   ))
@@ -99,7 +106,10 @@ export function AppShell() {
   const [laylineEnabled, setLaylineEnabled] = useState(() => loadAppSettings().layline.enabled)
   const [laylineAlphaDegrees, setLaylineAlphaDegrees] = useState(() => loadAppSettings().layline.alphaDegrees)
   const [displayMode, setDisplayMode] = useState(() => loadAppSettings().displayMode)
-  const liveGpsDevice = useLiveGps(!manualMode.enabled && activeView !== 'analysis')
+  const liveGpsDevice = useLiveGps(
+    !manualMode.enabled && activeView !== 'analysis',
+    simulationGpsSource ?? undefined,
+  )
   const filteredGpsDevice = useFilteredGps(liveGpsDevice)
   const deviceAttitudeDevice = useDeviceAttitude(!manualMode.enabled && (activeView === 'setup' || activeView === 'race'))
   const liveGps = manualMode.enabled ? MANUAL_FIXTURES.liveGps : liveGpsDevice
@@ -111,6 +121,14 @@ export function AppShell() {
   const isNavigationLocked = isStartTimerRunning
   const courseDefinition = useMemo(() => getCourseDefinition(course), [course])
   useWakeLock(true)
+
+  useEffect(() => {
+    if (simulationGpsSource === null) {
+      return
+    }
+
+    return startSimulationTicker(simulationGpsSource)
+  }, [simulationGpsSource])
 
   useEffect(() => {
     document.documentElement.dataset.theme = displayMode

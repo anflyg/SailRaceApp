@@ -5,13 +5,16 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:simulation": "vite --mode simulation",
     "build": "tsc -b && vite build",
+    "build:simulation": "tsc -b && vite build --mode simulation",
     "test": "vitest run",
     "manual:screenshots": "node scripts/capture-manual-screenshots.mjs",
     "manual:docx": "python3 scripts/generate_manual_docx.py",
     "preview": "vite preview",
     "cap:copy": "npx cap copy",
     "cap:sync": "npm run build && npx cap sync",
+    "cap:sync:simulation": "npm run build:simulation && npx cap sync",
     "cap:open:ios": "npx cap open ios"
   },
   "dependencies": {
