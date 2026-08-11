@@ -40,6 +40,15 @@ import type {
   RollPitchCalibration,
 } from '../types'
 
+declare global {
+  interface Window {
+    __SAILRACE_SIMULATION_CONTROL__?: {
+      setCommandedCourseDegrees(courseDegrees: number): void
+      currentSample(): ReturnType<NonNullable<ReturnType<typeof createSimulationGpsSource>>['currentSample']>
+    }
+  }
+}
+
 const emptyCoursePoints: CoursePointState = {
   startA: null,
   startB: null,
@@ -156,6 +165,21 @@ export function AppShell() {
 
     return startSimulationTicker(simulationGpsSource, simulationMode.tickIntervalMs)
   }, [simulationGpsSource, simulationMode.tickIntervalMs])
+
+  useEffect(() => {
+    if (simulationMode.scenario !== 'layline-reactive-tack' || simulationGpsSource === null) {
+      return
+    }
+
+    window.__SAILRACE_SIMULATION_CONTROL__ = {
+      setCommandedCourseDegrees: simulationGpsSource.setCommandedCourseDegrees,
+      currentSample: simulationGpsSource.currentSample,
+    }
+
+    return () => {
+      delete window.__SAILRACE_SIMULATION_CONTROL__
+    }
+  }, [simulationGpsSource, simulationMode.scenario])
 
   useEffect(() => {
     if (simulationGpsSource === null || simulationValidator === null) {

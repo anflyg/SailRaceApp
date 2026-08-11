@@ -47,6 +47,7 @@ export interface SailingSimulationSample {
 export interface SailingSimulator {
   currentSample(): SailingSimulationSample
   step(): SailingSimulationSample
+  setCommandedCourseDegrees(courseDegrees: number): void
 }
 
 function toRadians(degrees: number): number {
@@ -205,6 +206,7 @@ export function createSailingSimulator(config: SailingSimulatorConfig): SailingS
   let elapsedTimeSeconds = 0
   let targetSpeedKnots = getTargetSpeedKnots(config.speedProfile, config.targetSpeedKnots, elapsedTimeSeconds)
   let targetCourseDegrees = getTargetCourseDegrees(config.courseProfile, config.courseDegrees, elapsedTimeSeconds)
+  let commandedCourseDegrees: number | null = null
   let sample = createSample(
     { ...config, timeStepSeconds, accuracyMeters, startTimestamp },
     position,
@@ -218,12 +220,15 @@ export function createSailingSimulator(config: SailingSimulatorConfig): SailingS
 
   return {
     currentSample: () => sample,
+    setCommandedCourseDegrees: (courseDegrees) => {
+      commandedCourseDegrees = normalizeDegrees(courseDegrees)
+    },
 
     step: () => {
       const previousPosition = position
       elapsedTimeSeconds += timeStepSeconds
       targetSpeedKnots = getTargetSpeedKnots(config.speedProfile, config.targetSpeedKnots, elapsedTimeSeconds)
-      targetCourseDegrees = getTargetCourseDegrees(config.courseProfile, config.courseDegrees, elapsedTimeSeconds)
+      targetCourseDegrees = commandedCourseDegrees ?? getTargetCourseDegrees(config.courseProfile, config.courseDegrees, elapsedTimeSeconds)
       const courseRadians = toRadians(targetCourseDegrees)
       const targetSpeedMetersPerSecond = targetSpeedKnots / KNOTS_PER_METER_PER_SECOND
       const distanceMeters = targetSpeedMetersPerSecond * timeStepSeconds

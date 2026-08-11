@@ -17,7 +17,7 @@ const SIMULATION_QUERY_KEY = 'simulation'
 export const SIMULATION_TICK_MS = 1_000
 const SIMULATION_RATES = [1, 10, 20] as const
 
-export type SimulationScenario = 'straight' | 'variable-speed' | 'variable-course' | 'tack-course' | 'course-noise' | 'wind-vmg' | 'layline-candidate' | 'layline-warning'
+export type SimulationScenario = 'straight' | 'variable-speed' | 'variable-course' | 'tack-course' | 'course-noise' | 'wind-vmg' | 'layline-candidate' | 'layline-warning' | 'layline-reactive-tack'
 export type SimulationRate = (typeof SIMULATION_RATES)[number]
 
 export interface SimulationModeConfig {
@@ -39,7 +39,7 @@ export function getSimulationModeConfig(
 ): SimulationModeConfig {
   const requestedScenario = search?.get(SIMULATION_QUERY_KEY)
   const scenario: SimulationScenario | null =
-    requestedScenario === 'straight' || requestedScenario === 'variable-speed' || requestedScenario === 'variable-course' || requestedScenario === 'tack-course' || requestedScenario === 'course-noise' || requestedScenario === 'wind-vmg' || requestedScenario === 'layline-candidate' || requestedScenario === 'layline-warning'
+    requestedScenario === 'straight' || requestedScenario === 'variable-speed' || requestedScenario === 'variable-course' || requestedScenario === 'tack-course' || requestedScenario === 'course-noise' || requestedScenario === 'wind-vmg' || requestedScenario === 'layline-candidate' || requestedScenario === 'layline-warning' || requestedScenario === 'layline-reactive-tack'
       ? requestedScenario
       : null
   const simulationBuildAllowed = environment.DEV || environment.MODE === 'simulation'
@@ -76,6 +76,8 @@ export function createSimulationGpsSource(scenario: SimulationScenario): Simulat
       return createSimulatedGpsSource(createSailingSimulator(LAYLINE_CANDIDATE_SCENARIO))
     case 'layline-warning':
       return createSimulatedGpsSource(createSailingSimulator(LAYLINE_CANDIDATE_SCENARIO))
+    case 'layline-reactive-tack':
+      return createSimulatedGpsSource(createSailingSimulator(LAYLINE_CANDIDATE_SCENARIO))
   }
 }
 
@@ -88,9 +90,9 @@ export function getSimulationCourseState(scenario: SimulationScenario | null): C
     return { points: createEmptyCoursePoints(), windHeadingDegrees: 0 }
   }
 
-  if (scenario === 'layline-candidate' || scenario === 'layline-warning') {
+  if (scenario === 'layline-candidate' || scenario === 'layline-warning' || scenario === 'layline-reactive-tack') {
     const origin = LAYLINE_CANDIDATE_SCENARIO.origin
-    const kryss1 = localPositionToGeoPoint(origin, { xMeters: 0, yMeters: scenario === 'layline-warning' ? 89.6 : 90 })
+    const kryss1 = localPositionToGeoPoint(origin, { xMeters: 0, yMeters: scenario === 'layline-candidate' ? 90 : 89.6 })
     const lans1 = localPositionToGeoPoint(origin, { xMeters: 0, yMeters: -110 })
 
     return {
@@ -108,7 +110,7 @@ export function getSimulationCourseState(scenario: SimulationScenario | null): C
 }
 
 export function getSimulationLaylineSettings(scenario: SimulationScenario | null): LaylineSettings | null {
-  return scenario === 'layline-candidate' || scenario === 'layline-warning'
+  return scenario === 'layline-candidate' || scenario === 'layline-warning' || scenario === 'layline-reactive-tack'
     ? { enabled: true, alphaDegrees: 90 }
     : null
 }

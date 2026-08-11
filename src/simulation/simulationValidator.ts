@@ -58,6 +58,14 @@ export const LAYLINE_WARNING_SIMULATION_VALIDATION = {
   courseToleranceDegrees: 1,
 } as const
 
+export const LAYLINE_REACTIVE_TACK_SIMULATION_VALIDATION = {
+  validationIntervalSeconds: 3,
+  warmupSeconds: 6,
+  endSeconds: 42,
+  speedToleranceKnots: 0.15,
+  courseToleranceDegrees: 180,
+} as const
+
 export interface SimulationValidationTolerances {
   speedToleranceKnots: number
   courseToleranceDegrees: number
@@ -245,6 +253,8 @@ export function createSimulationValidator(config: SimulationValidatorConfig): Si
         ? LAYLINE_CANDIDATE_SIMULATION_VALIDATION
       : config.scenario === 'layline-warning'
         ? LAYLINE_WARNING_SIMULATION_VALIDATION
+      : config.scenario === 'layline-reactive-tack'
+        ? LAYLINE_REACTIVE_TACK_SIMULATION_VALIDATION
       : STRAIGHT_SIMULATION_VALIDATION
   const validationIntervalSeconds = config.validationIntervalSeconds ?? scenarioValidation.validationIntervalSeconds
   const warmupSeconds = config.warmupSeconds ?? scenarioValidation.warmupSeconds

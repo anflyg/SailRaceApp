@@ -8,6 +8,7 @@ import {
 export interface SimulatedGpsSource extends GpsSource {
   currentSample(): SailingSimulationSample
   advance(): SailingSimulationSample
+  setCommandedCourseDegrees(courseDegrees: number): void
 }
 
 export function createSimulatedGpsSource(simulator: SailingSimulator): SimulatedGpsSource {
@@ -28,6 +29,7 @@ export function createSimulatedGpsSource(simulator: SailingSimulator): Simulated
       callbacks.delete(watchId)
     },
     currentSample: () => simulator.currentSample(),
+    setCommandedCourseDegrees: (courseDegrees) => simulator.setCommandedCourseDegrees(courseDegrees),
     advance: () => {
       const sample = simulator.step()
       const position = sampleToGpsPosition(sample)

@@ -65,6 +65,14 @@ const scenarios = [
     expected: { plannedChecks: 7, speedPassed: 7, coursePassed: 7 },
     laylineWarning: true,
   },
+  {
+    name: 'layline-reactive-tack',
+    label: 'LAYLINE REACTIVE TACK',
+    timeoutMs: 55_000,
+    simulationRate: 1,
+    expected: { plannedChecks: 13, speedPassed: 13, coursePassed: 13 },
+    reactiveTack: true,
+  },
 ]
 
 function sleep(milliseconds) {
@@ -396,7 +404,7 @@ async function validateDashboard(page, scenario) {
   const speedText = await speed.textContent()
   const courseText = await course.textContent()
 
-  if (scenario.name === 'straight' || scenario.name === 'tack-course' || scenario.name === 'course-noise' || scenario.name === 'wind-vmg' || scenario.name === 'layline-candidate') {
+  if (scenario.name === 'straight' || scenario.name === 'tack-course' || scenario.name === 'course-noise' || scenario.name === 'wind-vmg' || scenario.name === 'layline-candidate' || scenario.name === 'layline-reactive-tack') {
     assertEqual(speedText, '6,0', `${scenario.label} dashboard speed`)
   } else if (scenario.name === 'variable-course') {
     const speedText = (await speed.textContent())?.trim() ?? ''
@@ -429,7 +437,16 @@ async function validateDashboard(page, scenario) {
         ? '315°'
       : scenario.name === 'layline-warning'
         ? '315°'
+      : scenario.name === 'layline-reactive-tack'
+        ? '045°'
       : '000°'
+  if (scenario.name === 'layline-reactive-tack') {
+    const match = /^(\d{3})°$/.exec(courseText ?? '')
+    if (!match || getCourseErrorDegrees(45, Number(match[1])) > 1) {
+      throw new Error(`LAYLINE REACTIVE TACK dashboard course: expected within 1° of 045°, received ${JSON.stringify(courseText)}`)
+    }
+    return { speed: speedText, course: courseText, velocity: null }
+  }
   assertEqual(courseText, expectedCourse, `${scenario.label} dashboard course`)
 
   if (scenario.name === 'wind-vmg') {
@@ -449,15 +466,24 @@ async function runScenario(browser, scenario) {
     const startedAt = Date.now()
     await page.goto(`${BASE_URL}/?simulation=${scenario.name}&simulationRate=${scenario.simulationRate ?? 10}`, { waitUntil: 'networkidle' })
     await page.getByLabel('Fart').waitFor({ state: 'visible', timeout: 10_000 })
-    if (scenario.laylineWarning) {
+    if (scenario.laylineWarning || scenario.reactiveTack) {
       await page.evaluate(() => {
         const box = document.querySelector('.velocity-made-good')
         const events = []
-        const record = () => events.push({
+        let commanded = false
+        const record = () => {
+          const event = {
           label: box?.getAttribute('aria-label') ?? '',
           value: box?.querySelector('.metric-value')?.textContent?.trim() ?? '',
           observedAtMs: performance.now(),
-        })
+          }
+          events.push(event)
+          if (!commanded && event.label === 'LAYLINE' && event.value === '0' && window.__SAILRACE_SIMULATION_CONTROL__) {
+            commanded = true
+            window.__SAILRACE_SIMULATION_REACTIVE_TACK__ = { zeroObservedAtMs: event.observedAtMs, tackCommandIssuedAtMs: performance.now(), sample: window.__SAILRACE_SIMULATION_CONTROL__.currentSample() }
+            window.__SAILRACE_SIMULATION_CONTROL__.setCommandedCourseDegrees(45)
+          }
+        }
         record()
         new MutationObserver(record).observe(box, { attributes: true, attributeFilter: ['aria-label'], childList: true, subtree: true, characterData: true })
         window.__SAILRACE_LAYLINE_UI_EVENTS__ = events
@@ -487,11 +513,15 @@ async function runScenario(browser, scenario) {
         throw new Error(`${scenario.label} DOM timeline failed: ${JSON.stringify(laylineWarningAnalysis)}`)
       }
     }
+    if (scenario.reactiveTack) {
+      await page.waitForFunction(() => window.__SAILRACE_SIMULATION_REACTIVE_TACK__ !== undefined, undefined, { timeout: scenario.timeoutMs })
+    }
     const report = await page.evaluate(() => window.__SAILRACE_SIMULATION_REPORT__)
     const measurementAnalysis = validateReport(report, scenario)
     const dashboard = await validateDashboard(page, scenario)
     await fs.writeFile(path.join(OUTPUT_DIR, `${scenario.name}.json`), `${JSON.stringify(report, null, 2)}\n`)
-    return { report, measurementAnalysis, laylineWarningAnalysis, dashboard, durationMs: Date.now() - startedAt }
+    const reactiveTack = scenario.reactiveTack ? await page.evaluate(() => window.__SAILRACE_SIMULATION_REACTIVE_TACK__) : null
+    return { report, measurementAnalysis, laylineWarningAnalysis, reactiveTack, dashboard, durationMs: Date.now() - startedAt }
   } catch (error) {
     await page.screenshot({ path: path.join(OUTPUT_DIR, `${scenario.name}-failure.png`), fullPage: true })
     throw error
