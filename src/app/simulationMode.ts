@@ -4,6 +4,7 @@ import {
   NORTHBOUND_VARIABLE_SPEED_SCENARIO,
   COURSE_NOISE_SCENARIO,
   TACK_COURSE_SCENARIO,
+  WIND_VMG_SCENARIO,
 } from '../simulation/sailingSimulator.fixtures'
 import { createSailingSimulator } from '../simulation/sailingSimulator'
 import { createSimulatedGpsSource, type SimulatedGpsSource } from '../simulation/simulatedGpsSource'
@@ -13,7 +14,7 @@ const SIMULATION_QUERY_KEY = 'simulation'
 export const SIMULATION_TICK_MS = 1_000
 const SIMULATION_RATES = [1, 10, 20] as const
 
-export type SimulationScenario = 'straight' | 'variable-speed' | 'variable-course' | 'tack-course' | 'course-noise'
+export type SimulationScenario = 'straight' | 'variable-speed' | 'variable-course' | 'tack-course' | 'course-noise' | 'wind-vmg'
 export type SimulationRate = (typeof SIMULATION_RATES)[number]
 
 export interface SimulationModeConfig {
@@ -35,7 +36,7 @@ export function getSimulationModeConfig(
 ): SimulationModeConfig {
   const requestedScenario = search?.get(SIMULATION_QUERY_KEY)
   const scenario: SimulationScenario | null =
-    requestedScenario === 'straight' || requestedScenario === 'variable-speed' || requestedScenario === 'variable-course' || requestedScenario === 'tack-course' || requestedScenario === 'course-noise'
+    requestedScenario === 'straight' || requestedScenario === 'variable-speed' || requestedScenario === 'variable-course' || requestedScenario === 'tack-course' || requestedScenario === 'course-noise' || requestedScenario === 'wind-vmg'
       ? requestedScenario
       : null
   const simulationBuildAllowed = environment.DEV || environment.MODE === 'simulation'
@@ -66,7 +67,13 @@ export function createSimulationGpsSource(scenario: SimulationScenario): Simulat
       return createSimulatedGpsSource(createSailingSimulator(TACK_COURSE_SCENARIO))
     case 'course-noise':
       return createSimulatedGpsSource(createSailingSimulator(COURSE_NOISE_SCENARIO))
+    case 'wind-vmg':
+      return createSimulatedGpsSource(createSailingSimulator(WIND_VMG_SCENARIO))
   }
+}
+
+export function getSimulationWindHeadingDegrees(scenario: SimulationScenario | null): number | null {
+  return scenario === 'wind-vmg' ? 0 : null
 }
 
 export function getSimulationRate(value: string | null): SimulationRate {

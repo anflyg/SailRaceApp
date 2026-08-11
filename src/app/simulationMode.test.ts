@@ -4,6 +4,7 @@ import {
   createSimulationGpsSource,
   getSimulationRate,
   getSimulationModeConfig,
+  getSimulationWindHeadingDegrees,
   getSimulationTickIntervalMs,
   SIMULATION_TICK_MS,
   startSimulationTicker,
@@ -57,6 +58,14 @@ describe('simulation mode', () => {
     )).toEqual({ enabled: true, scenario: 'course-noise', simulationRate: 1, tickIntervalMs: 1_000 })
   })
 
+  it('enables the wind-vmg scenario only for an allowed build and query', () => {
+    expect(getSimulationModeConfig(
+      false,
+      developmentEnvironment,
+      new URLSearchParams('simulation=wind-vmg'),
+    )).toEqual({ enabled: true, scenario: 'wind-vmg', simulationRate: 1, tickIntervalMs: 1_000 })
+  })
+
   it('ignores the simulation query in a normal production build', () => {
     expect(getSimulationModeConfig(
       false,
@@ -94,6 +103,14 @@ describe('simulation mode', () => {
       false,
       productionEnvironment,
       new URLSearchParams('simulation=course-noise'),
+    )).toEqual({ enabled: false, scenario: null, simulationRate: 1, tickIntervalMs: 1_000 })
+  })
+
+  it('ignores the wind-vmg query in a normal production build', () => {
+    expect(getSimulationModeConfig(
+      false,
+      productionEnvironment,
+      new URLSearchParams('simulation=wind-vmg'),
     )).toEqual({ enabled: false, scenario: null, simulationRate: 1, tickIntervalMs: 1_000 })
   })
 
@@ -190,6 +207,28 @@ describe('simulation mode', () => {
       accuracyMeters: 3,
     })
     expect(source.currentSample().groundTruthSpeedKnots).toBeCloseTo(5, 10)
+  })
+
+  it('creates the wind-vmg GPS source with a stable 6 kn 315° physical course', () => {
+    const source = createSimulationGpsSource('wind-vmg')
+
+    for (let second = 0; second < 6; second += 1) {
+      source.advance()
+    }
+
+    expect(source.currentSample()).toMatchObject({
+      elapsedTimeSeconds: 6,
+      targetSpeedKnots: 6,
+      targetCourseDegrees: 315,
+      accuracyMeters: 3,
+    })
+    expect(source.currentSample().groundTruthSpeedKnots).toBeCloseTo(6, 10)
+    expect(source.currentSample().groundTruthCourseDegrees).toBeCloseTo(315, 10)
+  })
+
+  it('sets a 000° simulation-only wind reference only for wind-vmg', () => {
+    expect(getSimulationWindHeadingDegrees('wind-vmg')).toBe(0)
+    expect(getSimulationWindHeadingDegrees('straight')).toBeNull()
   })
 
   it('advances once per second and stops after cleanup', () => {

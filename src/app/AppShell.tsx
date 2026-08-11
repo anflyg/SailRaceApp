@@ -7,9 +7,14 @@ import { RaceDashboardView } from '../features/race/RaceDashboardView'
 import { RaceAnalysisView } from '../features/analysis/RaceAnalysisView'
 import { calculateRollPitchRelativeToCalibration } from '../domain/motion'
 import { getPointQuality } from '../domain/gps'
-import { getCourseAxisHeading } from '../domain/navigation'
+import { calculateVelocityMadeGood, getCourseAxisHeading } from '../domain/navigation'
 import { getManualModeConfig, MANUAL_FIXTURES } from './manualMode'
-import { createSimulationGpsSource, getSimulationModeConfig, startSimulationTicker } from './simulationMode'
+import {
+  createSimulationGpsSource,
+  getSimulationModeConfig,
+  getSimulationWindHeadingDegrees,
+  startSimulationTicker,
+} from './simulationMode'
 import { createSimulationValidator } from '../simulation/simulationValidator'
 import { useDeviceAttitude } from '../hooks/useDeviceAttitude'
 import { useFilteredGps } from '../hooks/useFilteredGps'
@@ -102,7 +107,11 @@ export function AppShell() {
     simulationMode.enabled ? 'race' : (manualMode.initialView ?? 'setup'),
   )
   const [course, setCourse] = useState<CourseState>(() => (
-    manualMode.enabled ? MANUAL_FIXTURES.course : defaultCourseState
+    manualMode.enabled
+      ? MANUAL_FIXTURES.course
+      : getSimulationWindHeadingDegrees(simulationMode.scenario) !== null
+        ? { ...defaultCourseState, windHeadingDegrees: getSimulationWindHeadingDegrees(simulationMode.scenario) }
+        : defaultCourseState
   ))
   const [selectedCountdownMinutes, setSelectedCountdownMinutes] = useState<CountdownDuration>(5)
   const [isStartTimerRunning, setIsStartTimerRunning] = useState(false)
@@ -119,6 +128,12 @@ export function AppShell() {
   const deviceAttitudeDevice = useDeviceAttitude(!manualMode.enabled && (activeView === 'setup' || activeView === 'race'))
   const liveGps = manualMode.enabled ? MANUAL_FIXTURES.liveGps : liveGpsDevice
   const filteredGps = manualMode.enabled ? MANUAL_FIXTURES.filteredGps : filteredGpsDevice
+  const simulationAppVmgKnots = simulationMode.scenario === 'wind-vmg' &&
+    filteredGps.speedKnots !== null &&
+    filteredGps.displayCourseDegrees !== null &&
+    course.windHeadingDegrees !== null
+    ? calculateVelocityMadeGood(filteredGps.speedKnots, filteredGps.displayCourseDegrees, course.windHeadingDegrees)
+    : null
   const deviceAttitude = manualMode.enabled ? MANUAL_FIXTURES.attitude : deviceAttitudeDevice
   const rollPitch = manualMode.enabled
     ? MANUAL_FIXTURES.rollPitch
@@ -140,7 +155,10 @@ export function AppShell() {
       return
     }
 
-    simulationValidator.observe(simulationGpsSource.currentSample(), filteredGps)
+    simulationValidator.observe(simulationGpsSource.currentSample(), {
+      ...filteredGps,
+      vmgKnots: simulationAppVmgKnots,
+    })
 
     if (!simulationValidator.isComplete() || simulationReportLoggedRef.current) {
       return
@@ -150,7 +168,7 @@ export function AppShell() {
     window.__SAILRACE_SIMULATION_REPORT__ = report
     console.info('SailRace simulation validation report', report)
     simulationReportLoggedRef.current = true
-  }, [filteredGps, simulationGpsSource, simulationValidator])
+  }, [filteredGps, simulationAppVmgKnots, simulationGpsSource, simulationValidator])
 
   useEffect(() => {
     document.documentElement.dataset.theme = displayMode

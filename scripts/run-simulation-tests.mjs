@@ -43,6 +43,13 @@ const scenarios = [
     measurementOnly: true,
     measurement: 'course-noise',
   },
+  {
+    name: 'wind-vmg',
+    label: 'WIND VMG',
+    timeoutMs: 20_000,
+    expected: { plannedChecks: 19, speedPassed: 19, coursePassed: 19, vmgPassed: 19 },
+    vmgReferenceHeadingDegrees: 0,
+  },
 ]
 
 function sleep(milliseconds) {
@@ -258,6 +265,11 @@ function validateReport(report, scenario) {
   assertEqual(report.speedPassed, scenario.expected.speedPassed, `${scenario.label} speed passed`)
   assertEqual(report.courseChecks, scenario.expected.plannedChecks, `${scenario.label} course checks`)
 
+  if (scenario.vmgReferenceHeadingDegrees !== undefined) {
+    assertEqual(report.vmgChecks, scenario.expected.plannedChecks, `${scenario.label} VMG checks`)
+    assertEqual(report.vmgPassed, scenario.expected.vmgPassed, `${scenario.label} VMG passed`)
+  }
+
   if (scenario.measurementOnly) {
     const analysis = scenario.measurement === 'course-noise'
       ? analyzeCourseNoiseReport(report)
@@ -311,8 +323,11 @@ async function validateDashboard(page, scenario) {
   const speed = page.getByLabel('Fart').locator('.metric-value')
   const course = page.getByLabel('Riktning').locator('.metric-value')
 
-  if (scenario.name === 'straight' || scenario.name === 'tack-course' || scenario.name === 'course-noise') {
-    assertEqual(await speed.textContent(), '6,0', 'STRAIGHT dashboard speed')
+  const speedText = await speed.textContent()
+  const courseText = await course.textContent()
+
+  if (scenario.name === 'straight' || scenario.name === 'tack-course' || scenario.name === 'course-noise' || scenario.name === 'wind-vmg') {
+    assertEqual(speedText, '6,0', `${scenario.label} dashboard speed`)
   } else if (scenario.name === 'variable-course') {
     const speedText = (await speed.textContent())?.trim() ?? ''
     if (speedText === '--' || !/^\d+(,\d+)?$/.test(speedText)) {
@@ -326,20 +341,30 @@ async function validateDashboard(page, scenario) {
   }
 
   if (scenario.name === 'course-noise') {
-    const courseText = (await course.textContent())?.trim() ?? ''
-    const match = /^(\d{3})°$/.exec(courseText)
+    const displayedCourseText = courseText?.trim() ?? ''
+    const match = /^(\d{3})°$/.exec(displayedCourseText)
     if (!match || getCourseErrorDegrees(315, Number(match[1])) > 2) {
-      throw new Error(`COURSE NOISE dashboard course: expected within 2° of 315°, received ${JSON.stringify(courseText)}`)
+      throw new Error(`COURSE NOISE dashboard course: expected within 2° of 315°, received ${JSON.stringify(displayedCourseText)}`)
     }
-    return
+    return { speed: speedText, course: courseText, velocity: null }
   }
 
   const expectedCourse = scenario.name === 'variable-course'
     ? '350°'
     : scenario.name === 'tack-course'
       ? '045°'
+      : scenario.name === 'wind-vmg'
+        ? '315°'
       : '000°'
-  assertEqual(await course.textContent(), expectedCourse, `${scenario.label} dashboard course`)
+  assertEqual(courseText, expectedCourse, `${scenario.label} dashboard course`)
+
+  if (scenario.name === 'wind-vmg') {
+    const velocity = await page.getByLabel('VMG Vind').locator('.metric-value').textContent()
+    assertEqual(velocity, '4,2', 'WIND VMG dashboard value')
+    return { speed: speedText, course: courseText, velocity }
+  }
+
+  return { speed: speedText, course: courseText, velocity: null }
 }
 
 async function runScenario(browser, scenario) {
@@ -361,9 +386,9 @@ async function runScenario(browser, scenario) {
 
     const report = await page.evaluate(() => window.__SAILRACE_SIMULATION_REPORT__)
     const measurementAnalysis = validateReport(report, scenario)
-    await validateDashboard(page, scenario)
+    const dashboard = await validateDashboard(page, scenario)
     await fs.writeFile(path.join(OUTPUT_DIR, `${scenario.name}.json`), `${JSON.stringify(report, null, 2)}\n`)
-    return { report, measurementAnalysis, durationMs: Date.now() - startedAt }
+    return { report, measurementAnalysis, dashboard, durationMs: Date.now() - startedAt }
   } catch (error) {
     await page.screenshot({ path: path.join(OUTPUT_DIR, `${scenario.name}-failure.png`), fullPage: true })
     throw error
@@ -372,7 +397,7 @@ async function runScenario(browser, scenario) {
   }
 }
 
-function printScenarioSummary(scenario, report, durationMs) {
+function printScenarioSummary(scenario, report, durationMs, dashboard) {
   if (scenario.name === 'tack-course') {
     const analysis = analyzeTackCourseReport(report)
     console.log(`\n${scenario.label}`)
@@ -401,6 +426,19 @@ function printScenarioSummary(scenario, report, durationMs) {
     return
   }
 
+  if (scenario.name === 'wind-vmg') {
+    console.log(`\n${scenario.label}`)
+    console.log(`Speed:   ${report.speedPassed}/${report.speedChecks} PASS`)
+    console.log(`Course:  ${report.coursePassed}/${report.courseChecks} PASS`)
+    console.log(`VMG:     ${report.vmgPassed}/${report.vmgChecks} PASS`)
+    console.log(`Ground truth VMG: ${report.checks[0]?.groundTruthVmgKnots?.toFixed(4) ?? '--'} kn`)
+    console.log(`VMG error: mean ${report.meanVmgErrorKnots?.toFixed(4) ?? '--'}, max ${report.maxVmgErrorKnots?.toFixed(4) ?? '--'} kn`)
+    console.log(`DOM: Fart: ${dashboard.speed}, Riktning: ${dashboard.course}, VMG Vind: ${dashboard.velocity}`)
+    console.log(`Wall-clock: ${(durationMs / 1_000).toFixed(2)} s`)
+    console.log('Result:  PASS')
+    return
+  }
+
   console.log(`\n${scenario.label}`)
   console.log(`Speed:   ${report.speedPassed}/${report.speedChecks} PASS`)
   console.log(`Course:  ${report.coursePassed}/${report.courseChecks} PASS`)
@@ -423,7 +461,7 @@ async function run() {
     for (const scenario of scenarios) {
       const result = await runScenario(browser, scenario)
       results.push(result)
-      printScenarioSummary(scenario, result.report, result.durationMs)
+      printScenarioSummary(scenario, result.report, result.durationMs, result.dashboard)
     }
 
     const summary = {

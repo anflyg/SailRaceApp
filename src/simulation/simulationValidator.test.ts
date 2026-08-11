@@ -6,6 +6,7 @@ import {
   NORTHBOUND_SIX_KNOTS_SCENARIO,
   NORTHBOUND_VARIABLE_COURSE_SCENARIO,
   NORTHBOUND_VARIABLE_SPEED_SCENARIO,
+  WIND_VMG_SCENARIO,
 } from './sailingSimulator.fixtures'
 import { createSimulationValidator, getCourseErrorDegrees } from './simulationValidator'
 
@@ -215,6 +216,53 @@ describe('simulation validator', () => {
     expect(checkpoint?.groundTruthCourseDegrees).toBeCloseTo(350, 10)
     expect(checkpoint?.gpsReportedCourseDegrees).toBeCloseTo(350, 10)
     expect(checkpoint?.appCourseDegrees).toBeCloseTo(350, 10)
+  })
+
+  it('validates 19 independent VMG checks for wind-vmg without affecting scenarios without a reference', () => {
+    const simulationValidator = createSimulationValidator({ scenario: 'wind-vmg' })
+    const simulator = createSailingSimulator(WIND_VMG_SCENARIO)
+
+    for (let elapsedTimeSeconds = 0; elapsedTimeSeconds <= 60; elapsedTimeSeconds += 1) {
+      const sample = elapsedTimeSeconds === 0 ? simulator.currentSample() : simulator.step()
+      simulationValidator.observe(sample, {
+        ...appOutput(sample),
+        vmgKnots: 6 * Math.cos((315 * Math.PI) / 180),
+      })
+    }
+
+    const report = simulationValidator.getReport()
+    expect(report).toMatchObject({
+      scenario: 'wind-vmg',
+      plannedChecks: 19,
+      completedChecks: 19,
+      missingChecks: 0,
+      speedPassed: 19,
+      coursePassed: 19,
+      vmgChecks: 19,
+      vmgPassed: 19,
+      tolerances: { vmgToleranceKnots: 0.10 },
+      overallPassed: true,
+    })
+    expect(report.checks[0]).toMatchObject({ referenceHeadingDegrees: 0, vmgPassed: true })
+    expect(report.checks[0]?.groundTruthVmgKnots).toBeCloseTo(4.242640687, 8)
+    expect(report.checks[0]?.appVmgKnots).toBeCloseTo(4.242640687, 8)
+
+    const noVmgReport = validator().getReport()
+    expect(noVmgReport).toMatchObject({ vmgChecks: 0, vmgPassed: 0, meanVmgErrorKnots: null })
+  })
+
+  it('fails a wind-vmg check outside the 0.10 kn VMG tolerance', () => {
+    const sample = sampleAt(6, {
+      targetCourseDegrees: 315,
+      groundTruthCourseDegrees: 315,
+      courseDegrees: 315,
+    })
+    const check = createSimulationValidator({ scenario: 'wind-vmg' }).observe(sample, {
+      ...appOutput(sample, { displayCourseDegrees: 315 }),
+      vmgKnots: 4.35,
+    })
+
+    expect(check).toMatchObject({ vmgErrorKnots: expect.closeTo(0.1073593128807141, 8), vmgPassed: false, overallPassed: false })
   })
 
   it('keeps target, ground-truth and GPS-reported course fields separate', () => {
