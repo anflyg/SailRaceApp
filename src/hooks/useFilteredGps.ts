@@ -20,6 +20,8 @@ export const COURSE_DISPLAY_SMOOTHING_ALPHA = 0.15
 export const COURSE_DISPLAY_LOW_SPEED_ALPHA = 0.06
 export const COURSE_DISPLAY_FREEZE_SPEED_KNOTS = 0.7
 export const COURSE_DISPLAY_MIN_SPEED_KNOTS = 1.0
+export const COURSE_DISPLAY_FAST_THRESHOLD_DEGREES = 12
+export const COURSE_DISPLAY_FAST_SMOOTHING_ALPHA = 0.7
 
 interface GpsSample {
   timestamp: number
@@ -52,6 +54,25 @@ function averageNumbers(values: number[]): number | null {
   }
 
   return values.reduce((sum, value) => sum + value, 0) / values.length
+}
+
+export function getCourseDisplaySmoothingAlpha(
+  speedKnots: number,
+  filteredCourseDegrees: number,
+  currentDisplayCourseDegrees: number,
+): number | null {
+  if (speedKnots < COURSE_DISPLAY_FREEZE_SPEED_KNOTS) {
+    return null
+  }
+
+  if (speedKnots < COURSE_DISPLAY_MIN_SPEED_KNOTS) {
+    return COURSE_DISPLAY_LOW_SPEED_ALPHA
+  }
+
+  const delta = shortestAngleDeltaDegrees(filteredCourseDegrees, currentDisplayCourseDegrees)
+  return Math.abs(delta) >= COURSE_DISPLAY_FAST_THRESHOLD_DEGREES
+    ? COURSE_DISPLAY_FAST_SMOOTHING_ALPHA
+    : COURSE_DISPLAY_SMOOTHING_ALPHA
 }
 
 export function useFilteredGps(gps: LiveGpsReading): FilteredGpsReading {
@@ -261,9 +282,16 @@ export function useFilteredGps(gps: LiveGpsReading): FilteredGpsReading {
         return normalizeDegrees(filteredCourseDegrees)
       }
 
-      const smoothingAlpha = speedKnots < COURSE_DISPLAY_MIN_SPEED_KNOTS
-        ? COURSE_DISPLAY_LOW_SPEED_ALPHA
-        : COURSE_DISPLAY_SMOOTHING_ALPHA
+      const smoothingAlpha = getCourseDisplaySmoothingAlpha(
+        speedKnots,
+        filteredCourseDegrees,
+        currentDisplayCourse,
+      )
+
+      if (smoothingAlpha === null) {
+        return currentDisplayCourse
+      }
+
       const delta = shortestAngleDeltaDegrees(filteredCourseDegrees, currentDisplayCourse)
 
       return normalizeDegrees(currentDisplayCourse + smoothingAlpha * delta)

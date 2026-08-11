@@ -31,5 +31,6 @@ describe('course noise analysis', () => {
     expect(analysis.noisyGpsCheckCount).toBeGreaterThanOrEqual(3)
     expect(analysis.finalCourseErrorDegrees).toBeLessThanOrEqual(2)
     expect(analysis.measurementPassed).toBe(true)
+    expect(analysis.regressionPassed).toBe(false)
   })
 })

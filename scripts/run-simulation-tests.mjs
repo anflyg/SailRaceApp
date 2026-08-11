@@ -171,8 +171,8 @@ function analyzeTackCourseReport(report) {
       report.checks.every((check) => check.appCourseDegrees !== null) &&
       preTackCourseErrorDegrees !== null && preTackCourseErrorDegrees <= 1 &&
       finalCourseErrorDegrees !== null && finalCourseErrorDegrees <= 1 &&
-      firstWithin5Degrees !== undefined &&
-      firstWithin2Degrees !== undefined &&
+      firstWithin5Degrees !== undefined && firstWithin5Degrees.elapsedTimeSeconds - 21 <= 9 &&
+      firstWithin2Degrees !== undefined && firstWithin2Degrees.elapsedTimeSeconds - 21 <= 12 &&
       !hasLongWayCourseError,
   }
 }
@@ -205,6 +205,16 @@ function analyzeCourseNoiseReport(report) {
   const finalCourseErrorDegrees = appErrors.at(-1) ?? null
   const noisyGpsCheckCount = rawGpsErrors.filter((error) => error > Number.EPSILON).length
 
+  const measurementPassed =
+    report.plannedChecks === 19 &&
+    report.completedChecks === 19 &&
+    report.missingChecks === 0 &&
+    report.speedPassed === 19 &&
+    validChecks.length === 19 &&
+    noisyGpsCheckCount >= 3 &&
+    (maximum(rawGpsErrors) ?? Infinity) <= 5 &&
+    finalCourseErrorDegrees !== null && finalCourseErrorDegrees <= 2
+
   return {
     rawGpsMeanAbsoluteCourseErrorDegrees,
     rawGpsMaxCourseErrorDegrees: maximum(rawGpsErrors),
@@ -224,15 +234,18 @@ function analyzeCourseNoiseReport(report) {
         : null,
     finalCourseErrorDegrees,
     noisyGpsCheckCount,
-    measurementPassed:
-      report.plannedChecks === 19 &&
-      report.completedChecks === 19 &&
-      report.missingChecks === 0 &&
-      report.speedPassed === 19 &&
-      validChecks.length === 19 &&
-      noisyGpsCheckCount >= 3 &&
-      (maximum(rawGpsErrors) ?? Infinity) <= 5 &&
-      finalCourseErrorDegrees !== null && finalCourseErrorDegrees <= 2,
+    measurementPassed,
+    regressionPassed:
+      measurementPassed &&
+      (appMeanAbsoluteCourseErrorDegrees ?? Infinity) <= 0.6 &&
+      (maximum(appErrors) ?? Infinity) <= 1.3 &&
+      (appMeanStepChangeDegrees ?? Infinity) <= 0.35 &&
+      (maximum(appStepChanges) ?? Infinity) <= 0.9 &&
+      (rawGpsMeanAbsoluteCourseErrorDegrees ?? 0) > 0 &&
+      (appMeanAbsoluteCourseErrorDegrees ?? Infinity) / rawGpsMeanAbsoluteCourseErrorDegrees <= 0.2 &&
+      (rawGpsMeanStepChangeDegrees ?? 0) > 0 &&
+      (appMeanStepChangeDegrees ?? Infinity) / rawGpsMeanStepChangeDegrees <= 0.08 &&
+      finalCourseErrorDegrees !== null && finalCourseErrorDegrees <= 1,
   }
 }
 
@@ -249,7 +262,10 @@ function validateReport(report, scenario) {
     const analysis = scenario.measurement === 'course-noise'
       ? analyzeCourseNoiseReport(report)
       : analyzeTackCourseReport(report)
-    if (!analysis.measurementPassed) {
+    const passed = scenario.measurement === 'course-noise'
+      ? analysis.regressionPassed
+      : analysis.measurementPassed
+    if (!passed) {
       throw new Error(`${scenario.label} measurement failed: ${JSON.stringify(analysis)}`)
     }
     return analysis
@@ -367,7 +383,7 @@ function printScenarioSummary(scenario, report, durationMs) {
     console.log(`Within 2°: t=${analysis.firstWithin2DegreesSeconds ?? '--'} (${analysis.firstWithin2DegreesAfterTackSeconds ?? '--'} s after tack)`)
     console.log(`Final error: ${analysis.finalCourseErrorDegrees?.toFixed(4) ?? '--'}°`)
     console.log(`Wall-clock: ${(durationMs / 1_000).toFixed(2)} s`)
-    console.log('Result:  MEASUREMENT PASS')
+    console.log('Result:  PASS')
     return
   }
 
@@ -381,7 +397,7 @@ function printScenarioSummary(scenario, report, durationMs) {
     console.log(`Jitter reduction ratio: ${analysis.meanJitterReductionRatio?.toFixed(4) ?? '--'}`)
     console.log(`Final course error: ${analysis.finalCourseErrorDegrees?.toFixed(4) ?? '--'}°`)
     console.log(`Wall-clock: ${(durationMs / 1_000).toFixed(2)} s`)
-    console.log('Result:  MEASUREMENT PASS')
+    console.log('Result:  PASS')
     return
   }
 
@@ -411,7 +427,11 @@ async function run() {
     }
 
     const summary = {
-      overallPassed: results.every(({ report, measurementAnalysis }) => measurementAnalysis?.measurementPassed ?? report.overallPassed),
+      overallPassed: results.every(({ report, measurementAnalysis }) => (
+        report.scenario === 'course-noise'
+          ? measurementAnalysis?.regressionPassed
+          : measurementAnalysis?.measurementPassed ?? report.overallPassed
+      )),
       scenarios: results.map(({ report, measurementAnalysis, durationMs }) => ({
         scenario: report.scenario,
         plannedChecks: report.plannedChecks,

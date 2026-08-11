@@ -54,6 +54,12 @@ export function analyzeTackCourseChecks(checks: SimulationValidationCheck[]): Ta
     ))
   const preTackCourseErrorDegrees = preTackCheck ? getCourseError(preTackCheck) : null
   const finalCourseErrorDegrees = finalCheck ? getCourseError(finalCheck) : null
+  const firstWithin5DegreesAfterTackSeconds = firstWithin5Degrees
+    ? firstWithin5Degrees.elapsedTimeSeconds - TACK_END_SECONDS
+    : null
+  const firstWithin2DegreesAfterTackSeconds = firstWithin2Degrees
+    ? firstWithin2Degrees.elapsedTimeSeconds - TACK_END_SECONDS
+    : null
 
   return {
     tackStartSeconds: TACK_START_SECONDS,
@@ -61,13 +67,9 @@ export function analyzeTackCourseChecks(checks: SimulationValidationCheck[]): Ta
     preTackCourseErrorDegrees,
     maxCourseErrorAfterTackDegrees: postTackErrors.length === 0 ? null : Math.max(...postTackErrors),
     firstWithin5DegreesSeconds: firstWithin5Degrees?.elapsedTimeSeconds ?? null,
-    firstWithin5DegreesAfterTackSeconds: firstWithin5Degrees
-      ? firstWithin5Degrees.elapsedTimeSeconds - TACK_END_SECONDS
-      : null,
+    firstWithin5DegreesAfterTackSeconds,
     firstWithin2DegreesSeconds: firstWithin2Degrees?.elapsedTimeSeconds ?? null,
-    firstWithin2DegreesAfterTackSeconds: firstWithin2Degrees
-      ? firstWithin2Degrees.elapsedTimeSeconds - TACK_END_SECONDS
-      : null,
+    firstWithin2DegreesAfterTackSeconds,
     finalCourseErrorDegrees,
     hasLongWayCourseError,
     measurementPassed:
@@ -75,8 +77,8 @@ export function analyzeTackCourseChecks(checks: SimulationValidationCheck[]): Ta
       checks.every((check) => check.speedPassed && check.appCourseDegrees !== null) &&
       preTackCourseErrorDegrees !== null && preTackCourseErrorDegrees <= 1 &&
       finalCourseErrorDegrees !== null && finalCourseErrorDegrees <= 1 &&
-      firstWithin5Degrees !== undefined &&
-      firstWithin2Degrees !== undefined &&
+      firstWithin5DegreesAfterTackSeconds !== null && firstWithin5DegreesAfterTackSeconds <= 9 &&
+      firstWithin2DegreesAfterTackSeconds !== null && firstWithin2DegreesAfterTackSeconds <= 12 &&
       !hasLongWayCourseError,
   }
 }

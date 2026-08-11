@@ -14,6 +14,7 @@ export interface CourseNoiseAnalysis {
   finalCourseErrorDegrees: number | null
   noisyGpsCheckCount: number
   measurementPassed: boolean
+  regressionPassed: boolean
 }
 
 function average(values: number[]): number | null {
@@ -48,6 +49,25 @@ export function analyzeCourseNoiseChecks(checks: SimulationValidationCheck[]): C
   const appMeanStepChangeDegrees = average(appStepChanges)
   const finalCourseErrorDegrees = appErrors.at(-1) ?? null
   const noisyGpsCheckCount = rawGpsErrors.filter((error) => error > Number.EPSILON).length
+  const meanErrorReductionRatio =
+    rawGpsMeanAbsoluteCourseErrorDegrees !== null &&
+      rawGpsMeanAbsoluteCourseErrorDegrees > 0 &&
+      appMeanAbsoluteCourseErrorDegrees !== null
+      ? appMeanAbsoluteCourseErrorDegrees / rawGpsMeanAbsoluteCourseErrorDegrees
+      : null
+  const meanJitterReductionRatio =
+    rawGpsMeanStepChangeDegrees !== null &&
+      rawGpsMeanStepChangeDegrees > 0 &&
+      appMeanStepChangeDegrees !== null
+      ? appMeanStepChangeDegrees / rawGpsMeanStepChangeDegrees
+      : null
+
+  const measurementPassed =
+    checks.length === 19 &&
+    validChecks.length === 19 &&
+    noisyGpsCheckCount >= 3 &&
+    (maximum(rawGpsErrors) ?? Infinity) <= 5 &&
+    finalCourseErrorDegrees !== null && finalCourseErrorDegrees <= 2
 
   return {
     rawGpsMeanAbsoluteCourseErrorDegrees,
@@ -58,21 +78,19 @@ export function analyzeCourseNoiseChecks(checks: SimulationValidationCheck[]): C
     rawGpsMaxStepChangeDegrees: maximum(rawGpsStepChanges),
     appMeanStepChangeDegrees,
     appMaxStepChangeDegrees: maximum(appStepChanges),
-    meanErrorReductionRatio:
-      rawGpsMeanAbsoluteCourseErrorDegrees && appMeanAbsoluteCourseErrorDegrees !== null
-        ? appMeanAbsoluteCourseErrorDegrees / rawGpsMeanAbsoluteCourseErrorDegrees
-        : null,
-    meanJitterReductionRatio:
-      rawGpsMeanStepChangeDegrees && appMeanStepChangeDegrees !== null
-        ? appMeanStepChangeDegrees / rawGpsMeanStepChangeDegrees
-        : null,
+    meanErrorReductionRatio,
+    meanJitterReductionRatio,
     finalCourseErrorDegrees,
     noisyGpsCheckCount,
-    measurementPassed:
-      checks.length === 19 &&
-      validChecks.length === 19 &&
-      noisyGpsCheckCount >= 3 &&
-      (maximum(rawGpsErrors) ?? Infinity) <= 5 &&
-      finalCourseErrorDegrees !== null && finalCourseErrorDegrees <= 2,
+    measurementPassed,
+    regressionPassed:
+      measurementPassed &&
+      (appMeanAbsoluteCourseErrorDegrees ?? Infinity) <= 0.6 &&
+      (maximum(appErrors) ?? Infinity) <= 1.3 &&
+      (appMeanStepChangeDegrees ?? Infinity) <= 0.35 &&
+      (maximum(appStepChanges) ?? Infinity) <= 0.9 &&
+      (meanErrorReductionRatio ?? Infinity) <= 0.2 &&
+      (meanJitterReductionRatio ?? Infinity) <= 0.08 &&
+      finalCourseErrorDegrees !== null && finalCourseErrorDegrees <= 1,
   }
 }
