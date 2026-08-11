@@ -2,6 +2,7 @@ import {
   NORTHBOUND_SIX_KNOTS_SCENARIO,
   NORTHBOUND_VARIABLE_COURSE_SCENARIO,
   NORTHBOUND_VARIABLE_SPEED_SCENARIO,
+  COURSE_NOISE_SCENARIO,
   TACK_COURSE_SCENARIO,
 } from '../simulation/sailingSimulator.fixtures'
 import { createSailingSimulator } from '../simulation/sailingSimulator'
@@ -12,7 +13,7 @@ const SIMULATION_QUERY_KEY = 'simulation'
 export const SIMULATION_TICK_MS = 1_000
 const SIMULATION_RATES = [1, 10, 20] as const
 
-export type SimulationScenario = 'straight' | 'variable-speed' | 'variable-course' | 'tack-course'
+export type SimulationScenario = 'straight' | 'variable-speed' | 'variable-course' | 'tack-course' | 'course-noise'
 export type SimulationRate = (typeof SIMULATION_RATES)[number]
 
 export interface SimulationModeConfig {
@@ -34,7 +35,7 @@ export function getSimulationModeConfig(
 ): SimulationModeConfig {
   const requestedScenario = search?.get(SIMULATION_QUERY_KEY)
   const scenario: SimulationScenario | null =
-    requestedScenario === 'straight' || requestedScenario === 'variable-speed' || requestedScenario === 'variable-course' || requestedScenario === 'tack-course'
+    requestedScenario === 'straight' || requestedScenario === 'variable-speed' || requestedScenario === 'variable-course' || requestedScenario === 'tack-course' || requestedScenario === 'course-noise'
       ? requestedScenario
       : null
   const simulationBuildAllowed = environment.DEV || environment.MODE === 'simulation'
@@ -63,6 +64,8 @@ export function createSimulationGpsSource(scenario: SimulationScenario): Simulat
       return createSimulatedGpsSource(createSailingSimulator(NORTHBOUND_VARIABLE_COURSE_SCENARIO))
     case 'tack-course':
       return createSimulatedGpsSource(createSailingSimulator(TACK_COURSE_SCENARIO))
+    case 'course-noise':
+      return createSimulatedGpsSource(createSailingSimulator(COURSE_NOISE_SCENARIO))
   }
 }
 

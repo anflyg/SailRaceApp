@@ -49,6 +49,14 @@ describe('simulation mode', () => {
     )).toEqual({ enabled: true, scenario: 'tack-course', simulationRate: 1, tickIntervalMs: 1_000 })
   })
 
+  it('enables the course-noise scenario only for an allowed build and query', () => {
+    expect(getSimulationModeConfig(
+      false,
+      developmentEnvironment,
+      new URLSearchParams('simulation=course-noise'),
+    )).toEqual({ enabled: true, scenario: 'course-noise', simulationRate: 1, tickIntervalMs: 1_000 })
+  })
+
   it('ignores the simulation query in a normal production build', () => {
     expect(getSimulationModeConfig(
       false,
@@ -78,6 +86,14 @@ describe('simulation mode', () => {
       false,
       productionEnvironment,
       new URLSearchParams('simulation=tack-course'),
+    )).toEqual({ enabled: false, scenario: null, simulationRate: 1, tickIntervalMs: 1_000 })
+  })
+
+  it('ignores the course-noise query in a normal production build', () => {
+    expect(getSimulationModeConfig(
+      false,
+      productionEnvironment,
+      new URLSearchParams('simulation=course-noise'),
     )).toEqual({ enabled: false, scenario: null, simulationRate: 1, tickIntervalMs: 1_000 })
   })
 

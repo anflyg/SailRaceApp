@@ -35,6 +35,14 @@ const scenarios = [
     expected: { plannedChecks: 19, speedPassed: 19 },
     measurementOnly: true,
   },
+  {
+    name: 'course-noise',
+    label: 'COURSE NOISE',
+    timeoutMs: 20_000,
+    expected: { plannedChecks: 19, speedPassed: 19 },
+    measurementOnly: true,
+    measurement: 'course-noise',
+  },
 ]
 
 function sleep(milliseconds) {
@@ -169,6 +177,65 @@ function analyzeTackCourseReport(report) {
   }
 }
 
+function average(values) {
+  return values.length === 0 ? null : values.reduce((sum, value) => sum + value, 0) / values.length
+}
+
+function maximum(values) {
+  return values.length === 0 ? null : Math.max(...values)
+}
+
+function analyzeCourseNoiseReport(report) {
+  const validChecks = report.checks.filter((check) => (
+    check.groundTruthCourseDegrees !== null && check.appCourseDegrees !== null
+  ))
+  const rawGpsErrors = validChecks.map((check) => (
+    getCourseErrorDegrees(check.groundTruthCourseDegrees, check.gpsReportedCourseDegrees)
+  ))
+  const appErrors = validChecks.map((check) => (
+    getCourseErrorDegrees(check.groundTruthCourseDegrees, check.appCourseDegrees)
+  ))
+  const stepChanges = (values) => values.slice(1).map((value, index) => getCourseErrorDegrees(values[index], value))
+  const rawGpsStepChanges = stepChanges(validChecks.map((check) => check.gpsReportedCourseDegrees))
+  const appStepChanges = stepChanges(validChecks.map((check) => check.appCourseDegrees))
+  const rawGpsMeanAbsoluteCourseErrorDegrees = average(rawGpsErrors)
+  const appMeanAbsoluteCourseErrorDegrees = average(appErrors)
+  const rawGpsMeanStepChangeDegrees = average(rawGpsStepChanges)
+  const appMeanStepChangeDegrees = average(appStepChanges)
+  const finalCourseErrorDegrees = appErrors.at(-1) ?? null
+  const noisyGpsCheckCount = rawGpsErrors.filter((error) => error > Number.EPSILON).length
+
+  return {
+    rawGpsMeanAbsoluteCourseErrorDegrees,
+    rawGpsMaxCourseErrorDegrees: maximum(rawGpsErrors),
+    appMeanAbsoluteCourseErrorDegrees,
+    appMaxCourseErrorDegrees: maximum(appErrors),
+    rawGpsMeanStepChangeDegrees,
+    rawGpsMaxStepChangeDegrees: maximum(rawGpsStepChanges),
+    appMeanStepChangeDegrees,
+    appMaxStepChangeDegrees: maximum(appStepChanges),
+    meanErrorReductionRatio:
+      rawGpsMeanAbsoluteCourseErrorDegrees && appMeanAbsoluteCourseErrorDegrees !== null
+        ? appMeanAbsoluteCourseErrorDegrees / rawGpsMeanAbsoluteCourseErrorDegrees
+        : null,
+    meanJitterReductionRatio:
+      rawGpsMeanStepChangeDegrees && appMeanStepChangeDegrees !== null
+        ? appMeanStepChangeDegrees / rawGpsMeanStepChangeDegrees
+        : null,
+    finalCourseErrorDegrees,
+    noisyGpsCheckCount,
+    measurementPassed:
+      report.plannedChecks === 19 &&
+      report.completedChecks === 19 &&
+      report.missingChecks === 0 &&
+      report.speedPassed === 19 &&
+      validChecks.length === 19 &&
+      noisyGpsCheckCount >= 3 &&
+      (maximum(rawGpsErrors) ?? Infinity) <= 5 &&
+      finalCourseErrorDegrees !== null && finalCourseErrorDegrees <= 2,
+  }
+}
+
 function validateReport(report, scenario) {
   assertEqual(report.scenario, scenario.name, `${scenario.label} scenario`)
   assertEqual(report.plannedChecks, scenario.expected.plannedChecks, `${scenario.label} planned checks`)
@@ -179,7 +246,9 @@ function validateReport(report, scenario) {
   assertEqual(report.courseChecks, scenario.expected.plannedChecks, `${scenario.label} course checks`)
 
   if (scenario.measurementOnly) {
-    const analysis = analyzeTackCourseReport(report)
+    const analysis = scenario.measurement === 'course-noise'
+      ? analyzeCourseNoiseReport(report)
+      : analyzeTackCourseReport(report)
     if (!analysis.measurementPassed) {
       throw new Error(`${scenario.label} measurement failed: ${JSON.stringify(analysis)}`)
     }
@@ -226,7 +295,7 @@ async function validateDashboard(page, scenario) {
   const speed = page.getByLabel('Fart').locator('.metric-value')
   const course = page.getByLabel('Riktning').locator('.metric-value')
 
-  if (scenario.name === 'straight' || scenario.name === 'tack-course') {
+  if (scenario.name === 'straight' || scenario.name === 'tack-course' || scenario.name === 'course-noise') {
     assertEqual(await speed.textContent(), '6,0', 'STRAIGHT dashboard speed')
   } else if (scenario.name === 'variable-course') {
     const speedText = (await speed.textContent())?.trim() ?? ''
@@ -238,6 +307,15 @@ async function validateDashboard(page, scenario) {
     if (speedText === '--' || !/^\d+(,\d+)?$/.test(speedText)) {
       throw new Error(`VARIABLE SPEED dashboard speed: expected a numeric value, received ${JSON.stringify(speedText)}`)
     }
+  }
+
+  if (scenario.name === 'course-noise') {
+    const courseText = (await course.textContent())?.trim() ?? ''
+    const match = /^(\d{3})°$/.exec(courseText)
+    if (!match || getCourseErrorDegrees(315, Number(match[1])) > 2) {
+      throw new Error(`COURSE NOISE dashboard course: expected within 2° of 315°, received ${JSON.stringify(courseText)}`)
+    }
+    return
   }
 
   const expectedCourse = scenario.name === 'variable-course'
@@ -266,10 +344,10 @@ async function runScenario(browser, scenario) {
     )
 
     const report = await page.evaluate(() => window.__SAILRACE_SIMULATION_REPORT__)
-    const tackAnalysis = validateReport(report, scenario)
+    const measurementAnalysis = validateReport(report, scenario)
     await validateDashboard(page, scenario)
     await fs.writeFile(path.join(OUTPUT_DIR, `${scenario.name}.json`), `${JSON.stringify(report, null, 2)}\n`)
-    return { report, tackAnalysis, durationMs: Date.now() - startedAt }
+    return { report, measurementAnalysis, durationMs: Date.now() - startedAt }
   } catch (error) {
     await page.screenshot({ path: path.join(OUTPUT_DIR, `${scenario.name}-failure.png`), fullPage: true })
     throw error
@@ -288,6 +366,20 @@ function printScenarioSummary(scenario, report, durationMs) {
     console.log(`Within 5°: t=${analysis.firstWithin5DegreesSeconds ?? '--'} (${analysis.firstWithin5DegreesAfterTackSeconds ?? '--'} s after tack)`)
     console.log(`Within 2°: t=${analysis.firstWithin2DegreesSeconds ?? '--'} (${analysis.firstWithin2DegreesAfterTackSeconds ?? '--'} s after tack)`)
     console.log(`Final error: ${analysis.finalCourseErrorDegrees?.toFixed(4) ?? '--'}°`)
+    console.log(`Wall-clock: ${(durationMs / 1_000).toFixed(2)} s`)
+    console.log('Result:  MEASUREMENT PASS')
+    return
+  }
+
+  if (scenario.name === 'course-noise') {
+    const analysis = analyzeCourseNoiseReport(report)
+    console.log(`\n${scenario.label}`)
+    console.log(`Speed:   ${report.speedPassed}/${report.speedChecks} PASS`)
+    console.log(`Raw GPS: mean error ${analysis.rawGpsMeanAbsoluteCourseErrorDegrees?.toFixed(4) ?? '--'}°, max ${analysis.rawGpsMaxCourseErrorDegrees?.toFixed(4) ?? '--'}°, mean step ${analysis.rawGpsMeanStepChangeDegrees?.toFixed(4) ?? '--'}°, max step ${analysis.rawGpsMaxStepChangeDegrees?.toFixed(4) ?? '--'}°`)
+    console.log(`App display: mean error ${analysis.appMeanAbsoluteCourseErrorDegrees?.toFixed(4) ?? '--'}°, max ${analysis.appMaxCourseErrorDegrees?.toFixed(4) ?? '--'}°, mean step ${analysis.appMeanStepChangeDegrees?.toFixed(4) ?? '--'}°, max step ${analysis.appMaxStepChangeDegrees?.toFixed(4) ?? '--'}°`)
+    console.log(`Error reduction ratio: ${analysis.meanErrorReductionRatio?.toFixed(4) ?? '--'}`)
+    console.log(`Jitter reduction ratio: ${analysis.meanJitterReductionRatio?.toFixed(4) ?? '--'}`)
+    console.log(`Final course error: ${analysis.finalCourseErrorDegrees?.toFixed(4) ?? '--'}°`)
     console.log(`Wall-clock: ${(durationMs / 1_000).toFixed(2)} s`)
     console.log('Result:  MEASUREMENT PASS')
     return
@@ -319,8 +411,8 @@ async function run() {
     }
 
     const summary = {
-      overallPassed: results.every(({ report, tackAnalysis }) => tackAnalysis?.measurementPassed ?? report.overallPassed),
-      scenarios: results.map(({ report, tackAnalysis, durationMs }) => ({
+      overallPassed: results.every(({ report, measurementAnalysis }) => measurementAnalysis?.measurementPassed ?? report.overallPassed),
+      scenarios: results.map(({ report, measurementAnalysis, durationMs }) => ({
         scenario: report.scenario,
         plannedChecks: report.plannedChecks,
         completedChecks: report.completedChecks,
@@ -328,7 +420,7 @@ async function run() {
         coursePassed: report.coursePassed,
         overallPassed: report.overallPassed,
         wallClockDurationMs: durationMs,
-        ...(tackAnalysis ? { tackAnalysis } : {}),
+        ...(measurementAnalysis ? { [report.scenario === 'tack-course' ? 'tackAnalysis' : 'courseNoiseAnalysis']: measurementAnalysis } : {}),
       })),
     }
     await fs.writeFile(path.join(OUTPUT_DIR, 'summary.json'), `${JSON.stringify(summary, null, 2)}\n`)

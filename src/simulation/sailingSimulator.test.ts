@@ -4,8 +4,9 @@ import {
   NORTHBOUND_VARIABLE_COURSE_SCENARIO,
   NORTHBOUND_VARIABLE_SPEED_SCENARIO,
   TACK_COURSE_SCENARIO,
+  COURSE_NOISE_SCENARIO,
 } from './sailingSimulator.fixtures'
-import { createSailingSimulator } from './sailingSimulator'
+import { createSailingSimulator, getGpsReportedCourseDegrees } from './sailingSimulator'
 
 const KNOTS_PER_METER_PER_SECOND = 1.943844
 
@@ -193,5 +194,35 @@ describe('SailingSimulator', () => {
     expect(samples.get(18)?.groundTruthCourseDegrees).toBeCloseTo(0, 10)
     expect(samples.get(18)?.groundTruthSpeedKnots).toBeCloseTo(6, 10)
     expect(samples.get(18)?.courseDegrees).toBeCloseTo(samples.get(18)?.groundTruthCourseDegrees!, 10)
+  })
+
+  it('applies deterministic GPS course noise without changing physical truth or displacement', () => {
+    const noiselessSimulator = createSailingSimulator({ ...COURSE_NOISE_SCENARIO, courseNoiseDegrees: undefined })
+    const noisySimulator = createSailingSimulator(COURSE_NOISE_SCENARIO)
+    const duplicateNoisySimulator = createSailingSimulator(COURSE_NOISE_SCENARIO)
+
+    for (let second = 1; second <= 6; second += 1) {
+      const noiselessSample = noiselessSimulator.step()
+      const noisySample = noisySimulator.step()
+      const duplicateNoisySample = duplicateNoisySimulator.step()
+
+      expect(noisySample.targetCourseDegrees).toBeCloseTo(315, 10)
+      expect(noisySample.groundTruthCourseDegrees).toBeCloseTo(315, 10)
+      expect(noisySample.groundTruthSpeedKnots).toBeCloseTo(6, 10)
+      expect(noisySample.localXmeters).toBeCloseTo(noiselessSample.localXmeters, 10)
+      expect(noisySample.localYmeters).toBeCloseTo(noiselessSample.localYmeters, 10)
+      expect(noisySample.courseDegrees).toBeCloseTo(duplicateNoisySample.courseDegrees, 10)
+
+      if (second === 1) {
+        expect(noisySample.courseDegrees).toBeCloseTo(319, 10)
+      }
+    }
+
+    expect(noisySimulator.currentSample().courseDegrees).toBeCloseTo(310, 10)
+  })
+
+  it('normalizes positive and negative GPS course noise across 0°', () => {
+    expect(getGpsReportedCourseDegrees(358, 358, [5], 1)).toBe(3)
+    expect(getGpsReportedCourseDegrees(2, 2, [-5], 1)).toBe(357)
   })
 })

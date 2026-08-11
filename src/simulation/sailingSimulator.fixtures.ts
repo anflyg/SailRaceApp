@@ -57,3 +57,14 @@ export const TACK_COURSE_SCENARIO: SailingSimulatorConfig = {
   startTimestamp: 1_700_000_000_000,
   accuracyMeters: 3,
 }
+
+export const COURSE_NOISE_SCENARIO: SailingSimulatorConfig = {
+  origin: { latitude: 59.3293, longitude: 18.0686 },
+  initialPosition: { xMeters: 0, yMeters: 0 },
+  courseDegrees: 315,
+  courseNoiseDegrees: [0, 4, -3, 5, -4, 2, -5, 3, -2, 4, -1],
+  targetSpeedKnots: 6,
+  timeStepSeconds: 1,
+  startTimestamp: 1_700_000_000_000,
+  accuracyMeters: 3,
+}

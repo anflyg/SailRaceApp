@@ -20,6 +20,7 @@ export interface SailingSimulatorConfig {
   initialPosition?: LocalPosition
   courseDegrees?: number
   courseProfile?: readonly CourseProfilePoint[]
+  courseNoiseDegrees?: readonly number[]
   targetSpeedKnots?: number
   speedProfile?: readonly SpeedProfilePoint[]
   timeStepSeconds?: number
@@ -170,6 +171,20 @@ function getTargetCourseDegrees(
   return normalizeDegrees(lastPoint.courseDegrees)
 }
 
+export function getGpsReportedCourseDegrees(
+  groundTruthCourseDegrees: number | null,
+  fallbackCourseDegrees: number,
+  courseNoiseDegrees: readonly number[] | undefined,
+  elapsedTimeSeconds: number,
+): number {
+  if (groundTruthCourseDegrees === null || !courseNoiseDegrees || courseNoiseDegrees.length === 0) {
+    return groundTruthCourseDegrees ?? fallbackCourseDegrees
+  }
+
+  const noiseOffset = courseNoiseDegrees[elapsedTimeSeconds % courseNoiseDegrees.length]
+  return normalizeDegrees(groundTruthCourseDegrees + noiseOffset)
+}
+
 export function sampleToGpsPosition(sample: SailingSimulationSample): GpsPosition {
   return {
     latitude: sample.latitude,
@@ -194,7 +209,7 @@ export function createSailingSimulator(config: SailingSimulatorConfig): SailingS
     { ...config, timeStepSeconds, accuracyMeters, startTimestamp },
     position,
     elapsedTimeSeconds,
-    targetCourseDegrees,
+    getGpsReportedCourseDegrees(null, targetCourseDegrees, config.courseNoiseDegrees, elapsedTimeSeconds),
     targetSpeedKnots,
     null,
     targetCourseDegrees,
@@ -231,7 +246,12 @@ export function createSailingSimulator(config: SailingSimulatorConfig): SailingS
         { ...config, timeStepSeconds, accuracyMeters, startTimestamp },
         position,
         elapsedTimeSeconds,
-        groundTruthCourseDegrees ?? targetCourseDegrees,
+        getGpsReportedCourseDegrees(
+          groundTruthCourseDegrees,
+          targetCourseDegrees,
+          config.courseNoiseDegrees,
+          elapsedTimeSeconds,
+        ),
         targetSpeedKnots,
         groundTruthSpeedKnots,
         targetCourseDegrees,
