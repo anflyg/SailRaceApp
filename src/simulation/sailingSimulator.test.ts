@@ -3,6 +3,7 @@ import {
   NORTHBOUND_SIX_KNOTS_SCENARIO,
   NORTHBOUND_VARIABLE_COURSE_SCENARIO,
   NORTHBOUND_VARIABLE_SPEED_SCENARIO,
+  TACK_COURSE_SCENARIO,
 } from './sailingSimulator.fixtures'
 import { createSailingSimulator } from './sailingSimulator'
 
@@ -174,5 +175,23 @@ describe('SailingSimulator', () => {
     expect(sample.groundTruthSpeedKnots).toBeCloseTo(6, 10)
     expect(sample.targetCourseDegrees).toBe(350)
     expect(sample.groundTruthCourseDegrees).toBeCloseTo(350, 10)
+  })
+
+  it('runs the tack profile through 0° at constant speed instead of the long way around', () => {
+    const simulator = createSailingSimulator(TACK_COURSE_SCENARIO)
+    const samples = new Map([[0, simulator.currentSample()]])
+
+    for (let second = 1; second <= 60; second += 1) {
+      samples.set(second, simulator.step())
+    }
+
+    expect(samples.get(12)?.targetCourseDegrees).toBeCloseTo(315, 10)
+    expect(samples.get(15)?.targetCourseDegrees).toBeCloseTo(315, 10)
+    expect(samples.get(18)?.targetCourseDegrees).toBeCloseTo(0, 10)
+    expect(samples.get(21)?.targetCourseDegrees).toBeCloseTo(45, 10)
+    expect(samples.get(60)?.targetCourseDegrees).toBeCloseTo(45, 10)
+    expect(samples.get(18)?.groundTruthCourseDegrees).toBeCloseTo(0, 10)
+    expect(samples.get(18)?.groundTruthSpeedKnots).toBeCloseTo(6, 10)
+    expect(samples.get(18)?.courseDegrees).toBeCloseTo(samples.get(18)?.groundTruthCourseDegrees!, 10)
   })
 })

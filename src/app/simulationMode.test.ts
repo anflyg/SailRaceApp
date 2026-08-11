@@ -41,6 +41,14 @@ describe('simulation mode', () => {
     )).toEqual({ enabled: true, scenario: 'variable-course', simulationRate: 10, tickIntervalMs: 100 })
   })
 
+  it('enables the tack-course scenario only for an allowed build and query', () => {
+    expect(getSimulationModeConfig(
+      false,
+      developmentEnvironment,
+      new URLSearchParams('simulation=tack-course'),
+    )).toEqual({ enabled: true, scenario: 'tack-course', simulationRate: 1, tickIntervalMs: 1_000 })
+  })
+
   it('ignores the simulation query in a normal production build', () => {
     expect(getSimulationModeConfig(
       false,
@@ -62,6 +70,14 @@ describe('simulation mode', () => {
       false,
       productionEnvironment,
       new URLSearchParams('simulation=variable-course'),
+    )).toEqual({ enabled: false, scenario: null, simulationRate: 1, tickIntervalMs: 1_000 })
+  })
+
+  it('ignores the tack-course query in a normal production build', () => {
+    expect(getSimulationModeConfig(
+      false,
+      productionEnvironment,
+      new URLSearchParams('simulation=tack-course'),
     )).toEqual({ enabled: false, scenario: null, simulationRate: 1, tickIntervalMs: 1_000 })
   })
 
