@@ -105,8 +105,8 @@ export function AppShell() {
     simulationMode.scenario === null ? null : createSimulationValidator({ scenario: simulationMode.scenario })
   ), [simulationMode.scenario])
   const simulationReportLoggedRef = useRef(false)
-  const simulationCourseState = getSimulationCourseState(simulationMode.scenario)
-  const simulationLaylineSettings = getSimulationLaylineSettings(simulationMode.scenario)
+  const simulationCourseState = useMemo(() => getSimulationCourseState(simulationMode.scenario), [simulationMode.scenario])
+  const simulationLaylineSettings = useMemo(() => getSimulationLaylineSettings(simulationMode.scenario), [simulationMode.scenario])
   const [activeView, setActiveView] = useState<AppView>(
     simulationMode.enabled ? 'race' : (manualMode.initialView ?? 'setup'),
   )
@@ -183,7 +183,7 @@ export function AppShell() {
   }, [displayMode])
 
   useEffect(() => {
-    if (manualMode.enabled || simulationMode.scenario === 'layline-candidate') {
+    if (manualMode.enabled || simulationLaylineSettings !== null) {
       return
     }
 
@@ -194,7 +194,7 @@ export function AppShell() {
       },
       displayMode,
     })
-  }, [displayMode, laylineAlphaDegrees, laylineEnabled, manualMode.enabled, simulationMode.scenario])
+  }, [displayMode, laylineAlphaDegrees, laylineEnabled, manualMode.enabled, simulationLaylineSettings])
 
   const handleManualViewChange = useCallback((nextView: AppView) => {
     if (isNavigationLocked && nextView !== activeView) {

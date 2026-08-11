@@ -75,6 +75,13 @@ describe('simulation mode', () => {
     )).toEqual({ enabled: true, scenario: 'layline-candidate', simulationRate: 1, tickIntervalMs: 1_000 })
   })
 
+  it('enables layline-warning only in an allowed simulation build', () => {
+    expect(getSimulationModeConfig(false, developmentEnvironment, new URLSearchParams('simulation=layline-warning')))
+      .toEqual({ enabled: true, scenario: 'layline-warning', simulationRate: 1, tickIntervalMs: 1_000 })
+    expect(getSimulationModeConfig(false, productionEnvironment, new URLSearchParams('simulation=layline-warning')))
+      .toEqual({ enabled: false, scenario: null, simulationRate: 1, tickIntervalMs: 1_000 })
+  })
+
   it('ignores the simulation query in a normal production build', () => {
     expect(getSimulationModeConfig(
       false,
@@ -251,6 +258,17 @@ describe('simulation mode', () => {
     })
     expect(getSimulationLaylineSettings('layline-candidate')).toEqual({ enabled: true, alphaDegrees: 90 })
     expect(getSimulationCourseState('straight')).toBeNull()
+  })
+
+  it('keeps layline-candidate at K1 y=90 and configures layline-warning at K1 y=89.6', () => {
+    const candidate = getSimulationCourseState('layline-candidate')
+    const warning = getSimulationCourseState('layline-warning')
+
+    expect(candidate?.points.kryss1?.latitude).toBeCloseTo(59.3293 + 90 / 111_320, 10)
+    expect(warning?.points.kryss1?.latitude).toBeCloseTo(59.3293 + 89.6 / 111_320, 10)
+    expect(warning?.points.lans1?.latitude).toBeCloseTo(59.3293 - 110 / 111_320, 10)
+    expect(warning?.windHeadingDegrees).toBeNull()
+    expect(getSimulationLaylineSettings('layline-warning')).toEqual({ enabled: true, alphaDegrees: 90 })
   })
 
   it('creates the layline candidate source at the prescribed local position and heading', () => {

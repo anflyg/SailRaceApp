@@ -319,6 +319,18 @@ describe('simulation validator', () => {
     expect(checkAt15?.groundTruthTimeToTackSeconds).toBeLessThanOrEqual(10.6)
   })
 
+  it('uses speed and course validation only for layline-warning', () => {
+    const simulationValidator = createSimulationValidator({ scenario: 'layline-warning' })
+    for (let second = 0; second <= 24; second += 1) {
+      const sample = sampleAt(second, { targetCourseDegrees: 315, groundTruthCourseDegrees: 315, courseDegrees: 315 })
+      simulationValidator.observe(sample, appOutput(sample, { displayCourseDegrees: 315 }))
+    }
+    expect(simulationValidator.getReport()).toMatchObject({
+      plannedChecks: 7, completedChecks: 7, speedPassed: 7, coursePassed: 7,
+      vmgChecks: 0, laylineChecks: 0, overallPassed: true,
+    })
+  })
+
   it('keeps target, ground-truth and GPS-reported course fields separate', () => {
     const sample = sampleAt(6, {
       targetCourseDegrees: 350,

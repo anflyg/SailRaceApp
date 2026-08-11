@@ -50,6 +50,14 @@ export const LAYLINE_CANDIDATE_SIMULATION_VALIDATION = {
   laylineAlphaDegrees: 90,
 } as const
 
+export const LAYLINE_WARNING_SIMULATION_VALIDATION = {
+  validationIntervalSeconds: 3,
+  warmupSeconds: 6,
+  endSeconds: 24,
+  speedToleranceKnots: 0.15,
+  courseToleranceDegrees: 1,
+} as const
+
 export interface SimulationValidationTolerances {
   speedToleranceKnots: number
   courseToleranceDegrees: number
@@ -235,6 +243,8 @@ export function createSimulationValidator(config: SimulationValidatorConfig): Si
         ? WIND_VMG_SIMULATION_VALIDATION
       : config.scenario === 'layline-candidate'
         ? LAYLINE_CANDIDATE_SIMULATION_VALIDATION
+      : config.scenario === 'layline-warning'
+        ? LAYLINE_WARNING_SIMULATION_VALIDATION
       : STRAIGHT_SIMULATION_VALIDATION
   const validationIntervalSeconds = config.validationIntervalSeconds ?? scenarioValidation.validationIntervalSeconds
   const warmupSeconds = config.warmupSeconds ?? scenarioValidation.warmupSeconds

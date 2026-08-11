@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   createInitialLaylineWarningState,
   getLaylineCountdownValue,
@@ -22,14 +22,23 @@ export interface LaylineWarningResult {
   postTackHeadingDegrees: number | null
 }
 
+interface LaylineWarningRuntimeState {
+  machineState: ReturnType<typeof createInitialLaylineWarningState>
+  countdownClockMs: number
+}
+
 export function useLaylineWarning({
   course,
   gps,
   enabled,
   alphaDegrees,
 }: UseLaylineWarningInput): LaylineWarningResult {
-  const [machineState, setMachineState] = useState(createInitialLaylineWarningState)
-  const [countdownClockMs, setCountdownClockMs] = useState(() => Date.now())
+  const [runtimeState, setRuntimeState] = useState<LaylineWarningRuntimeState>(() => ({
+    machineState: createInitialLaylineWarningState(),
+    countdownClockMs: Date.now(),
+  }))
+  const lastProcessedObservationTimestampRef = useRef<number | null>(null)
+  const { machineState, countdownClockMs } = runtimeState
 
   useEffect(() => {
     if (machineState.phase !== 'countdown') {
@@ -37,7 +46,9 @@ export function useLaylineWarning({
     }
 
     const intervalId = window.setInterval(() => {
-      setCountdownClockMs(Date.now())
+      setRuntimeState((current) => current.machineState.phase === 'countdown'
+        ? { ...current, countdownClockMs: Date.now() }
+        : current)
     }, 250)
 
     return () => window.clearInterval(intervalId)
@@ -57,17 +68,31 @@ export function useLaylineWarning({
 
   useEffect(() => {
     if (!enabled) {
-      setMachineState((current) => (
-        current.phase === 'idle' ? current : createInitialLaylineWarningState()
-      ))
+      lastProcessedObservationTimestampRef.current = null
+      setRuntimeState((current) => current.machineState.phase === 'idle'
+        ? current
+        : { ...current, machineState: createInitialLaylineWarningState() })
       return
     }
 
     const nowMs = machineState.phase === 'countdown' ? countdownClockMs : Date.now()
-    let didStartCountdown = false
+    const observationTimestamp = gps.presentationTimestamp ?? gps.timestamp
+    const isObservationDrivenPhase = machineState.phase === 'idle' || machineState.phase === 'cooldown'
 
-    setMachineState((current) => {
-      const nextStep = stepLaylineWarningMachine(current, {
+    if (
+      isObservationDrivenPhase &&
+      observationTimestamp !== null &&
+      lastProcessedObservationTimestampRef.current === observationTimestamp
+    ) {
+      return
+    }
+
+    if (isObservationDrivenPhase && observationTimestamp !== null) {
+      lastProcessedObservationTimestampRef.current = observationTimestamp
+    }
+
+    setRuntimeState((current) => {
+      const nextStep = stepLaylineWarningMachine(current.machineState, {
         nowMs,
         timeToTackSeconds: laylineInput.timeToTackSeconds,
         laylineVariant: laylineInput.laylineVariant,
@@ -75,14 +100,13 @@ export function useLaylineWarning({
         currentCogDegrees: laylineInput.currentCogDegrees,
         movingTowardTarget: laylineInput.movingTowardTarget,
       })
-      didStartCountdown = nextStep.didStartCountdown
-
-      return areLaylineStatesEqual(current, nextStep.state) ? current : nextStep.state
+      return {
+        machineState: areLaylineStatesEqual(current.machineState, nextStep.state)
+          ? current.machineState
+          : nextStep.state,
+        countdownClockMs: nextStep.didStartCountdown ? nowMs : current.countdownClockMs,
+      }
     })
-
-    if (didStartCountdown) {
-      setCountdownClockMs(nowMs)
-    }
   }, [countdownClockMs, enabled, laylineInput, machineState.phase])
 
   const countdownValue = machineState.phase === 'countdown' && machineState.predictedTackAtMs !== null

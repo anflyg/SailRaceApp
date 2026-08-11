@@ -57,6 +57,14 @@ const scenarios = [
     expected: { plannedChecks: 7, speedPassed: 7, coursePassed: 7, laylinePassed: 7 },
     laylineCandidate: true,
   },
+  {
+    name: 'layline-warning',
+    label: 'LAYLINE WARNING',
+    timeoutMs: 55_000,
+    simulationRate: 1,
+    expected: { plannedChecks: 7, speedPassed: 7, coursePassed: 7 },
+    laylineWarning: true,
+  },
 ]
 
 function sleep(milliseconds) {
@@ -263,6 +271,41 @@ function analyzeCourseNoiseReport(report) {
   }
 }
 
+function analyzeLaylineWarningEvents(events) {
+  const normalized = events.filter((event, index) => index === 0 || event.label !== events[index - 1].label || event.value !== events[index - 1].value)
+  const laylineEvents = normalized.filter((event) => event.label === 'LAYLINE')
+  const countdownValues = laylineEvents.map((event) => event.value)
+  const expected = ['10', '9', '8', '7', '6', '5', '4', '3', '2', '1', '0', '-1', '-2', '-3', '-4', '-5']
+  const first = (value) => laylineEvents.find((event) => event.value === value)
+  const first10 = first('10')
+  const zero = first('0')
+  const minus5 = first('-5')
+  const cleared = normalized.find((event) => event.observedAtMs > (minus5?.observedAtMs ?? Infinity) && event.label === 'VMG Bana')
+  const activationCount = normalized.reduce((count, event, index) => (
+    event.label === 'LAYLINE' && normalized[index - 1]?.label !== 'LAYLINE' ? count + 1 : count
+  ), 0)
+  const secondsBetween = (start, end) => start && end ? (end.observedAtMs - start.observedAtMs) / 1000 : null
+  const tenToMinus5Seconds = secondsBetween(first10, minus5)
+
+  return {
+    countdownValues,
+    activationCount,
+    first10ObservedAtMs: first10?.observedAtMs ?? null,
+    zeroObservedAtMs: zero?.observedAtMs ?? null,
+    minus5ObservedAtMs: minus5?.observedAtMs ?? null,
+    clearedObservedAtMs: cleared?.observedAtMs ?? null,
+    tenToZeroSeconds: secondsBetween(first10, zero),
+    zeroToMinus5Seconds: secondsBetween(zero, minus5),
+    tenToMinus5Seconds,
+    minus5ToClearedSeconds: secondsBetween(minus5, cleared),
+    clearedAfterMinus5: cleared !== undefined,
+    warningPassed: JSON.stringify(countdownValues) === JSON.stringify(expected) &&
+      activationCount === 1 &&
+      cleared !== undefined &&
+      tenToMinus5Seconds !== null && tenToMinus5Seconds >= 12 && tenToMinus5Seconds <= 17,
+  }
+}
+
 function validateReport(report, scenario) {
   assertEqual(report.scenario, scenario.name, `${scenario.label} scenario`)
   assertEqual(report.plannedChecks, scenario.expected.plannedChecks, `${scenario.label} planned checks`)
@@ -384,6 +427,8 @@ async function validateDashboard(page, scenario) {
         ? '315°'
       : scenario.name === 'layline-candidate'
         ? '315°'
+      : scenario.name === 'layline-warning'
+        ? '315°'
       : '000°'
   assertEqual(courseText, expectedCourse, `${scenario.label} dashboard course`)
 
@@ -402,8 +447,22 @@ async function runScenario(browser, scenario) {
 
   try {
     const startedAt = Date.now()
-    await page.goto(`${BASE_URL}/?simulation=${scenario.name}&simulationRate=10`, { waitUntil: 'networkidle' })
+    await page.goto(`${BASE_URL}/?simulation=${scenario.name}&simulationRate=${scenario.simulationRate ?? 10}`, { waitUntil: 'networkidle' })
     await page.getByLabel('Fart').waitFor({ state: 'visible', timeout: 10_000 })
+    if (scenario.laylineWarning) {
+      await page.evaluate(() => {
+        const box = document.querySelector('.velocity-made-good')
+        const events = []
+        const record = () => events.push({
+          label: box?.getAttribute('aria-label') ?? '',
+          value: box?.querySelector('.metric-value')?.textContent?.trim() ?? '',
+          observedAtMs: performance.now(),
+        })
+        record()
+        new MutationObserver(record).observe(box, { attributes: true, attributeFilter: ['aria-label'], childList: true, subtree: true, characterData: true })
+        window.__SAILRACE_LAYLINE_UI_EVENTS__ = events
+      })
+    }
     await page.waitForFunction(
       () => {
         const report = window.__SAILRACE_SIMULATION_REPORT__
@@ -413,11 +472,26 @@ async function runScenario(browser, scenario) {
       { timeout: scenario.timeoutMs },
     )
 
+    let laylineWarningAnalysis = null
+    if (scenario.laylineWarning) {
+      await page.waitForFunction(() => window.__SAILRACE_LAYLINE_UI_EVENTS__?.some((event) => event.label === 'LAYLINE' && event.value === '-5'), undefined, { timeout: scenario.timeoutMs })
+      await page.waitForFunction(() => {
+        const events = window.__SAILRACE_LAYLINE_UI_EVENTS__ ?? []
+        const minus5 = events.find((event) => event.label === 'LAYLINE' && event.value === '-5')
+        return minus5 && document.querySelector('.velocity-made-good')?.getAttribute('aria-label') === 'VMG Bana'
+      }, undefined, { timeout: 2_500 })
+      await page.waitForTimeout(1_500)
+      const events = await page.evaluate(() => window.__SAILRACE_LAYLINE_UI_EVENTS__)
+      laylineWarningAnalysis = analyzeLaylineWarningEvents(events)
+      if (!laylineWarningAnalysis.warningPassed) {
+        throw new Error(`${scenario.label} DOM timeline failed: ${JSON.stringify(laylineWarningAnalysis)}`)
+      }
+    }
     const report = await page.evaluate(() => window.__SAILRACE_SIMULATION_REPORT__)
     const measurementAnalysis = validateReport(report, scenario)
     const dashboard = await validateDashboard(page, scenario)
     await fs.writeFile(path.join(OUTPUT_DIR, `${scenario.name}.json`), `${JSON.stringify(report, null, 2)}\n`)
-    return { report, measurementAnalysis, dashboard, durationMs: Date.now() - startedAt }
+    return { report, measurementAnalysis, laylineWarningAnalysis, dashboard, durationMs: Date.now() - startedAt }
   } catch (error) {
     await page.screenshot({ path: path.join(OUTPUT_DIR, `${scenario.name}-failure.png`), fullPage: true })
     throw error
@@ -486,6 +560,23 @@ function printScenarioSummary(scenario, report, durationMs, dashboard) {
     return
   }
 
+  if (scenario.name === 'layline-warning') {
+    const analysis = report.laylineWarningAnalysis
+    console.log(`\n${scenario.label}`)
+    console.log(`Speed:  ${report.speedPassed}/${report.speedChecks} PASS`)
+    console.log(`Course: ${report.coursePassed}/${report.courseChecks} PASS`)
+    console.log(`Countdown: ${analysis.countdownValues.join(' ')}`)
+    console.log(`10 -> 0: ${analysis.tenToZeroSeconds?.toFixed(2) ?? '--'} s`)
+    console.log(`0 -> -5: ${analysis.zeroToMinus5Seconds?.toFixed(2) ?? '--'} s`)
+    console.log(`10 -> -5: ${analysis.tenToMinus5Seconds?.toFixed(2) ?? '--'} s`)
+    console.log(`-5 -> clear: ${analysis.minus5ToClearedSeconds?.toFixed(2) ?? '--'} s`)
+    console.log(`Activations: ${analysis.activationCount}`)
+    console.log(`Returned to VMG Bana: ${analysis.clearedAfterMinus5 ? 'YES' : 'NO'}`)
+    console.log(`Wall-clock: ${(durationMs / 1_000).toFixed(2)} s`)
+    console.log('Result:  PASS')
+    return
+  }
+
   console.log(`\n${scenario.label}`)
   console.log(`Speed:   ${report.speedPassed}/${report.speedChecks} PASS`)
   console.log(`Course:  ${report.coursePassed}/${report.courseChecks} PASS`)
@@ -508,7 +599,7 @@ async function run() {
     for (const scenario of scenarios) {
       const result = await runScenario(browser, scenario)
       results.push(result)
-      printScenarioSummary(scenario, result.report, result.durationMs, result.dashboard)
+      printScenarioSummary(scenario, { ...result.report, laylineWarningAnalysis: result.laylineWarningAnalysis }, result.durationMs, result.dashboard)
     }
 
     const summary = {
@@ -517,7 +608,7 @@ async function run() {
           ? measurementAnalysis?.regressionPassed
           : measurementAnalysis?.measurementPassed ?? report.overallPassed
       )),
-      scenarios: results.map(({ report, measurementAnalysis, durationMs }) => ({
+      scenarios: results.map(({ report, measurementAnalysis, laylineWarningAnalysis, durationMs }) => ({
         scenario: report.scenario,
         plannedChecks: report.plannedChecks,
         completedChecks: report.completedChecks,
@@ -526,6 +617,7 @@ async function run() {
         overallPassed: report.overallPassed,
         wallClockDurationMs: durationMs,
         ...(measurementAnalysis ? { [report.scenario === 'tack-course' ? 'tackAnalysis' : 'courseNoiseAnalysis']: measurementAnalysis } : {}),
+        ...(laylineWarningAnalysis ? { laylineWarningAnalysis } : {}),
       })),
     }
     await fs.writeFile(path.join(OUTPUT_DIR, 'summary.json'), `${JSON.stringify(summary, null, 2)}\n`)
