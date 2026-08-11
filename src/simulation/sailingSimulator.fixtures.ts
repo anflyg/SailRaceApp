@@ -78,3 +78,13 @@ export const WIND_VMG_SCENARIO: SailingSimulatorConfig = {
   startTimestamp: 1_700_000_000_000,
   accuracyMeters: 3,
 }
+
+export const LAYLINE_CANDIDATE_SCENARIO: SailingSimulatorConfig = {
+  origin: { latitude: 59.3293, longitude: 18.0686 },
+  initialPosition: { xMeters: 20, yMeters: 0 },
+  courseDegrees: 315,
+  targetSpeedKnots: 6,
+  timeStepSeconds: 1,
+  startTimestamp: 1_700_000_000_000,
+  accuracyMeters: 3,
+}

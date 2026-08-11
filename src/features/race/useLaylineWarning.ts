@@ -1,16 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
-  computeLaylineCandidate,
-  getLaylineReference,
-  isHeadingTowardReference,
-} from '../../domain/layline'
-import {
   createInitialLaylineWarningState,
   getLaylineCountdownValue,
   LAYLINE_WARNING_END_SECONDS,
   stepLaylineWarningMachine,
 } from '../../domain/laylineWarningMachine'
-import type { CourseState, FilteredGpsReading, GeoPoint, LaylineVariant } from '../../types'
+import type { CourseState, FilteredGpsReading, LaylineVariant } from '../../types'
+import { getLaylineObservation } from './laylineObservation'
 
 interface UseLaylineWarningInput {
   course: CourseState
@@ -48,34 +44,14 @@ export function useLaylineWarning({
   }, [machineState.phase])
 
   const laylineInput = useMemo(() => {
-    const reference = getLaylineReference(course)
-    const position = getPosition(gps)
-    const currentCogDegrees = gps.courseReliable ? gps.courseDegrees : null
-    const speedKnots = gps.speedKnots
-    const movingTowardTarget = reference !== null &&
-      currentCogDegrees !== null &&
-      isHeadingTowardReference(currentCogDegrees, reference.headingDegrees)
-    const candidate = enabled &&
-      reference !== null &&
-      position !== null &&
-      currentCogDegrees !== null &&
-      speedKnots !== null &&
-      movingTowardTarget
-      ? computeLaylineCandidate({
-        position,
-        currentCogDegrees,
-        speedKnots,
-        alphaDegrees,
-        targetMark: reference.target,
-      })
-      : null
+    const observation = getLaylineObservation({ course, gps, enabled, alphaDegrees })
 
     return {
-      movingTowardTarget,
-      timeToTackSeconds: candidate?.timeToTackSeconds ?? null,
-      laylineVariant: candidate?.laylineVariant ?? null,
-      postTackHeadingDegrees: candidate?.postTackHeadingDegrees ?? null,
-      currentCogDegrees,
+      movingTowardTarget: observation.movingTowardTarget,
+      timeToTackSeconds: observation.candidate?.timeToTackSeconds ?? null,
+      laylineVariant: observation.candidate?.laylineVariant ?? null,
+      postTackHeadingDegrees: observation.candidate?.postTackHeadingDegrees ?? null,
+      currentCogDegrees: observation.currentCogDegrees,
     }
   }, [alphaDegrees, course, enabled, gps])
 
@@ -121,17 +97,6 @@ export function useLaylineWarning({
     countdownValue,
     laylineVariant: machineState.countdownLaylineVariant,
     postTackHeadingDegrees: machineState.countdownPostTackHeadingDegrees,
-  }
-}
-
-function getPosition(gps: FilteredGpsReading): GeoPoint | null {
-  if (gps.latitude === null || gps.longitude === null) {
-    return null
-  }
-
-  return {
-    latitude: gps.latitude,
-    longitude: gps.longitude,
   }
 }
 

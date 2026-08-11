@@ -7,8 +7,10 @@ import {
   NORTHBOUND_VARIABLE_COURSE_SCENARIO,
   NORTHBOUND_VARIABLE_SPEED_SCENARIO,
   WIND_VMG_SCENARIO,
+  LAYLINE_CANDIDATE_SCENARIO,
 } from './sailingSimulator.fixtures'
 import { createSimulationValidator, getCourseErrorDegrees } from './simulationValidator'
+import { calculateGroundTruthLaylineCandidate, LAYLINE_CANDIDATE_TARGET_LOCAL } from './groundTruthLayline'
 
 const KNOTS_PER_METER_PER_SECOND = 1.943844
 const timestampBase = 1_700_000_000_000
@@ -263,6 +265,58 @@ describe('simulation validator', () => {
     })
 
     expect(check).toMatchObject({ vmgErrorKnots: expect.closeTo(0.1073593128807141, 8), vmgPassed: false, overallPassed: false })
+  })
+
+  it('validates seven layline candidates against independent local truth', () => {
+    const simulationValidator = createSimulationValidator({ scenario: 'layline-candidate' })
+    const simulator = createSailingSimulator(LAYLINE_CANDIDATE_SCENARIO)
+
+    for (let elapsedTimeSeconds = 0; elapsedTimeSeconds <= 24; elapsedTimeSeconds += 1) {
+      const sample = elapsedTimeSeconds === 0 ? simulator.currentSample() : simulator.step()
+      const truth = calculateGroundTruthLaylineCandidate({
+        boat: { xMeters: sample.localXmeters, yMeters: sample.localYmeters },
+        target: LAYLINE_CANDIDATE_TARGET_LOCAL,
+        groundTruthCourseDegrees: sample.groundTruthCourseDegrees!,
+        groundTruthSpeedKnots: sample.groundTruthSpeedKnots!,
+        alphaDegrees: 90,
+      })
+      simulationValidator.observe(sample, {
+        ...appOutput(sample),
+        laylineObservation: {
+          reference: { source: 'l1-k1', headingDegrees: 0 },
+          movingTowardTarget: true,
+          candidate: truth && {
+            laylineVariant: truth.laylineVariant,
+            postTackHeadingDegrees: truth.postTackHeadingDegrees,
+            distanceToTackMeters: truth.distanceToTackMeters,
+            timeToTackSeconds: truth.timeToTackSeconds,
+          },
+        },
+      })
+    }
+
+    const report = simulationValidator.getReport()
+    const checkAt15 = report.checks.find((check) => check.elapsedTimeSeconds === 15)
+    expect(report).toMatchObject({
+      plannedChecks: 7,
+      completedChecks: 7,
+      missingChecks: 0,
+      speedPassed: 7,
+      coursePassed: 7,
+      laylineChecks: 7,
+      laylinePassed: 7,
+      overallPassed: true,
+      tolerances: { laylineTimeToleranceSeconds: 0.30, laylineDistanceToleranceMeters: 1 },
+    })
+    expect(checkAt15).toMatchObject({
+      groundTruthLaylineVariant: 'plus-alpha',
+      appLaylineVariant: 'plus-alpha',
+      groundTruthPostTackHeadingDegrees: 45,
+      appPostTackHeadingDegrees: 45,
+      laylinePassed: true,
+    })
+    expect(checkAt15?.groundTruthTimeToTackSeconds).toBeGreaterThanOrEqual(9.8)
+    expect(checkAt15?.groundTruthTimeToTackSeconds).toBeLessThanOrEqual(10.6)
   })
 
   it('keeps target, ground-truth and GPS-reported course fields separate', () => {

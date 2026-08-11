@@ -50,6 +50,13 @@ const scenarios = [
     expected: { plannedChecks: 19, speedPassed: 19, coursePassed: 19, vmgPassed: 19 },
     vmgReferenceHeadingDegrees: 0,
   },
+  {
+    name: 'layline-candidate',
+    label: 'LAYLINE CANDIDATE',
+    timeoutMs: 15_000,
+    expected: { plannedChecks: 7, speedPassed: 7, coursePassed: 7, laylinePassed: 7 },
+    laylineCandidate: true,
+  },
 ]
 
 function sleep(milliseconds) {
@@ -270,6 +277,11 @@ function validateReport(report, scenario) {
     assertEqual(report.vmgPassed, scenario.expected.vmgPassed, `${scenario.label} VMG passed`)
   }
 
+  if (scenario.laylineCandidate) {
+    assertEqual(report.laylineChecks, scenario.expected.plannedChecks, `${scenario.label} layline checks`)
+    assertEqual(report.laylinePassed, scenario.expected.laylinePassed, `${scenario.label} layline passed`)
+  }
+
   if (scenario.measurementOnly) {
     const analysis = scenario.measurement === 'course-noise'
       ? analyzeCourseNoiseReport(report)
@@ -300,6 +312,21 @@ function validateReport(report, scenario) {
 
   assertEqual(report.overallPassed, true, `${scenario.label} overall result`)
 
+  if (scenario.laylineCandidate) {
+    const checkAt15 = report.checks.find((check) => check.elapsedTimeSeconds === 15)
+    if (!checkAt15 ||
+      checkAt15.groundTruthTimeToTackSeconds === null ||
+      checkAt15.appTimeToTackSeconds === null ||
+      checkAt15.laylineTimeErrorSeconds === null ||
+      checkAt15.groundTruthTimeToTackSeconds < 9.8 ||
+      checkAt15.groundTruthTimeToTackSeconds > 10.6 ||
+      checkAt15.appTimeToTackSeconds < 9.8 ||
+      checkAt15.appTimeToTackSeconds > 10.6 ||
+      checkAt15.laylineTimeErrorSeconds > 0.30) {
+      throw new Error(`${scenario.label} t=15 check failed: ${JSON.stringify(checkAt15)}`)
+    }
+  }
+
   for (const elapsedTimeSeconds of scenario.stableCheckpoints ?? []) {
     const check = report.checks.find((candidate) => candidate.elapsedTimeSeconds === elapsedTimeSeconds)
     if (!check) {
@@ -326,7 +353,7 @@ async function validateDashboard(page, scenario) {
   const speedText = await speed.textContent()
   const courseText = await course.textContent()
 
-  if (scenario.name === 'straight' || scenario.name === 'tack-course' || scenario.name === 'course-noise' || scenario.name === 'wind-vmg') {
+  if (scenario.name === 'straight' || scenario.name === 'tack-course' || scenario.name === 'course-noise' || scenario.name === 'wind-vmg' || scenario.name === 'layline-candidate') {
     assertEqual(speedText, '6,0', `${scenario.label} dashboard speed`)
   } else if (scenario.name === 'variable-course') {
     const speedText = (await speed.textContent())?.trim() ?? ''
@@ -354,6 +381,8 @@ async function validateDashboard(page, scenario) {
     : scenario.name === 'tack-course'
       ? '045°'
       : scenario.name === 'wind-vmg'
+        ? '315°'
+      : scenario.name === 'layline-candidate'
         ? '315°'
       : '000°'
   assertEqual(courseText, expectedCourse, `${scenario.label} dashboard course`)
@@ -434,6 +463,24 @@ function printScenarioSummary(scenario, report, durationMs, dashboard) {
     console.log(`Ground truth VMG: ${report.checks[0]?.groundTruthVmgKnots?.toFixed(4) ?? '--'} kn`)
     console.log(`VMG error: mean ${report.meanVmgErrorKnots?.toFixed(4) ?? '--'}, max ${report.maxVmgErrorKnots?.toFixed(4) ?? '--'} kn`)
     console.log(`DOM: Fart: ${dashboard.speed}, Riktning: ${dashboard.course}, VMG Vind: ${dashboard.velocity}`)
+    console.log(`Wall-clock: ${(durationMs / 1_000).toFixed(2)} s`)
+    console.log('Result:  PASS')
+    return
+  }
+
+  if (scenario.name === 'layline-candidate') {
+    const checkAt15 = report.checks.find((check) => check.elapsedTimeSeconds === 15)
+    console.log(`\n${scenario.label}`)
+    console.log(`Speed:    ${report.speedPassed}/${report.speedChecks} PASS`)
+    console.log(`Course:   ${report.coursePassed}/${report.courseChecks} PASS`)
+    console.log(`Layline:  ${report.laylinePassed}/${report.laylineChecks} PASS`)
+    console.log(`Reference: ${report.checks[0]?.appLaylineReferenceSource ?? '--'} / ${(report.checks[0]?.appLaylineReferenceHeadingDegrees ?? 0).toFixed(0).padStart(3, '0')}°`)
+    console.log(`t=15: Truth time ${checkAt15?.groundTruthTimeToTackSeconds?.toFixed(4) ?? '--'} s, App time ${checkAt15?.appTimeToTackSeconds?.toFixed(4) ?? '--'} s, Error ${checkAt15?.laylineTimeErrorSeconds?.toFixed(4) ?? '--'} s`)
+    console.log(`Max time error: ${report.maxLaylineTimeErrorSeconds?.toFixed(4) ?? '--'} s`)
+    console.log(`Max distance error: ${report.maxLaylineDistanceErrorMeters?.toFixed(4) ?? '--'} m`)
+    console.log(`Variant: ${report.checks[0]?.groundTruthLaylineVariant ?? '--'} / ${report.checks[0]?.appLaylineVariant ?? '--'}`)
+    console.log(`Post tack: ${(report.checks[0]?.groundTruthPostTackHeadingDegrees ?? 0).toFixed(0).padStart(3, '0')}° / ${(report.checks[0]?.appPostTackHeadingDegrees ?? 0).toFixed(0).padStart(3, '0')}°`)
+    console.log(`DOM: Fart: ${dashboard.speed}, Riktning: ${dashboard.course}`)
     console.log(`Wall-clock: ${(durationMs / 1_000).toFixed(2)} s`)
     console.log('Result:  PASS')
     return

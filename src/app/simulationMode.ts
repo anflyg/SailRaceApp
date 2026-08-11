@@ -5,16 +5,19 @@ import {
   COURSE_NOISE_SCENARIO,
   TACK_COURSE_SCENARIO,
   WIND_VMG_SCENARIO,
+  LAYLINE_CANDIDATE_SCENARIO,
 } from '../simulation/sailingSimulator.fixtures'
 import { createSailingSimulator } from '../simulation/sailingSimulator'
 import { createSimulatedGpsSource, type SimulatedGpsSource } from '../simulation/simulatedGpsSource'
+import { localPositionToGeoPoint } from '../simulation/localCoordinates'
+import type { CoursePointState, CourseState, LaylineSettings } from '../types'
 
 const SIMULATION_QUERY_KEY = 'simulation'
 
 export const SIMULATION_TICK_MS = 1_000
 const SIMULATION_RATES = [1, 10, 20] as const
 
-export type SimulationScenario = 'straight' | 'variable-speed' | 'variable-course' | 'tack-course' | 'course-noise' | 'wind-vmg'
+export type SimulationScenario = 'straight' | 'variable-speed' | 'variable-course' | 'tack-course' | 'course-noise' | 'wind-vmg' | 'layline-candidate'
 export type SimulationRate = (typeof SIMULATION_RATES)[number]
 
 export interface SimulationModeConfig {
@@ -36,7 +39,7 @@ export function getSimulationModeConfig(
 ): SimulationModeConfig {
   const requestedScenario = search?.get(SIMULATION_QUERY_KEY)
   const scenario: SimulationScenario | null =
-    requestedScenario === 'straight' || requestedScenario === 'variable-speed' || requestedScenario === 'variable-course' || requestedScenario === 'tack-course' || requestedScenario === 'course-noise' || requestedScenario === 'wind-vmg'
+    requestedScenario === 'straight' || requestedScenario === 'variable-speed' || requestedScenario === 'variable-course' || requestedScenario === 'tack-course' || requestedScenario === 'course-noise' || requestedScenario === 'wind-vmg' || requestedScenario === 'layline-candidate'
       ? requestedScenario
       : null
   const simulationBuildAllowed = environment.DEV || environment.MODE === 'simulation'
@@ -69,11 +72,41 @@ export function createSimulationGpsSource(scenario: SimulationScenario): Simulat
       return createSimulatedGpsSource(createSailingSimulator(COURSE_NOISE_SCENARIO))
     case 'wind-vmg':
       return createSimulatedGpsSource(createSailingSimulator(WIND_VMG_SCENARIO))
+    case 'layline-candidate':
+      return createSimulatedGpsSource(createSailingSimulator(LAYLINE_CANDIDATE_SCENARIO))
   }
 }
 
-export function getSimulationWindHeadingDegrees(scenario: SimulationScenario | null): number | null {
-  return scenario === 'wind-vmg' ? 0 : null
+function createEmptyCoursePoints(): CoursePointState {
+  return { startA: null, startB: null, kryss1: null, lans1: null }
+}
+
+export function getSimulationCourseState(scenario: SimulationScenario | null): CourseState | null {
+  if (scenario === 'wind-vmg') {
+    return { points: createEmptyCoursePoints(), windHeadingDegrees: 0 }
+  }
+
+  if (scenario === 'layline-candidate') {
+    const origin = LAYLINE_CANDIDATE_SCENARIO.origin
+    const kryss1 = localPositionToGeoPoint(origin, { xMeters: 0, yMeters: 90 })
+    const lans1 = localPositionToGeoPoint(origin, { xMeters: 0, yMeters: -110 })
+
+    return {
+      points: {
+        startA: null,
+        startB: null,
+        kryss1: { ...kryss1, quality: 'good' },
+        lans1: { ...lans1, quality: 'good' },
+      },
+      windHeadingDegrees: null,
+    }
+  }
+
+  return null
+}
+
+export function getSimulationLaylineSettings(scenario: SimulationScenario | null): LaylineSettings | null {
+  return scenario === 'layline-candidate' ? { enabled: true, alphaDegrees: 90 } : null
 }
 
 export function getSimulationRate(value: string | null): SimulationRate {

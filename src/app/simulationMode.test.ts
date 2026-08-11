@@ -4,7 +4,8 @@ import {
   createSimulationGpsSource,
   getSimulationRate,
   getSimulationModeConfig,
-  getSimulationWindHeadingDegrees,
+  getSimulationCourseState,
+  getSimulationLaylineSettings,
   getSimulationTickIntervalMs,
   SIMULATION_TICK_MS,
   startSimulationTicker,
@@ -66,6 +67,14 @@ describe('simulation mode', () => {
     )).toEqual({ enabled: true, scenario: 'wind-vmg', simulationRate: 1, tickIntervalMs: 1_000 })
   })
 
+  it('enables the layline-candidate scenario only for an allowed build and query', () => {
+    expect(getSimulationModeConfig(
+      false,
+      developmentEnvironment,
+      new URLSearchParams('simulation=layline-candidate'),
+    )).toEqual({ enabled: true, scenario: 'layline-candidate', simulationRate: 1, tickIntervalMs: 1_000 })
+  })
+
   it('ignores the simulation query in a normal production build', () => {
     expect(getSimulationModeConfig(
       false,
@@ -111,6 +120,14 @@ describe('simulation mode', () => {
       false,
       productionEnvironment,
       new URLSearchParams('simulation=wind-vmg'),
+    )).toEqual({ enabled: false, scenario: null, simulationRate: 1, tickIntervalMs: 1_000 })
+  })
+
+  it('ignores the layline-candidate query in a normal production build', () => {
+    expect(getSimulationModeConfig(
+      false,
+      productionEnvironment,
+      new URLSearchParams('simulation=layline-candidate'),
     )).toEqual({ enabled: false, scenario: null, simulationRate: 1, tickIntervalMs: 1_000 })
   })
 
@@ -226,9 +243,26 @@ describe('simulation mode', () => {
     expect(source.currentSample().groundTruthCourseDegrees).toBeCloseTo(315, 10)
   })
 
-  it('sets a 000° simulation-only wind reference only for wind-vmg', () => {
-    expect(getSimulationWindHeadingDegrees('wind-vmg')).toBe(0)
-    expect(getSimulationWindHeadingDegrees('straight')).toBeNull()
+  it('sets scenario-specific simulation course and layline state without affecting other scenarios', () => {
+    expect(getSimulationCourseState('wind-vmg')?.windHeadingDegrees).toBe(0)
+    expect(getSimulationCourseState('layline-candidate')).toMatchObject({
+      windHeadingDegrees: null,
+      points: { startA: null, startB: null, kryss1: { quality: 'good' }, lans1: { quality: 'good' } },
+    })
+    expect(getSimulationLaylineSettings('layline-candidate')).toEqual({ enabled: true, alphaDegrees: 90 })
+    expect(getSimulationCourseState('straight')).toBeNull()
+  })
+
+  it('creates the layline candidate source at the prescribed local position and heading', () => {
+    const source = createSimulationGpsSource('layline-candidate')
+
+    expect(source.currentSample()).toMatchObject({
+      localXmeters: 20,
+      localYmeters: 0,
+      targetSpeedKnots: 6,
+      targetCourseDegrees: 315,
+      accuracyMeters: 3,
+    })
   })
 
   it('advances once per second and stops after cleanup', () => {

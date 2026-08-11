@@ -11,11 +11,13 @@ import { calculateVelocityMadeGood, getCourseAxisHeading } from '../domain/navig
 import { getManualModeConfig, MANUAL_FIXTURES } from './manualMode'
 import {
   createSimulationGpsSource,
+  getSimulationCourseState,
+  getSimulationLaylineSettings,
   getSimulationModeConfig,
-  getSimulationWindHeadingDegrees,
   startSimulationTicker,
 } from './simulationMode'
 import { createSimulationValidator } from '../simulation/simulationValidator'
+import { getLaylineObservation } from '../features/race/laylineObservation'
 import { useDeviceAttitude } from '../hooks/useDeviceAttitude'
 import { useFilteredGps } from '../hooks/useFilteredGps'
 import { useLiveGps } from '../hooks/useLiveGps'
@@ -103,22 +105,24 @@ export function AppShell() {
     simulationMode.scenario === null ? null : createSimulationValidator({ scenario: simulationMode.scenario })
   ), [simulationMode.scenario])
   const simulationReportLoggedRef = useRef(false)
+  const simulationCourseState = getSimulationCourseState(simulationMode.scenario)
+  const simulationLaylineSettings = getSimulationLaylineSettings(simulationMode.scenario)
   const [activeView, setActiveView] = useState<AppView>(
     simulationMode.enabled ? 'race' : (manualMode.initialView ?? 'setup'),
   )
   const [course, setCourse] = useState<CourseState>(() => (
     manualMode.enabled
       ? MANUAL_FIXTURES.course
-      : getSimulationWindHeadingDegrees(simulationMode.scenario) !== null
-        ? { ...defaultCourseState, windHeadingDegrees: getSimulationWindHeadingDegrees(simulationMode.scenario) }
+      : simulationCourseState !== null
+        ? simulationCourseState
         : defaultCourseState
   ))
   const [selectedCountdownMinutes, setSelectedCountdownMinutes] = useState<CountdownDuration>(5)
   const [isStartTimerRunning, setIsStartTimerRunning] = useState(false)
   const [courseGpsStatus, setCourseGpsStatus] = useState<string | null>(null)
   const [rollPitchCalibration, setRollPitchCalibration] = useState<RollPitchCalibration | null>(null)
-  const [laylineEnabled, setLaylineEnabled] = useState(() => loadAppSettings().layline.enabled)
-  const [laylineAlphaDegrees, setLaylineAlphaDegrees] = useState(() => loadAppSettings().layline.alphaDegrees)
+  const [laylineEnabled, setLaylineEnabled] = useState(() => simulationLaylineSettings?.enabled ?? loadAppSettings().layline.enabled)
+  const [laylineAlphaDegrees, setLaylineAlphaDegrees] = useState(() => simulationLaylineSettings?.alphaDegrees ?? loadAppSettings().layline.alphaDegrees)
   const [displayMode, setDisplayMode] = useState(() => loadAppSettings().displayMode)
   const liveGpsDevice = useLiveGps(
     !manualMode.enabled && activeView !== 'analysis',
@@ -133,6 +137,9 @@ export function AppShell() {
     filteredGps.displayCourseDegrees !== null &&
     course.windHeadingDegrees !== null
     ? calculateVelocityMadeGood(filteredGps.speedKnots, filteredGps.displayCourseDegrees, course.windHeadingDegrees)
+    : null
+  const simulationLaylineObservation = simulationMode.scenario === 'layline-candidate'
+    ? getLaylineObservation({ course, gps: filteredGps, enabled: laylineEnabled, alphaDegrees: laylineAlphaDegrees })
     : null
   const deviceAttitude = manualMode.enabled ? MANUAL_FIXTURES.attitude : deviceAttitudeDevice
   const rollPitch = manualMode.enabled
@@ -158,6 +165,7 @@ export function AppShell() {
     simulationValidator.observe(simulationGpsSource.currentSample(), {
       ...filteredGps,
       vmgKnots: simulationAppVmgKnots,
+      laylineObservation: simulationLaylineObservation,
     })
 
     if (!simulationValidator.isComplete() || simulationReportLoggedRef.current) {
@@ -168,14 +176,14 @@ export function AppShell() {
     window.__SAILRACE_SIMULATION_REPORT__ = report
     console.info('SailRace simulation validation report', report)
     simulationReportLoggedRef.current = true
-  }, [filteredGps, simulationAppVmgKnots, simulationGpsSource, simulationValidator])
+  }, [filteredGps, simulationAppVmgKnots, simulationGpsSource, simulationLaylineObservation, simulationValidator])
 
   useEffect(() => {
     document.documentElement.dataset.theme = displayMode
   }, [displayMode])
 
   useEffect(() => {
-    if (manualMode.enabled) {
+    if (manualMode.enabled || simulationMode.scenario === 'layline-candidate') {
       return
     }
 
@@ -186,7 +194,7 @@ export function AppShell() {
       },
       displayMode,
     })
-  }, [displayMode, laylineAlphaDegrees, laylineEnabled, manualMode.enabled])
+  }, [displayMode, laylineAlphaDegrees, laylineEnabled, manualMode.enabled, simulationMode.scenario])
 
   const handleManualViewChange = useCallback((nextView: AppView) => {
     if (isNavigationLocked && nextView !== activeView) {
