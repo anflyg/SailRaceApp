@@ -336,13 +336,18 @@ function analyzeUpwindToK1({ report, reactiveTack, samples, events }) {
   const finalCheck = report.checks.at(-1)
   const distances = samples.map((sample) => ({ ...sample, distanceToK1Meters: Math.hypot(sample.localXmeters, sample.localYmeters - 89.6) }))
   const postCommand = distances.filter((sample) => sample.timestamp >= (commandSample?.timestamp ?? Infinity))
-  const closest = postCommand.reduce((best, sample) => sample.distanceToK1Meters < best.distanceToK1Meters ? sample : best, postCommand[0])
-  const laterPass = postCommand.some((sample) => sample.elapsedTimeSeconds > closest.elapsedTimeSeconds && sample.distanceToK1Meters > closest.distanceToK1Meters + 3)
+  const closest = postCommand.length === 0
+    ? null
+    : postCommand.reduce((best, sample) => sample.distanceToK1Meters < best.distanceToK1Meters ? sample : best, postCommand[0])
+  const laterPass = closest !== null && postCommand.some((sample) => sample.elapsedTimeSeconds > closest.elapsedTimeSeconds && sample.distanceToK1Meters > closest.distanceToK1Meters + 3)
+  const postTackDisplayErrors = samples
+    .filter((sample) => sample.timestamp >= (commandSample?.timestamp ?? Infinity) && sample.appCourseDegrees !== null)
+    .map((sample) => getCircularCourseError(45, sample.appCourseDegrees))
   const warningClearedIndex = events.findIndex((event) => event.label === 'VMG Bana' && event.observedAtMs > (reactiveTack?.zeroObservedAtMs ?? 0))
   const warningRetriggered = warningClearedIndex >= 0 && events.slice(warningClearedIndex + 1).some((event) => event.label === 'LAYLINE')
   const analysis = {
     zeroObserved: events.some((event) => event.label === 'LAYLINE' && event.value === '0'),
-    tackCommandCount: reactiveTack ? 1 : 0,
+    tackCommandCount: reactiveTack?.tackCommandCount ?? 0,
     reactionLatencyMs: reactiveTack ? reactiveTack.tackCommandIssuedAtMs - reactiveTack.zeroObservedAtMs : null,
     simulationElapsedSecondsAtCommand: commandSample?.elapsedTimeSeconds ?? null,
     localXmetersAtCommand: commandSample?.localXmeters ?? null,
@@ -352,7 +357,8 @@ function analyzeUpwindToK1({ report, reactiveTack, samples, events }) {
     firstWithin5DegreesAfterPhysicalTackSeconds: recovery5 && firstPhysicalPostTack ? recovery5.elapsedTimeSeconds - firstPhysicalPostTack.elapsedTimeSeconds : null,
     firstWithin2DegreesAfterPhysicalTackSeconds: recovery2 && firstPhysicalPostTack ? recovery2.elapsedTimeSeconds - firstPhysicalPostTack.elapsedTimeSeconds : null,
     finalCourseErrorDegrees: finalCheck?.appCourseDegrees === null || finalCheck?.appCourseDegrees === undefined ? null : getCircularCourseError(45, finalCheck.appCourseDegrees),
-    hasLongWayCourseError: postTackChecks.some((check) => check.appCourseDegrees !== null && getCircularCourseError(45, check.appCourseDegrees) > 120),
+    maxPostTackDisplayCourseErrorDegrees: postTackDisplayErrors.length === 0 ? null : Math.max(...postTackDisplayErrors),
+    hasLongWayCourseError: postTackDisplayErrors.some((error) => error > 90),
     firstWithin6MetersElapsedSeconds: distances.find((sample) => sample.timestamp >= (commandSample?.timestamp ?? Infinity) && sample.distanceToK1Meters <= 6)?.elapsedTimeSeconds ?? null,
     closestApproachMeters: closest?.distanceToK1Meters ?? null,
     closestApproachElapsedSeconds: closest?.elapsedTimeSeconds ?? null,
@@ -363,11 +369,13 @@ function analyzeUpwindToK1({ report, reactiveTack, samples, events }) {
     returnedToVmgBana: warningClearedIndex >= 0,
     warningRetriggered,
   }
-  analysis.k1Reached = analysis.closestApproachMeters <= 6 && analysis.firstWithin6MetersElapsedSeconds !== null &&
+  analysis.k1Reached = analysis.closestApproachMeters !== null && analysis.distanceAtTackCommandMeters !== null &&
+    analysis.closestApproachMeters <= 6 && analysis.firstWithin6MetersElapsedSeconds !== null &&
     analysis.distanceAtTackCommandMeters - analysis.closestApproachMeters >= 30 && laterPass
-  analysis.behaviorPassed = analysis.zeroObserved && analysis.tackCommandCount === 1 && analysis.reactionLatencyMs <= 150 &&
-    analysis.firstPhysicalPostTackElapsedSeconds !== null && analysis.firstWithin5DegreesAfterPhysicalTackSeconds <= 9 &&
-    analysis.firstWithin2DegreesAfterPhysicalTackSeconds <= 12 && analysis.finalCourseErrorDegrees <= 1 &&
+  analysis.behaviorPassed = analysis.zeroObserved && analysis.tackCommandCount === 1 && analysis.reactionLatencyMs !== null && analysis.reactionLatencyMs <= 150 &&
+    analysis.firstPhysicalPostTackElapsedSeconds !== null && analysis.firstWithin5DegreesAfterPhysicalTackSeconds !== null && analysis.firstWithin5DegreesAfterPhysicalTackSeconds <= 9 &&
+    analysis.firstWithin2DegreesAfterPhysicalTackSeconds !== null && analysis.firstWithin2DegreesAfterPhysicalTackSeconds <= 12 &&
+    analysis.finalCourseErrorDegrees !== null && analysis.finalCourseErrorDegrees <= 1 &&
     !analysis.hasLongWayCourseError && analysis.warningCleared && !analysis.warningRetriggered && analysis.k1Reached
   return analysis
 }
@@ -531,6 +539,14 @@ async function runScenario(browser, scenario) {
         const box = document.querySelector('.velocity-made-good')
         const events = []
         let commanded = false
+        let tackCommandCount = 0
+        const originalSetCommandedCourseDegrees = window.__SAILRACE_SIMULATION_CONTROL__?.setCommandedCourseDegrees
+        if (originalSetCommandedCourseDegrees && window.__SAILRACE_SIMULATION_CONTROL__) {
+          window.__SAILRACE_SIMULATION_CONTROL__.setCommandedCourseDegrees = (courseDegrees) => {
+            if (courseDegrees === 45) tackCommandCount += 1
+            originalSetCommandedCourseDegrees(courseDegrees)
+          }
+        }
         const samples = new Map()
         const collectSample = () => {
           const sample = window.__SAILRACE_SIMULATION_CONTROL__?.currentSample()
@@ -552,9 +568,10 @@ async function runScenario(browser, scenario) {
           events.push(event)
           if (!commanded && event.label === 'LAYLINE' && event.value === '0' && window.__SAILRACE_SIMULATION_CONTROL__) {
             commanded = true
-            window.__SAILRACE_SIMULATION_REACTIVE_TACK__ = { zeroObservedAtMs: event.observedAtMs, tackCommandIssuedAtMs: performance.now(), sample: window.__SAILRACE_SIMULATION_CONTROL__.currentSample() }
+            window.__SAILRACE_SIMULATION_REACTIVE_TACK__ = { zeroObservedAtMs: event.observedAtMs, tackCommandIssuedAtMs: performance.now(), tackCommandCount: 0, sample: window.__SAILRACE_SIMULATION_CONTROL__.currentSample() }
             if (window.__SAILRACE_SIMULATION_SCENARIO__ === 'layline-reactive-tack' || window.__SAILRACE_SIMULATION_SCENARIO__ === 'upwind-to-k1') {
               window.__SAILRACE_SIMULATION_CONTROL__.setCommandedCourseDegrees(45)
+              window.__SAILRACE_SIMULATION_REACTIVE_TACK__.tackCommandCount = tackCommandCount
             }
           }
         }
