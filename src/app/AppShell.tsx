@@ -147,7 +147,7 @@ export function AppShell() {
     course.windHeadingDegrees !== null
     ? calculateVelocityMadeGood(filteredGps.speedKnots, filteredGps.displayCourseDegrees, course.windHeadingDegrees)
     : null
-  const simulationLaylineObservation = simulationMode.scenario === 'layline-candidate'
+  const simulationLaylineObservation = simulationMode.scenario === 'layline-candidate' || simulationMode.scenario === 'upwind-to-k1'
     ? getLaylineObservation({ course, gps: filteredGps, enabled: laylineEnabled, alphaDegrees: laylineAlphaDegrees })
     : null
   const deviceAttitude = manualMode.enabled ? MANUAL_FIXTURES.attitude : deviceAttitudeDevice
@@ -167,7 +167,7 @@ export function AppShell() {
   }, [simulationGpsSource, simulationMode.tickIntervalMs])
 
   useEffect(() => {
-    if (simulationMode.scenario !== 'layline-reactive-tack' || simulationGpsSource === null) {
+    if ((simulationMode.scenario !== 'layline-reactive-tack' && simulationMode.scenario !== 'upwind-to-k1') || simulationGpsSource === null) {
       return
     }
 

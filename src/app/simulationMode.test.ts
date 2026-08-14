@@ -82,6 +82,11 @@ describe('simulation mode', () => {
       .toEqual({ enabled: false, scenario: null, simulationRate: 1, tickIntervalMs: 1_000 })
   })
 
+  it('blocks upwind-to-k1 in a normal production build', () => {
+    expect(getSimulationModeConfig(false, productionEnvironment, new URLSearchParams('simulation=upwind-to-k1')))
+      .toEqual({ enabled: false, scenario: null, simulationRate: 1, tickIntervalMs: 1_000 })
+  })
+
   it('ignores the simulation query in a normal production build', () => {
     expect(getSimulationModeConfig(
       false,
@@ -281,6 +286,13 @@ describe('simulation mode', () => {
       targetCourseDegrees: 315,
       accuracyMeters: 3,
     })
+  })
+
+  it('creates upwind-to-k1 with the same layline geometry and simulation settings', () => {
+    const source = createSimulationGpsSource('upwind-to-k1')
+    expect(source.currentSample()).toMatchObject({ localXmeters: 20, localYmeters: 0, targetSpeedKnots: 6, targetCourseDegrees: 315, accuracyMeters: 3 })
+    expect(getSimulationCourseState('upwind-to-k1')?.points.kryss1?.latitude).toBeCloseTo(59.3293 + 89.6 / 111_320, 10)
+    expect(getSimulationLaylineSettings('upwind-to-k1')).toEqual({ enabled: true, alphaDegrees: 90 })
   })
 
   it('advances once per second and stops after cleanup', () => {

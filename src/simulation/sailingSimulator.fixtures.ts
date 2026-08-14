@@ -88,3 +88,7 @@ export const LAYLINE_CANDIDATE_SCENARIO: SailingSimulatorConfig = {
   startTimestamp: 1_700_000_000_000,
   accuracyMeters: 3,
 }
+
+export const UPWIND_TO_K1_SCENARIO: SailingSimulatorConfig = {
+  ...LAYLINE_CANDIDATE_SCENARIO,
+}

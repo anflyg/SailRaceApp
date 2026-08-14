@@ -73,6 +73,14 @@ const scenarios = [
     expected: { plannedChecks: 13, speedPassed: 13, coursePassed: 13 },
     reactiveTack: true,
   },
+  {
+    name: 'upwind-to-k1',
+    label: 'UPWIND TO K1',
+    timeoutMs: 60_000,
+    simulationRate: 1,
+    expected: { plannedChecks: 15, speedPassed: 15, coursePassed: 15 },
+    upwindToK1: true,
+  },
 ]
 
 function sleep(milliseconds) {
@@ -314,6 +322,56 @@ function analyzeLaylineWarningEvents(events) {
   }
 }
 
+function getCircularCourseError(expected, actual) {
+  const difference = ((actual - expected + 540) % 360) - 180
+  return Math.abs(difference)
+}
+
+function analyzeUpwindToK1({ report, reactiveTack, samples, events }) {
+  const commandSample = reactiveTack?.sample ?? null
+  const postTackChecks = report.checks.filter((check) => check.elapsedTimeSeconds >= (commandSample?.elapsedTimeSeconds ?? Infinity))
+  const firstPhysicalPostTack = samples.find((sample) => sample.elapsedTimeSeconds > (commandSample?.elapsedTimeSeconds ?? Infinity) && getCircularCourseError(45, sample.groundTruthCourseDegrees) <= 1)
+  const recovery5 = samples.find((sample) => sample.elapsedTimeSeconds >= (firstPhysicalPostTack?.elapsedTimeSeconds ?? Infinity) && sample.appCourseDegrees !== null && getCircularCourseError(45, sample.appCourseDegrees) <= 5)
+  const recovery2 = samples.find((sample) => sample.elapsedTimeSeconds >= (firstPhysicalPostTack?.elapsedTimeSeconds ?? Infinity) && sample.appCourseDegrees !== null && getCircularCourseError(45, sample.appCourseDegrees) <= 2)
+  const finalCheck = report.checks.at(-1)
+  const distances = samples.map((sample) => ({ ...sample, distanceToK1Meters: Math.hypot(sample.localXmeters, sample.localYmeters - 89.6) }))
+  const postCommand = distances.filter((sample) => sample.timestamp >= (commandSample?.timestamp ?? Infinity))
+  const closest = postCommand.reduce((best, sample) => sample.distanceToK1Meters < best.distanceToK1Meters ? sample : best, postCommand[0])
+  const laterPass = postCommand.some((sample) => sample.elapsedTimeSeconds > closest.elapsedTimeSeconds && sample.distanceToK1Meters > closest.distanceToK1Meters + 3)
+  const warningClearedIndex = events.findIndex((event) => event.label === 'VMG Bana' && event.observedAtMs > (reactiveTack?.zeroObservedAtMs ?? 0))
+  const warningRetriggered = warningClearedIndex >= 0 && events.slice(warningClearedIndex + 1).some((event) => event.label === 'LAYLINE')
+  const analysis = {
+    zeroObserved: events.some((event) => event.label === 'LAYLINE' && event.value === '0'),
+    tackCommandCount: reactiveTack ? 1 : 0,
+    reactionLatencyMs: reactiveTack ? reactiveTack.tackCommandIssuedAtMs - reactiveTack.zeroObservedAtMs : null,
+    simulationElapsedSecondsAtCommand: commandSample?.elapsedTimeSeconds ?? null,
+    localXmetersAtCommand: commandSample?.localXmeters ?? null,
+    localYmetersAtCommand: commandSample?.localYmeters ?? null,
+    distanceAtTackCommandMeters: commandSample ? Math.hypot(commandSample.localXmeters, commandSample.localYmeters - 89.6) : null,
+    firstPhysicalPostTackElapsedSeconds: firstPhysicalPostTack?.elapsedTimeSeconds ?? null,
+    firstWithin5DegreesAfterPhysicalTackSeconds: recovery5 && firstPhysicalPostTack ? recovery5.elapsedTimeSeconds - firstPhysicalPostTack.elapsedTimeSeconds : null,
+    firstWithin2DegreesAfterPhysicalTackSeconds: recovery2 && firstPhysicalPostTack ? recovery2.elapsedTimeSeconds - firstPhysicalPostTack.elapsedTimeSeconds : null,
+    finalCourseErrorDegrees: finalCheck?.appCourseDegrees === null || finalCheck?.appCourseDegrees === undefined ? null : getCircularCourseError(45, finalCheck.appCourseDegrees),
+    hasLongWayCourseError: postTackChecks.some((check) => check.appCourseDegrees !== null && getCircularCourseError(45, check.appCourseDegrees) > 120),
+    firstWithin6MetersElapsedSeconds: distances.find((sample) => sample.timestamp >= (commandSample?.timestamp ?? Infinity) && sample.distanceToK1Meters <= 6)?.elapsedTimeSeconds ?? null,
+    closestApproachMeters: closest?.distanceToK1Meters ?? null,
+    closestApproachElapsedSeconds: closest?.elapsedTimeSeconds ?? null,
+    closestApproachLocalXmeters: closest?.localXmeters ?? null,
+    closestApproachLocalYmeters: closest?.localYmeters ?? null,
+    distanceAtEndMeters: distances.at(-1)?.distanceToK1Meters ?? null,
+    warningCleared: warningClearedIndex >= 0,
+    returnedToVmgBana: warningClearedIndex >= 0,
+    warningRetriggered,
+  }
+  analysis.k1Reached = analysis.closestApproachMeters <= 6 && analysis.firstWithin6MetersElapsedSeconds !== null &&
+    analysis.distanceAtTackCommandMeters - analysis.closestApproachMeters >= 30 && laterPass
+  analysis.behaviorPassed = analysis.zeroObserved && analysis.tackCommandCount === 1 && analysis.reactionLatencyMs <= 150 &&
+    analysis.firstPhysicalPostTackElapsedSeconds !== null && analysis.firstWithin5DegreesAfterPhysicalTackSeconds <= 9 &&
+    analysis.firstWithin2DegreesAfterPhysicalTackSeconds <= 12 && analysis.finalCourseErrorDegrees <= 1 &&
+    !analysis.hasLongWayCourseError && analysis.warningCleared && !analysis.warningRetriggered && analysis.k1Reached
+  return analysis
+}
+
 function validateReport(report, scenario) {
   assertEqual(report.scenario, scenario.name, `${scenario.label} scenario`)
   assertEqual(report.plannedChecks, scenario.expected.plannedChecks, `${scenario.label} planned checks`)
@@ -404,7 +462,7 @@ async function validateDashboard(page, scenario) {
   const speedText = await speed.textContent()
   const courseText = await course.textContent()
 
-  if (scenario.name === 'straight' || scenario.name === 'tack-course' || scenario.name === 'course-noise' || scenario.name === 'wind-vmg' || scenario.name === 'layline-candidate' || scenario.name === 'layline-reactive-tack') {
+  if (scenario.name === 'straight' || scenario.name === 'tack-course' || scenario.name === 'course-noise' || scenario.name === 'wind-vmg' || scenario.name === 'layline-candidate' || scenario.name === 'layline-reactive-tack' || scenario.name === 'upwind-to-k1') {
     assertEqual(speedText, '6,0', `${scenario.label} dashboard speed`)
   } else if (scenario.name === 'variable-course') {
     const speedText = (await speed.textContent())?.trim() ?? ''
@@ -439,8 +497,10 @@ async function validateDashboard(page, scenario) {
         ? '315°'
       : scenario.name === 'layline-reactive-tack'
         ? '045°'
+      : scenario.name === 'upwind-to-k1'
+        ? '045°'
       : '000°'
-  if (scenario.name === 'layline-reactive-tack') {
+  if (scenario.name === 'layline-reactive-tack' || scenario.name === 'upwind-to-k1') {
     const match = /^(\d{3})°$/.exec(courseText ?? '')
     if (!match || getCourseErrorDegrees(45, Number(match[1])) > 1) {
       throw new Error(`LAYLINE REACTIVE TACK dashboard course: expected within 1° of 045°, received ${JSON.stringify(courseText)}`)
@@ -466,11 +526,23 @@ async function runScenario(browser, scenario) {
     const startedAt = Date.now()
     await page.goto(`${BASE_URL}/?simulation=${scenario.name}&simulationRate=${scenario.simulationRate ?? 10}`, { waitUntil: 'networkidle' })
     await page.getByLabel('Fart').waitFor({ state: 'visible', timeout: 10_000 })
-    if (scenario.laylineWarning || scenario.reactiveTack) {
+    if (scenario.laylineWarning || scenario.reactiveTack || scenario.upwindToK1) {
       await page.evaluate(() => {
         const box = document.querySelector('.velocity-made-good')
         const events = []
         let commanded = false
+        const samples = new Map()
+        const collectSample = () => {
+          const sample = window.__SAILRACE_SIMULATION_CONTROL__?.currentSample()
+          if (sample) {
+            const courseText = document.querySelector('[aria-label="Riktning"] .metric-value')?.textContent?.trim() ?? ''
+            const match = /^(\d{3})°$/.exec(courseText)
+            samples.set(sample.timestamp, { ...sample, appCourseDegrees: match ? Number(match[1]) : null })
+          }
+        }
+        collectSample()
+        window.__SAILRACE_SIMULATION_SAMPLES__ = samples
+        window.__SAILRACE_SIMULATION_SAMPLE_TIMER__ = setInterval(collectSample, 50)
         const record = () => {
           const event = {
           label: box?.getAttribute('aria-label') ?? '',
@@ -481,12 +553,15 @@ async function runScenario(browser, scenario) {
           if (!commanded && event.label === 'LAYLINE' && event.value === '0' && window.__SAILRACE_SIMULATION_CONTROL__) {
             commanded = true
             window.__SAILRACE_SIMULATION_REACTIVE_TACK__ = { zeroObservedAtMs: event.observedAtMs, tackCommandIssuedAtMs: performance.now(), sample: window.__SAILRACE_SIMULATION_CONTROL__.currentSample() }
-            window.__SAILRACE_SIMULATION_CONTROL__.setCommandedCourseDegrees(45)
+            if (window.__SAILRACE_SIMULATION_SCENARIO__ === 'layline-reactive-tack' || window.__SAILRACE_SIMULATION_SCENARIO__ === 'upwind-to-k1') {
+              window.__SAILRACE_SIMULATION_CONTROL__.setCommandedCourseDegrees(45)
+            }
           }
         }
         record()
         new MutationObserver(record).observe(box, { attributes: true, attributeFilter: ['aria-label'], childList: true, subtree: true, characterData: true })
         window.__SAILRACE_LAYLINE_UI_EVENTS__ = events
+        window.__SAILRACE_SIMULATION_SCENARIO__ = location.search.includes('upwind-to-k1') ? 'upwind-to-k1' : 'layline-reactive-tack'
       })
     }
     await page.waitForFunction(
@@ -513,15 +588,21 @@ async function runScenario(browser, scenario) {
         throw new Error(`${scenario.label} DOM timeline failed: ${JSON.stringify(laylineWarningAnalysis)}`)
       }
     }
-    if (scenario.reactiveTack) {
+    if (scenario.reactiveTack || scenario.upwindToK1) {
       await page.waitForFunction(() => window.__SAILRACE_SIMULATION_REACTIVE_TACK__ !== undefined, undefined, { timeout: scenario.timeoutMs })
     }
     const report = await page.evaluate(() => window.__SAILRACE_SIMULATION_REPORT__)
     const measurementAnalysis = validateReport(report, scenario)
     const dashboard = await validateDashboard(page, scenario)
     await fs.writeFile(path.join(OUTPUT_DIR, `${scenario.name}.json`), `${JSON.stringify(report, null, 2)}\n`)
-    const reactiveTack = scenario.reactiveTack ? await page.evaluate(() => window.__SAILRACE_SIMULATION_REACTIVE_TACK__) : null
-    return { report, measurementAnalysis, laylineWarningAnalysis, reactiveTack, dashboard, durationMs: Date.now() - startedAt }
+    const reactiveTack = scenario.reactiveTack || scenario.upwindToK1 ? await page.evaluate(() => window.__SAILRACE_SIMULATION_REACTIVE_TACK__) : null
+    const samples = scenario.upwindToK1 ? await page.evaluate(() => [...(window.__SAILRACE_SIMULATION_SAMPLES__?.values() ?? [])]) : []
+    const events = scenario.upwindToK1 ? await page.evaluate(() => window.__SAILRACE_LAYLINE_UI_EVENTS__ ?? []) : []
+    const upwindToK1Analysis = scenario.upwindToK1 ? analyzeUpwindToK1({ report, reactiveTack, samples, events }) : null
+    if (scenario.upwindToK1 && !upwindToK1Analysis.behaviorPassed) {
+      throw new Error(`${scenario.label} behavior failed: ${JSON.stringify(upwindToK1Analysis)}`)
+    }
+    return { report, measurementAnalysis, laylineWarningAnalysis, reactiveTack, upwindToK1Analysis, dashboard, durationMs: Date.now() - startedAt }
   } catch (error) {
     await page.screenshot({ path: path.join(OUTPUT_DIR, `${scenario.name}-failure.png`), fullPage: true })
     throw error
@@ -607,6 +688,36 @@ function printScenarioSummary(scenario, report, durationMs, dashboard) {
     return
   }
 
+  if (scenario.name === 'upwind-to-k1') {
+    const analysis = report.upwindToK1Analysis
+    console.log(`\n${scenario.label}`)
+    console.log(`Speed: ${report.speedPassed}/${report.speedChecks} PASS`)
+    console.log(`App decision:`)
+    console.log(`LAYLINE 0 observed: ${analysis.zeroObserved ? 'YES' : 'NO'}`)
+    console.log(`Simulated sailor:`)
+    console.log(`Tack commands: ${analysis.tackCommandCount}`)
+    console.log(`Reaction latency: ${analysis.reactionLatencyMs?.toFixed(1) ?? '--'} ms`)
+    console.log(`Course:`)
+    console.log(`Physical tack: 315° -> 045°`)
+    console.log(`Within 5°: ${analysis.firstWithin5DegreesAfterPhysicalTackSeconds?.toFixed(2) ?? '--'} s`)
+    console.log(`Within 2°: ${analysis.firstWithin2DegreesAfterPhysicalTackSeconds?.toFixed(2) ?? '--'} s`)
+    console.log(`Final error: ${analysis.finalCourseErrorDegrees?.toFixed(4) ?? '--'}°`)
+    console.log(`Long-way: ${analysis.hasLongWayCourseError ? 'YES' : 'NO'}`)
+    console.log(`K1:`)
+    console.log(`Distance at tack command: ${analysis.distanceAtTackCommandMeters?.toFixed(2) ?? '--'} m`)
+    console.log(`First within 6 m: t=${analysis.firstWithin6MetersElapsedSeconds ?? '--'}`)
+    console.log(`Closest approach: ${analysis.closestApproachMeters?.toFixed(2) ?? '--'} m`)
+    console.log(`Closest position: x=${analysis.closestApproachLocalXmeters?.toFixed(2) ?? '--'}, y=${analysis.closestApproachLocalYmeters?.toFixed(2) ?? '--'}`)
+    console.log(`Distance at end: ${analysis.distanceAtEndMeters?.toFixed(2) ?? '--'} m`)
+    console.log(`Reached K1: ${analysis.k1Reached ? 'YES' : 'NO'}`)
+    console.log(`Warning:`)
+    console.log(`Cleared: ${analysis.warningCleared ? 'YES' : 'NO'}`)
+    console.log(`VMG Bana returned: ${analysis.returnedToVmgBana ? 'YES' : 'NO'}`)
+    console.log(`Retrigger: ${analysis.warningRetriggered ? 'YES' : 'NO'}`)
+    console.log('Result: PASS')
+    return
+  }
+
   console.log(`\n${scenario.label}`)
   console.log(`Speed:   ${report.speedPassed}/${report.speedChecks} PASS`)
   console.log(`Course:  ${report.coursePassed}/${report.courseChecks} PASS`)
@@ -628,6 +739,7 @@ async function run() {
 
     for (const scenario of scenarios) {
       const result = await runScenario(browser, scenario)
+      result.report.upwindToK1Analysis = result.upwindToK1Analysis
       results.push(result)
       printScenarioSummary(scenario, { ...result.report, laylineWarningAnalysis: result.laylineWarningAnalysis }, result.durationMs, result.dashboard)
     }

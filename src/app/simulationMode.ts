@@ -6,6 +6,7 @@ import {
   TACK_COURSE_SCENARIO,
   WIND_VMG_SCENARIO,
   LAYLINE_CANDIDATE_SCENARIO,
+  UPWIND_TO_K1_SCENARIO,
 } from '../simulation/sailingSimulator.fixtures'
 import { createSailingSimulator } from '../simulation/sailingSimulator'
 import { createSimulatedGpsSource, type SimulatedGpsSource } from '../simulation/simulatedGpsSource'
@@ -17,7 +18,7 @@ const SIMULATION_QUERY_KEY = 'simulation'
 export const SIMULATION_TICK_MS = 1_000
 const SIMULATION_RATES = [1, 10, 20] as const
 
-export type SimulationScenario = 'straight' | 'variable-speed' | 'variable-course' | 'tack-course' | 'course-noise' | 'wind-vmg' | 'layline-candidate' | 'layline-warning' | 'layline-reactive-tack'
+export type SimulationScenario = 'straight' | 'variable-speed' | 'variable-course' | 'tack-course' | 'course-noise' | 'wind-vmg' | 'layline-candidate' | 'layline-warning' | 'layline-reactive-tack' | 'upwind-to-k1'
 export type SimulationRate = (typeof SIMULATION_RATES)[number]
 
 export interface SimulationModeConfig {
@@ -39,7 +40,7 @@ export function getSimulationModeConfig(
 ): SimulationModeConfig {
   const requestedScenario = search?.get(SIMULATION_QUERY_KEY)
   const scenario: SimulationScenario | null =
-    requestedScenario === 'straight' || requestedScenario === 'variable-speed' || requestedScenario === 'variable-course' || requestedScenario === 'tack-course' || requestedScenario === 'course-noise' || requestedScenario === 'wind-vmg' || requestedScenario === 'layline-candidate' || requestedScenario === 'layline-warning' || requestedScenario === 'layline-reactive-tack'
+    requestedScenario === 'straight' || requestedScenario === 'variable-speed' || requestedScenario === 'variable-course' || requestedScenario === 'tack-course' || requestedScenario === 'course-noise' || requestedScenario === 'wind-vmg' || requestedScenario === 'layline-candidate' || requestedScenario === 'layline-warning' || requestedScenario === 'layline-reactive-tack' || requestedScenario === 'upwind-to-k1'
       ? requestedScenario
       : null
   const simulationBuildAllowed = environment.DEV || environment.MODE === 'simulation'
@@ -78,6 +79,8 @@ export function createSimulationGpsSource(scenario: SimulationScenario): Simulat
       return createSimulatedGpsSource(createSailingSimulator(LAYLINE_CANDIDATE_SCENARIO))
     case 'layline-reactive-tack':
       return createSimulatedGpsSource(createSailingSimulator(LAYLINE_CANDIDATE_SCENARIO))
+    case 'upwind-to-k1':
+      return createSimulatedGpsSource(createSailingSimulator(UPWIND_TO_K1_SCENARIO))
   }
 }
 
@@ -90,7 +93,7 @@ export function getSimulationCourseState(scenario: SimulationScenario | null): C
     return { points: createEmptyCoursePoints(), windHeadingDegrees: 0 }
   }
 
-  if (scenario === 'layline-candidate' || scenario === 'layline-warning' || scenario === 'layline-reactive-tack') {
+  if (scenario === 'layline-candidate' || scenario === 'layline-warning' || scenario === 'layline-reactive-tack' || scenario === 'upwind-to-k1') {
     const origin = LAYLINE_CANDIDATE_SCENARIO.origin
     const kryss1 = localPositionToGeoPoint(origin, { xMeters: 0, yMeters: scenario === 'layline-candidate' ? 90 : 89.6 })
     const lans1 = localPositionToGeoPoint(origin, { xMeters: 0, yMeters: -110 })
@@ -110,7 +113,7 @@ export function getSimulationCourseState(scenario: SimulationScenario | null): C
 }
 
 export function getSimulationLaylineSettings(scenario: SimulationScenario | null): LaylineSettings | null {
-  return scenario === 'layline-candidate' || scenario === 'layline-warning' || scenario === 'layline-reactive-tack'
+  return scenario === 'layline-candidate' || scenario === 'layline-warning' || scenario === 'layline-reactive-tack' || scenario === 'upwind-to-k1'
     ? { enabled: true, alphaDegrees: 90 }
     : null
 }

@@ -103,6 +103,14 @@ describe('simulation validator', () => {
     expect(simulationValidator.getReport().checks).toHaveLength(2)
   })
 
+  it('plans 15 checks for upwind-to-k1', () => {
+    const report = createSimulationValidator({ scenario: 'upwind-to-k1' }).getReport()
+    expect(report.plannedChecks).toBe(15)
+    expect(report.warmupSeconds).toBe(6)
+    expect(report.validationIntervalSeconds).toBe(3)
+    expect(report.tolerances.speedToleranceKnots).toBe(0.15)
+  })
+
   it('waits for a presentation timestamp rather than comparing stale raw GPS output', () => {
     const simulationValidator = validator()
     const sample = sampleAt(6)
