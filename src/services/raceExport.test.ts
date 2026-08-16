@@ -13,7 +13,7 @@ describe('race export diagnostics', () => {
     const json = JSON.parse(files.find((file) => file.fileName.endsWith('.json'))!.content)
     expect(json.exportVersion).toBe(2)
     expect(json.appVersion).toBe('0.1.0')
-    expect(json.buildNumber).toBe('11')
+    expect(json.buildNumber).toBe('12')
     expect(json.samples[0]).toMatchObject({ speedKnots: 4.5, nativeSpeedKnots: 1.2, positionSpeedKnots: 4.5, fusedSpeedKnots: 4.49 })
     const csv = files.find((file) => file.fileName.endsWith('.csv'))!.content
     expect(csv).toContain('speedKnots,nativeSpeedKnots,positionSpeedKnots,fusedSpeedKnots')
