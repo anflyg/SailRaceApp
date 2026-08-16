@@ -42,6 +42,9 @@ export type RaceSample = {
   longitude: number
   accuracy?: number
   speedKnots?: number
+  nativeSpeedKnots?: number
+  positionSpeedKnots?: number
+  fusedSpeedKnots?: number
   cogDegrees?: number
   headingDegrees?: number
   windDirectionDegrees?: number

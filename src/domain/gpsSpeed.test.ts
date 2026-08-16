@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   calculatePositionSpeedKnots,
+  createGpsSpeedFusionState,
   filterGpsSpeedKnots,
   fuseGpsSpeedKnots,
   GPS_SPEED_LAST_KNOWN_GRACE_MS,
@@ -34,6 +35,7 @@ function simulateSpeed(inputs: SpeedInput[]): {
   let latitude = 59.33
   let timestamp = 1_000_000
   let previousFusedSpeedKnots: number | null = null
+  const fusionState = createGpsSpeedFusionState()
   let samples: SimulatedSpeedSample[] = []
   const displayedSpeeds: Array<number | null> = []
   const positionSpeeds: Array<number | null> = []
@@ -79,6 +81,7 @@ function simulateSpeed(inputs: SpeedInput[]): {
       input.coordsSpeedKnots,
       positionSpeedKnots,
       previousFusedSpeedKnots,
+      fusionState,
     )
 
     samples = [
@@ -324,5 +327,37 @@ describe('GPS speed fusion and filtering', () => {
 
     expect(Math.abs(speedAtBadSample - speedBeforeBadSample)).toBeLessThanOrEqual(0.2)
     expect(result.displayedSpeeds.at(-1)).toBeCloseTo(5, 1)
+  })
+
+  it('recovers from persistently stale low native speed using reliable position movement', () => {
+    const result = simulateSpeed(Array.from({ length: 15 }, () => ({
+      coordsSpeedKnots: 1.2,
+      positionSpeedKnots: 4.5,
+      accuracyMeters: 2,
+    })))
+    const firstReliablePositionSpeed = result.positionSpeeds.findIndex((speed) => speed !== null)
+
+    expect(firstReliablePositionSpeed).toBeGreaterThanOrEqual(0)
+    expect(result.displayedSpeeds.at(-1)).toBeGreaterThanOrEqual(4)
+  })
+
+  it('recovers from persistently stale high native speed', () => {
+    const result = simulateSpeed(Array.from({ length: 15 }, () => ({ coordsSpeedKnots: 8, positionSpeedKnots: 4.5 })))
+    expect(result.displayedSpeeds.at(-1)).toBeGreaterThanOrEqual(4)
+    expect(result.displayedSpeeds.at(-1)).toBeLessThanOrEqual(5)
+  })
+
+  it('requires disagreement evidence to keep the same direction and resets on agreement', () => {
+    const state = createGpsSpeedFusionState()
+    expect(fuseGpsSpeedKnots(1.2, 4.5, 1.2, state)).toBe(1.2)
+    expect(fuseGpsSpeedKnots(1.2, 4.5, 1.2, state)).toBe(1.2)
+    expect(fuseGpsSpeedKnots(8, 4.5, 1.2, state)).toBe(1.2)
+    expect(state.disagreementCount).toBe(1)
+    expect(fuseGpsSpeedKnots(4.5, 4.5, 1.2, state)).toBeCloseTo(4.5, 5)
+    expect(state.disagreementCount).toBe(0)
+  })
+
+  it('uses native speed when position speed is missing', () => {
+    expect(fuseGpsSpeedKnots(4.5, null, 1.2)).toBe(4.5)
   })
 })

@@ -26,6 +26,7 @@ export interface SailingSimulatorConfig {
   timeStepSeconds?: number
   startTimestamp?: number
   accuracyMeters?: number
+  reportedSpeedKnots?: number
 }
 
 export interface SailingSimulationSample {
@@ -42,6 +43,7 @@ export interface SailingSimulationSample {
   courseDegrees: number
   speedMetersPerSecond: number | null
   accuracyMeters: number
+  reportedSpeedKnots?: number | null
 }
 
 export interface SailingSimulator {
@@ -55,7 +57,7 @@ function toRadians(degrees: number): number {
 }
 
 function createSample(
-  config: Required<Pick<SailingSimulatorConfig, 'origin' | 'timeStepSeconds' | 'startTimestamp' | 'accuracyMeters'>>,
+  config: SailingSimulatorConfig & Required<Pick<SailingSimulatorConfig, 'origin' | 'timeStepSeconds' | 'startTimestamp' | 'accuracyMeters'>>,
   position: LocalPosition,
   elapsedTimeSeconds: number,
   courseDegrees: number,
@@ -82,6 +84,7 @@ function createSample(
       ? null
       : groundTruthSpeedKnots / KNOTS_PER_METER_PER_SECOND,
     accuracyMeters: config.accuracyMeters,
+    reportedSpeedKnots: config.reportedSpeedKnots ?? null,
   }
 }
 
@@ -191,7 +194,7 @@ export function sampleToGpsPosition(sample: SailingSimulationSample): GpsPositio
     latitude: sample.latitude,
     longitude: sample.longitude,
     accuracyMeters: sample.accuracyMeters,
-    speedMetersPerSecond: sample.speedMetersPerSecond,
+    speedMetersPerSecond: sample.reportedSpeedKnots == null ? sample.speedMetersPerSecond : sample.reportedSpeedKnots / KNOTS_PER_METER_PER_SECOND,
     courseDegrees: sample.courseDegrees,
     headingDegrees: sample.courseDegrees,
     timestamp: sample.timestamp,

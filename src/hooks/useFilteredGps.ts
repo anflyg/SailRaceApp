@@ -11,6 +11,8 @@ import {
   keepLastKnownGpsSpeedKnots,
   type LastKnownGpsSpeed,
   type GpsSpeedPosition,
+  createGpsSpeedFusionState,
+  type GpsSpeedFusionState,
 } from '../domain/gpsSpeed'
 import { MIN_RELIABLE_COURSE_SPEED_KNOTS } from './useLiveGps'
 import type { FilteredGpsReading, LiveGpsReading } from '../types'
@@ -30,6 +32,7 @@ interface GpsSample {
   longitude: number | null
   accuracyMeters: number | null
   speedKnots: number | null
+  positionSpeedKnots: number | null
   fusedSpeedKnots: number | null
   courseDegrees: number | null
 }
@@ -81,6 +84,7 @@ export function useFilteredGps(gps: LiveGpsReading): FilteredGpsReading {
   const [presentationTimestamp, setPresentationTimestamp] = useState<number | null>(null)
   const [speedGraceTick, setSpeedGraceTick] = useState(0)
   const lastKnownDisplaySpeedRef = useRef<LastKnownDisplaySpeed | null>(null)
+  const fusionStateRef = useRef<GpsSpeedFusionState>(createGpsSpeedFusionState())
 
   useEffect(() => {
     if (
@@ -149,6 +153,7 @@ export function useFilteredGps(gps: LiveGpsReading): FilteredGpsReading {
           gps.speedKnots,
           positionSpeedKnots,
           previousSpeedKnots,
+          fusionStateRef.current,
         )
 
         return [
@@ -160,6 +165,7 @@ export function useFilteredGps(gps: LiveGpsReading): FilteredGpsReading {
             longitude: gps.longitude,
             accuracyMeters: gps.accuracyMeters,
             speedKnots: gps.speedKnots,
+            positionSpeedKnots,
             fusedSpeedKnots,
             courseDegrees: gps.courseDegrees,
           },
@@ -309,6 +315,9 @@ export function useFilteredGps(gps: LiveGpsReading): FilteredGpsReading {
     ) {
       return {
         ...gps,
+        nativeSpeedKnots: null,
+        positionSpeedKnots: null,
+        fusedSpeedKnots: null,
         speedKnots: null,
         courseDegrees: null,
         displayCourseDegrees: null,
@@ -318,15 +327,19 @@ export function useFilteredGps(gps: LiveGpsReading): FilteredGpsReading {
       }
     }
     const speedKnots = displaySpeedKnots
+    const latestSample = samples.at(-1) ?? null
     const courseDegrees = filteredCourseDegrees
     const courseReliable =
       courseDegrees !== null &&
-      filteredSpeedKnots !== null &&
-      filteredSpeedKnots >= MIN_RELIABLE_COURSE_SPEED_KNOTS
+      speedKnots !== null &&
+      speedKnots >= MIN_RELIABLE_COURSE_SPEED_KNOTS
 
     return {
       ...gps,
       speedKnots,
+      nativeSpeedKnots: gps.speedKnots,
+      positionSpeedKnots: latestSample?.positionSpeedKnots ?? null,
+      fusedSpeedKnots: latestSample?.fusedSpeedKnots ?? null,
       courseDegrees,
       displayCourseDegrees:
         filteredSpeedKnots !== null &&

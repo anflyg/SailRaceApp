@@ -63,6 +63,9 @@ const manualLiveGps: LiveGpsReading = {
 
 const manualFilteredGps: FilteredGpsReading = {
   ...manualLiveGps,
+  nativeSpeedKnots: 6.4,
+  positionSpeedKnots: 6.4,
+  fusedSpeedKnots: 6.4,
   sampleCount: 6,
   displayCourseDegrees: 18,
   presentationTimestamp: MANUAL_NOW,

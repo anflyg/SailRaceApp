@@ -74,6 +74,14 @@ export const UPWIND_TO_K1_SIMULATION_VALIDATION = {
   courseToleranceDegrees: 180,
 } as const
 
+export const SPEED_SOURCE_DISAGREEMENT_SIMULATION_VALIDATION = {
+  validationIntervalSeconds: 3,
+  warmupSeconds: 15,
+  endSeconds: 42,
+  speedToleranceKnots: 0.5,
+  courseToleranceDegrees: 1,
+} as const
+
 export interface SimulationValidationTolerances {
   speedToleranceKnots: number
   courseToleranceDegrees: number
@@ -265,6 +273,8 @@ export function createSimulationValidator(config: SimulationValidatorConfig): Si
         ? LAYLINE_REACTIVE_TACK_SIMULATION_VALIDATION
       : config.scenario === 'upwind-to-k1'
         ? UPWIND_TO_K1_SIMULATION_VALIDATION
+      : config.scenario === 'speed-source-disagreement'
+        ? SPEED_SOURCE_DISAGREEMENT_SIMULATION_VALIDATION
       : STRAIGHT_SIMULATION_VALIDATION
   const validationIntervalSeconds = config.validationIntervalSeconds ?? scenarioValidation.validationIntervalSeconds
   const warmupSeconds = config.warmupSeconds ?? scenarioValidation.warmupSeconds

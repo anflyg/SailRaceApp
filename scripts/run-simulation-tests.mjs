@@ -81,7 +81,19 @@ const scenarios = [
     expected: { plannedChecks: 15, speedPassed: 15, coursePassed: 15 },
     upwindToK1: true,
   },
+  {
+    name: 'speed-source-disagreement',
+    label: 'SPEED SOURCE DISAGREEMENT',
+    timeoutMs: 50_000,
+    simulationRate: 1,
+    expected: { plannedChecks: 10, speedPassed: 10, coursePassed: 10 },
+    speedSourceDisagreement: true,
+  },
 ]
+
+const scenariosToRun = process.env.SIMULATION_SCENARIO
+  ? scenarios.filter((scenario) => scenario.name === process.env.SIMULATION_SCENARIO)
+  : scenarios
 
 function sleep(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds))
@@ -735,6 +747,15 @@ function printScenarioSummary(scenario, report, durationMs, dashboard) {
     return
   }
 
+  if (scenario.name === 'speed-source-disagreement') {
+    console.log(`\n${scenario.label}`)
+    console.log(`Speed: ${report.speedPassed}/${report.speedChecks} PASS`)
+    console.log(`Final app speed: ${report.checks.at(-1)?.appSpeedKnots?.toFixed(3) ?? '--'} kn`)
+    console.log(`Ground truth speed: ${report.checks.at(-1)?.groundTruthSpeedKnots?.toFixed(3) ?? '--'} kn`)
+    console.log(`Result: PASS`)
+    return
+  }
+
   console.log(`\n${scenario.label}`)
   console.log(`Speed:   ${report.speedPassed}/${report.speedChecks} PASS`)
   console.log(`Course:  ${report.coursePassed}/${report.courseChecks} PASS`)
@@ -754,7 +775,7 @@ async function run() {
     browser = await chromium.launch({ headless: true })
     const results = []
 
-    for (const scenario of scenarios) {
+    for (const scenario of scenariosToRun) {
       const result = await runScenario(browser, scenario)
       result.report.upwindToK1Analysis = result.upwindToK1Analysis
       results.push(result)

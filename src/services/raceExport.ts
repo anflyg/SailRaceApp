@@ -4,7 +4,7 @@ import { Share } from '@capacitor/share'
 import { strToU8, zipSync } from 'fflate'
 import type { Race, RaceEvent, RaceSample } from '../types'
 
-const EXPORT_VERSION = 1
+const EXPORT_VERSION = 2
 const FILE_PREFIX = 'aster-race'
 
 type ExportedRaceFile = {
@@ -22,6 +22,7 @@ type ZippedRaceExport = {
 interface RaceExportPayload {
   exportVersion: number
   appVersion: string | null
+  buildNumber: string | null
   exportedAt: string
   race: {
     id: string
@@ -52,6 +53,11 @@ function getAppVersion(): string | null {
   return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null
 }
 
+function getBuildNumber(): string | null {
+  const value = import.meta.env.VITE_BUILD_NUMBER
+  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null
+}
+
 function toFileTimestamp(value: string): string {
   const date = new Date(value)
 
@@ -76,6 +82,7 @@ function toJsonPayload(race: Race): RaceExportPayload {
   return {
     exportVersion: EXPORT_VERSION,
     appVersion: getAppVersion(),
+    buildNumber: getBuildNumber(),
     exportedAt: new Date().toISOString(),
     race: {
       id: race.id,
@@ -138,6 +145,9 @@ function toCsvContent(race: Race): string {
     'longitude',
     'accuracy',
     'speedKnots',
+    'nativeSpeedKnots',
+    'positionSpeedKnots',
+    'fusedSpeedKnots',
     'cogDegrees',
     'headingDegrees',
     'windDirectionDegrees',
@@ -151,6 +161,9 @@ function toCsvContent(race: Race): string {
     toCsvValue(sample.longitude),
     toCsvValue(sample.accuracy),
     toCsvValue(sample.speedKnots),
+    toCsvValue(sample.nativeSpeedKnots),
+    toCsvValue(sample.positionSpeedKnots),
+    toCsvValue(sample.fusedSpeedKnots),
     toCsvValue(sample.cogDegrees),
     toCsvValue(sample.headingDegrees),
     toCsvValue(sample.windDirectionDegrees),
@@ -188,6 +201,9 @@ function toGpxContent(race: Race): string {
       const extensions = [
         formatExtensionValue('accuracy', sample.accuracy),
         formatExtensionValue('speedKnots', sample.speedKnots),
+        formatExtensionValue('nativeSpeedKnots', sample.nativeSpeedKnots),
+        formatExtensionValue('positionSpeedKnots', sample.positionSpeedKnots),
+        formatExtensionValue('fusedSpeedKnots', sample.fusedSpeedKnots),
         formatExtensionValue('cogDegrees', sample.cogDegrees),
         formatExtensionValue('headingDegrees', sample.headingDegrees),
         formatExtensionValue('windDirectionDegrees', sample.windDirectionDegrees),

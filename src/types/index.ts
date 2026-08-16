@@ -31,6 +31,9 @@ export interface LiveGpsReading {
 }
 
 export interface FilteredGpsReading extends LiveGpsReading {
+  nativeSpeedKnots: number | null
+  positionSpeedKnots: number | null
+  fusedSpeedKnots: number | null
   sampleCount: number
   displayCourseDegrees: number | null
   presentationTimestamp: number | null

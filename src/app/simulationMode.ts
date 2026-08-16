@@ -7,6 +7,7 @@ import {
   WIND_VMG_SCENARIO,
   LAYLINE_CANDIDATE_SCENARIO,
   UPWIND_TO_K1_SCENARIO,
+  SPEED_SOURCE_DISAGREEMENT_SCENARIO,
 } from '../simulation/sailingSimulator.fixtures'
 import { createSailingSimulator } from '../simulation/sailingSimulator'
 import { createSimulatedGpsSource, type SimulatedGpsSource } from '../simulation/simulatedGpsSource'
@@ -18,7 +19,7 @@ const SIMULATION_QUERY_KEY = 'simulation'
 export const SIMULATION_TICK_MS = 1_000
 const SIMULATION_RATES = [1, 10, 20] as const
 
-export type SimulationScenario = 'straight' | 'variable-speed' | 'variable-course' | 'tack-course' | 'course-noise' | 'wind-vmg' | 'layline-candidate' | 'layline-warning' | 'layline-reactive-tack' | 'upwind-to-k1'
+export type SimulationScenario = 'straight' | 'variable-speed' | 'variable-course' | 'tack-course' | 'course-noise' | 'wind-vmg' | 'layline-candidate' | 'layline-warning' | 'layline-reactive-tack' | 'upwind-to-k1' | 'speed-source-disagreement'
 export type SimulationRate = (typeof SIMULATION_RATES)[number]
 
 export interface SimulationModeConfig {
@@ -40,7 +41,7 @@ export function getSimulationModeConfig(
 ): SimulationModeConfig {
   const requestedScenario = search?.get(SIMULATION_QUERY_KEY)
   const scenario: SimulationScenario | null =
-    requestedScenario === 'straight' || requestedScenario === 'variable-speed' || requestedScenario === 'variable-course' || requestedScenario === 'tack-course' || requestedScenario === 'course-noise' || requestedScenario === 'wind-vmg' || requestedScenario === 'layline-candidate' || requestedScenario === 'layline-warning' || requestedScenario === 'layline-reactive-tack' || requestedScenario === 'upwind-to-k1'
+    requestedScenario === 'straight' || requestedScenario === 'variable-speed' || requestedScenario === 'variable-course' || requestedScenario === 'tack-course' || requestedScenario === 'course-noise' || requestedScenario === 'wind-vmg' || requestedScenario === 'layline-candidate' || requestedScenario === 'layline-warning' || requestedScenario === 'layline-reactive-tack' || requestedScenario === 'upwind-to-k1' || requestedScenario === 'speed-source-disagreement'
       ? requestedScenario
       : null
   const simulationBuildAllowed = environment.DEV || environment.MODE === 'simulation'
@@ -81,6 +82,8 @@ export function createSimulationGpsSource(scenario: SimulationScenario): Simulat
       return createSimulatedGpsSource(createSailingSimulator(LAYLINE_CANDIDATE_SCENARIO))
     case 'upwind-to-k1':
       return createSimulatedGpsSource(createSailingSimulator(UPWIND_TO_K1_SCENARIO))
+    case 'speed-source-disagreement':
+      return createSimulatedGpsSource(createSailingSimulator(SPEED_SOURCE_DISAGREEMENT_SCENARIO))
   }
 }
 

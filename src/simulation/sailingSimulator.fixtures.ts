@@ -92,3 +92,13 @@ export const LAYLINE_CANDIDATE_SCENARIO: SailingSimulatorConfig = {
 export const UPWIND_TO_K1_SCENARIO: SailingSimulatorConfig = {
   ...LAYLINE_CANDIDATE_SCENARIO,
 }
+
+export const SPEED_SOURCE_DISAGREEMENT_SCENARIO: SailingSimulatorConfig = {
+  origin: { latitude: 59.3293, longitude: 18.0686 },
+  courseDegrees: 0,
+  targetSpeedKnots: 4.5,
+  reportedSpeedKnots: 1.2,
+  timeStepSeconds: 1,
+  startTimestamp: 1_700_000_000_000,
+  accuracyMeters: 2,
+}

@@ -21,6 +21,15 @@ export interface LastKnownGpsSpeed {
   observedAt: number
 }
 
+export interface GpsSpeedFusionState {
+  disagreementCount: number
+  disagreementDirection: -1 | 1 | null
+}
+
+export function createGpsSpeedFusionState(): GpsSpeedFusionState {
+  return { disagreementCount: 0, disagreementDirection: null }
+}
+
 function toRadians(degrees: number): number {
   return (degrees * Math.PI) / 180
 }
@@ -100,23 +109,34 @@ export function fuseGpsSpeedKnots(
   coordsSpeedKnots: number | null,
   positionSpeedKnots: number | null,
   previousSpeedKnots: number | null,
+  state?: GpsSpeedFusionState,
 ): number | null {
   const coordsSpeed = isReasonableSpeed(coordsSpeedKnots) ? coordsSpeedKnots : null
   const positionSpeed = isReasonableSpeed(positionSpeedKnots) ? positionSpeedKnots : null
 
   if (coordsSpeed === null) {
+    if (state) Object.assign(state, createGpsSpeedFusionState())
     return positionSpeed
   }
 
   if (positionSpeed === null) {
+    if (state) Object.assign(state, createGpsSpeedFusionState())
     return coordsSpeed
   }
 
   if (Math.abs(coordsSpeed - positionSpeed) <= GPS_SPEED_SOURCE_AGREEMENT_KNOTS) {
+    if (state) Object.assign(state, createGpsSpeedFusionState())
     return (
       coordsSpeed * GPS_SPEED_COORDS_WEIGHT +
       positionSpeed * (1 - GPS_SPEED_COORDS_WEIGHT)
     )
+  }
+
+  const direction = positionSpeed > coordsSpeed ? 1 : -1
+  if (state) {
+    state.disagreementCount = state.disagreementDirection === direction ? state.disagreementCount + 1 : 1
+    state.disagreementDirection = direction
+    if (state.disagreementCount >= 3) return positionSpeed
   }
 
   if (!isReasonableSpeed(previousSpeedKnots)) {

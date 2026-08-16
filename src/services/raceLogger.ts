@@ -183,6 +183,9 @@ export function recordSampleIfDue({
   if (gps.speedKnots !== null) {
     sample.speedKnots = gps.speedKnots
   }
+  if (gps.nativeSpeedKnots !== null) sample.nativeSpeedKnots = gps.nativeSpeedKnots
+  if (gps.positionSpeedKnots !== null) sample.positionSpeedKnots = gps.positionSpeedKnots
+  if (gps.fusedSpeedKnots !== null) sample.fusedSpeedKnots = gps.fusedSpeedKnots
 
   if (gps.courseDegrees !== null) {
     sample.cogDegrees = gps.courseDegrees
