@@ -37,6 +37,7 @@ import type {
   CoursePointKey,
   CoursePointState,
   CourseState,
+  FilteredGpsReading,
   RollPitchCalibration,
 } from '../types'
 
@@ -46,6 +47,7 @@ declare global {
       setCommandedCourseDegrees(courseDegrees: number): void
       currentSample(): ReturnType<NonNullable<ReturnType<typeof createSimulationGpsSource>>['currentSample']>
     }
+    __SAILRACE_SIMULATION_SPEED_DIAGNOSTICS__?: FilteredGpsReading
   }
 }
 
@@ -167,7 +169,7 @@ export function AppShell() {
   }, [simulationGpsSource, simulationMode.tickIntervalMs])
 
   useEffect(() => {
-    if ((simulationMode.scenario !== 'layline-reactive-tack' && simulationMode.scenario !== 'upwind-to-k1') || simulationGpsSource === null) {
+    if ((simulationMode.scenario !== 'layline-reactive-tack' && simulationMode.scenario !== 'upwind-to-k1' && simulationMode.scenario !== 'speed-source-disagreement') || simulationGpsSource === null) {
       return
     }
 
@@ -201,6 +203,12 @@ export function AppShell() {
     console.info('SailRace simulation validation report', report)
     simulationReportLoggedRef.current = true
   }, [filteredGps, simulationAppVmgKnots, simulationGpsSource, simulationLaylineObservation, simulationValidator])
+
+  useEffect(() => {
+    if (simulationMode.scenario === 'speed-source-disagreement') {
+      window.__SAILRACE_SIMULATION_SPEED_DIAGNOSTICS__ = filteredGps
+    }
+  }, [filteredGps, simulationMode.scenario])
 
   useEffect(() => {
     document.documentElement.dataset.theme = displayMode

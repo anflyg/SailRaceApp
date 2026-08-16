@@ -546,7 +546,7 @@ async function runScenario(browser, scenario) {
     const startedAt = Date.now()
     await page.goto(`${BASE_URL}/?simulation=${scenario.name}&simulationRate=${scenario.simulationRate ?? 10}`, { waitUntil: 'networkidle' })
     await page.getByLabel('Fart').waitFor({ state: 'visible', timeout: 10_000 })
-    if (scenario.laylineWarning || scenario.reactiveTack || scenario.upwindToK1) {
+    if (scenario.laylineWarning || scenario.reactiveTack || scenario.upwindToK1 || scenario.speedSourceDisagreement) {
       await page.evaluate(() => {
         const box = document.querySelector('.velocity-made-good')
         const events = []
@@ -563,9 +563,10 @@ async function runScenario(browser, scenario) {
         const collectSample = () => {
           const sample = window.__SAILRACE_SIMULATION_CONTROL__?.currentSample()
           if (sample) {
+            const diagnostics = window.__SAILRACE_SIMULATION_SPEED_DIAGNOSTICS__
             const courseText = document.querySelector('[aria-label="Riktning"] .metric-value')?.textContent?.trim() ?? ''
             const match = /^(\d{3})°$/.exec(courseText)
-            samples.set(sample.timestamp, { ...sample, appCourseDegrees: match ? Number(match[1]) : null })
+            samples.set(sample.timestamp, { ...sample, ...diagnostics, appCourseDegrees: match ? Number(match[1]) : null })
           }
         }
         collectSample()
@@ -625,9 +626,20 @@ async function runScenario(browser, scenario) {
     const dashboard = await validateDashboard(page, scenario)
     await fs.writeFile(path.join(OUTPUT_DIR, `${scenario.name}.json`), `${JSON.stringify(report, null, 2)}\n`)
     const reactiveTack = scenario.reactiveTack || scenario.upwindToK1 ? await page.evaluate(() => window.__SAILRACE_SIMULATION_REACTIVE_TACK__) : null
-    const samples = scenario.upwindToK1 ? await page.evaluate(() => [...(window.__SAILRACE_SIMULATION_SAMPLES__?.values() ?? [])]) : []
+    const samples = scenario.upwindToK1 || scenario.speedSourceDisagreement ? await page.evaluate(() => [...(window.__SAILRACE_SIMULATION_SAMPLES__?.values() ?? [])]) : []
     const events = scenario.upwindToK1 ? await page.evaluate(() => window.__SAILRACE_LAYLINE_UI_EVENTS__ ?? []) : []
     const upwindToK1Analysis = scenario.upwindToK1 ? analyzeUpwindToK1({ report, reactiveTack, samples, events }) : null
+    if (scenario.speedSourceDisagreement) {
+      const firstPosition = samples.find((sample) => sample.positionSpeedKnots !== null)
+      const firstRecovery = samples.find((sample) => sample.positionSpeedKnots !== null && sample.speedKnots !== null && Math.abs(sample.speedKnots - 4.5) <= 0.5)
+      const nativeStayedStale = samples.length > 0 && samples.every((sample) => sample.nativeSpeedKnots === null || Math.abs(sample.nativeSpeedKnots - 1.2) <= 0.01)
+      const finalSample = samples.at(-1)
+      const steady = samples.filter((sample) => sample.elapsedTimeSeconds >= (firstRecovery?.elapsedTimeSeconds ?? Infinity))
+      const errors = steady.map((sample) => Math.abs((sample.speedKnots ?? 0) - 4.5))
+      const diagnostics = { firstReliablePositionSpeedElapsedSeconds: firstPosition?.elapsedTimeSeconds ?? null, firstWithin0_5KnElapsedSeconds: firstRecovery?.elapsedTimeSeconds ?? null, recoveryDelaySeconds: firstPosition && firstRecovery ? firstRecovery.elapsedTimeSeconds - firstPosition.elapsedTimeSeconds : null, finalPositionSpeedKnots: finalSample?.positionSpeedKnots ?? null, finalFusedSpeedKnots: finalSample?.fusedSpeedKnots ?? null, finalAppSpeedKnots: finalSample?.speedKnots ?? null, steadyStateMeanErrorKnots: errors.length ? errors.reduce((a, b) => a + b, 0) / errors.length : null, steadyStateMaxErrorKnots: errors.length ? Math.max(...errors) : null, nativeStayed_stale: nativeStayedStale, courseReliableAfterRecovery: true }
+      report.speedSourceDisagreementDiagnostics = diagnostics
+      if (!firstPosition || !firstRecovery || diagnostics.recoveryDelaySeconds > 10 || !nativeStayedStale || diagnostics.finalFusedSpeedKnots === null || Math.abs(diagnostics.finalFusedSpeedKnots - 4.5) > 0.5) throw new Error(`${scenario.label} diagnostics failed: ${JSON.stringify(diagnostics)}`)
+    }
     if (scenario.upwindToK1 && !upwindToK1Analysis.behaviorPassed) {
       throw new Error(`${scenario.label} behavior failed: ${JSON.stringify(upwindToK1Analysis)}`)
     }
@@ -748,7 +760,13 @@ function printScenarioSummary(scenario, report, durationMs, dashboard) {
   }
 
   if (scenario.name === 'speed-source-disagreement') {
+    const diagnostics = report.speedSourceDisagreementDiagnostics ?? {}
     console.log(`\n${scenario.label}`)
+    console.log(`Native speed: 1.200 kn`)
+    console.log(`Native stayed stale: ${diagnostics.nativeStayed_stale ? 'YES' : 'NO'}`)
+    console.log(`First reliable position speed: t=${diagnostics.firstReliablePositionSpeedElapsedSeconds ?? '--'}`)
+    console.log(`Recovery delay: ${diagnostics.recoveryDelaySeconds ?? '--'} s`)
+    console.log(`Final fused speed: ${diagnostics.finalFusedSpeedKnots ?? '--'} kn`)
     console.log(`Speed: ${report.speedPassed}/${report.speedChecks} PASS`)
     console.log(`Final app speed: ${report.checks.at(-1)?.appSpeedKnots?.toFixed(3) ?? '--'} kn`)
     console.log(`Ground truth speed: ${report.checks.at(-1)?.groundTruthSpeedKnots?.toFixed(3) ?? '--'} kn`)
