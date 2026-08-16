@@ -632,13 +632,15 @@ async function runScenario(browser, scenario) {
     if (scenario.speedSourceDisagreement) {
       const firstPosition = samples.find((sample) => sample.positionSpeedKnots !== null)
       const firstRecovery = samples.find((sample) => sample.positionSpeedKnots !== null && sample.speedKnots !== null && Math.abs(sample.speedKnots - 4.5) <= 0.5)
-      const nativeStayedStale = samples.length > 0 && samples.every((sample) => sample.nativeSpeedKnots === null || Math.abs(sample.nativeSpeedKnots - 1.2) <= 0.01)
+      const nativeObservations = samples.map((sample) => sample.nativeSpeedKnots).filter((speed) => speed !== null)
+      const nativeStayedStale = nativeObservations.length > 0 && nativeObservations.every((speed) => Math.abs(speed - 1.2) <= 0.01) && Math.abs(nativeObservations.at(-1) - 1.2) <= 0.01
       const finalSample = samples.at(-1)
       const steady = samples.filter((sample) => sample.elapsedTimeSeconds >= (firstRecovery?.elapsedTimeSeconds ?? Infinity))
       const errors = steady.map((sample) => Math.abs((sample.speedKnots ?? 0) - 4.5))
-      const diagnostics = { firstReliablePositionSpeedElapsedSeconds: firstPosition?.elapsedTimeSeconds ?? null, firstWithin0_5KnElapsedSeconds: firstRecovery?.elapsedTimeSeconds ?? null, recoveryDelaySeconds: firstPosition && firstRecovery ? firstRecovery.elapsedTimeSeconds - firstPosition.elapsedTimeSeconds : null, finalPositionSpeedKnots: finalSample?.positionSpeedKnots ?? null, finalFusedSpeedKnots: finalSample?.fusedSpeedKnots ?? null, finalAppSpeedKnots: finalSample?.speedKnots ?? null, steadyStateMeanErrorKnots: errors.length ? errors.reduce((a, b) => a + b, 0) / errors.length : null, steadyStateMaxErrorKnots: errors.length ? Math.max(...errors) : null, nativeStayed_stale: nativeStayedStale, courseReliableAfterRecovery: true }
+      const firstCourseReliable = samples.find((sample) => firstRecovery && sample.elapsedTimeSeconds >= firstRecovery.elapsedTimeSeconds && sample.courseReliable === true)
+      const diagnostics = { firstReliablePositionSpeedElapsedSeconds: firstPosition?.elapsedTimeSeconds ?? null, firstWithin0_5KnElapsedSeconds: firstRecovery?.elapsedTimeSeconds ?? null, recoveryDelaySeconds: firstPosition && firstRecovery ? firstRecovery.elapsedTimeSeconds - firstPosition.elapsedTimeSeconds : null, finalPositionSpeedKnots: finalSample?.positionSpeedKnots ?? null, finalFusedSpeedKnots: finalSample?.fusedSpeedKnots ?? null, finalAppSpeedKnots: finalSample?.speedKnots ?? null, steadyStateMeanErrorKnots: errors.length ? errors.reduce((a, b) => a + b, 0) / errors.length : null, steadyStateMaxErrorKnots: errors.length ? Math.max(...errors) : null, nativeObservationCount: nativeObservations.length, nativeStayedStale, firstCourseReliableAfterRecoveryElapsedSeconds: firstCourseReliable?.elapsedTimeSeconds ?? null, courseReliableAfterRecovery: firstCourseReliable !== undefined && finalSample?.courseReliable === true }
       report.speedSourceDisagreementDiagnostics = diagnostics
-      if (!firstPosition || !firstRecovery || diagnostics.recoveryDelaySeconds > 10 || !nativeStayedStale || diagnostics.finalFusedSpeedKnots === null || Math.abs(diagnostics.finalFusedSpeedKnots - 4.5) > 0.5) throw new Error(`${scenario.label} diagnostics failed: ${JSON.stringify(diagnostics)}`)
+      if (!firstPosition || !firstRecovery || diagnostics.recoveryDelaySeconds > 10 || !nativeStayedStale || !diagnostics.courseReliableAfterRecovery || diagnostics.finalFusedSpeedKnots === null || Math.abs(diagnostics.finalFusedSpeedKnots - 4.5) > 0.5) throw new Error(`${scenario.label} diagnostics failed: ${JSON.stringify(diagnostics)}`)
     }
     if (scenario.upwindToK1 && !upwindToK1Analysis.behaviorPassed) {
       throw new Error(`${scenario.label} behavior failed: ${JSON.stringify(upwindToK1Analysis)}`)
@@ -763,9 +765,10 @@ function printScenarioSummary(scenario, report, durationMs, dashboard) {
     const diagnostics = report.speedSourceDisagreementDiagnostics ?? {}
     console.log(`\n${scenario.label}`)
     console.log(`Native speed: 1.200 kn`)
-    console.log(`Native stayed stale: ${diagnostics.nativeStayed_stale ? 'YES' : 'NO'}`)
+    console.log(`Native stayed stale: ${diagnostics.nativeStayedStale ? 'YES' : 'NO'}`)
     console.log(`First reliable position speed: t=${diagnostics.firstReliablePositionSpeedElapsedSeconds ?? '--'}`)
     console.log(`Recovery delay: ${diagnostics.recoveryDelaySeconds ?? '--'} s`)
+    console.log(`Course reliable after recovery: ${diagnostics.courseReliableAfterRecovery ? 'YES' : 'NO'}`)
     console.log(`Final fused speed: ${diagnostics.finalFusedSpeedKnots ?? '--'} kn`)
     console.log(`Speed: ${report.speedPassed}/${report.speedChecks} PASS`)
     console.log(`Final app speed: ${report.checks.at(-1)?.appSpeedKnots?.toFixed(3) ?? '--'} kn`)
