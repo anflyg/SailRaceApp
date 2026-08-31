@@ -11,6 +11,8 @@ export type {
 } from './race'
 export type CountdownDuration = 5 | 4 | 3 | 2 | 1
 
+import type { WindHeadingMeasurementResult } from '../services/sensors/windHeadingService'
+
 export type LiveGpsStatus = 'idle' | 'requesting' | 'watching' | 'error' | 'unavailable'
 
 export interface GeoPoint {
@@ -56,6 +58,7 @@ export type CoursePointState = Record<CoursePointKey, CoursePoint | null>
 export interface CourseState {
   points: CoursePointState
   windHeadingDegrees: number | null
+  windMeasurement?: WindHeadingMeasurementResult
 }
 
 export type DeviceAttitudeStatus = 'idle' | 'watching' | 'error' | 'unavailable'

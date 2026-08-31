@@ -40,6 +40,7 @@ import type {
   FilteredGpsReading,
   RollPitchCalibration,
 } from '../types'
+import type { WindHeadingMeasurementResult } from '../services/sensors/windHeadingService'
 
 declare global {
   interface Window {
@@ -245,8 +246,9 @@ export function AppShell() {
     startRaceLogging({
       countdownDurationSeconds: durationSeconds,
       course: courseDefinition,
+      windMeasurement: course.windMeasurement,
     })
-  }, [courseDefinition])
+  }, [course, courseDefinition])
 
   const handleStartGun = useCallback(() => {
     markStartGun()
@@ -322,6 +324,10 @@ export function AppShell() {
     }))
   }
 
+  const setWindMeasurement = (measurement: WindHeadingMeasurementResult | null) => {
+    setCourse((current) => ({ ...current, windMeasurement: measurement ?? undefined }))
+  }
+
   const clearCourse = () => {
     setCourseGpsStatus(null)
     setCourse(defaultCourseState)
@@ -361,6 +367,7 @@ export function AppShell() {
         gps={liveGps}
         onToggleCoursePoint={toggleCoursePoint}
         onToggleWindHeading={toggleWindHeading}
+        onWindMeasurement={setWindMeasurement}
         onClearCourse={clearCourse}
         gpsStatusMessage={courseGpsStatus}
       />

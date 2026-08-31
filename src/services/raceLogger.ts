@@ -13,6 +13,7 @@ import type {
   Race,
   RaceSample,
 } from '../types'
+import type { WindHeadingMeasurementResult } from './sensors/windHeadingService'
 
 const LOGGER_STATE_KEY = 'aster-race:race-logger:v1'
 const NORMAL_SAMPLE_INTERVAL_MS = 5000
@@ -35,6 +36,7 @@ type RaceLoggerState = {
 export type StartRaceLoggingInput = {
   countdownDurationSeconds: number
   course?: CourseDefinition
+  windMeasurement?: WindHeadingMeasurementResult
   name?: string
   now?: Date
 }
@@ -63,6 +65,7 @@ let useMemoryLoggerState = false
 export function startRaceLogging({
   countdownDurationSeconds,
   course,
+  windMeasurement,
   name,
   now = new Date(),
 }: StartRaceLoggingInput): Race {
@@ -76,6 +79,7 @@ export function startRaceLogging({
     date: now,
     createdAt: now.toISOString(),
     course,
+    windMeasurement,
     name: name ?? createDefaultRaceName(now),
   })
   const scheduledStartTime = new Date(now.getTime() + countdownDurationSeconds * 1000)

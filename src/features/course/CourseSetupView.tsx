@@ -16,6 +16,7 @@ interface CourseSetupViewProps {
   gps: LiveGpsReading
   onToggleCoursePoint: (key: CoursePointKey) => void
   onToggleWindHeading: (headingDegrees: number) => void
+  onWindMeasurement: (measurement: WindHeadingMeasurementResult | null) => void
   onClearCourse: () => void
   gpsStatusMessage: string | null
 }
@@ -85,6 +86,7 @@ export function CourseSetupView({
   gps,
   onToggleCoursePoint,
   onToggleWindHeading,
+  onWindMeasurement,
   onClearCourse,
   gpsStatusMessage,
 }: CourseSetupViewProps) {
@@ -104,13 +106,14 @@ export function CourseSetupView({
     ? shortestAngleDeltaDegrees(course.windHeadingDegrees, displayReference.headingDegrees)
     : null
   const windMeasurementSummary = lastMeasurement
-    ? `Vind satt: ${formatDegrees(lastMeasurement.headingDegrees)} · Kvalitet: ${getWindQualityLabel(lastMeasurement)}`
+    ? `Vind satt: ${formatDegrees(lastMeasurement.headingDegrees)} · Kvalitet: ${getWindQualityLabel(lastMeasurement)} · Källa: ${lastMeasurement.selectedHeadingSource}`
     : null
   const isMeasuringWind = windMeasurementStatus === 'measuring'
 
   const handleWindArrowClick = async () => {
     if (course.windHeadingDegrees !== null) {
       resetWindHeadingMeasurement()
+      onWindMeasurement(null)
       onToggleWindHeading(0)
       return
     }
@@ -119,6 +122,7 @@ export function CourseSetupView({
 
     if (measuredHeading !== null) {
       onToggleWindHeading(normalizeDegrees(measuredHeading.headingDegrees))
+      onWindMeasurement(measuredHeading)
     }
   }
 
@@ -203,6 +207,9 @@ export function CourseSetupView({
         <div className="course-display-debug" aria-label="Banvy debug">
           {windMeasurementSummary ? (
             <span>{windMeasurementSummary}</span>
+          ) : null}
+          {lastMeasurement?.nativeDebug ? (
+            <span>True: {lastMeasurement.nativeDebug.clTrueHeadingDegrees === null ? '—' : formatDegrees(lastMeasurement.nativeDebug.clTrueHeadingDegrees)} · Mag: {lastMeasurement.nativeDebug.clMagneticHeadingDegrees === null ? '—' : formatDegrees(lastMeasurement.nativeDebug.clMagneticHeadingDegrees)}</span>
           ) : null}
           <span>Referens: {getDisplayReferenceLabel(displayReference)}</span>
           {windRelativeDisplayAngle !== null ? (

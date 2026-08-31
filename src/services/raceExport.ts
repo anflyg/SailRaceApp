@@ -42,7 +42,7 @@ interface RaceExportPayload {
     marksEstimated: boolean | null
   } | null
   summary: Race['summary'] | null
-  windMeasurement: null
+  windMeasurement: Race['windMeasurement'] | null
   events: RaceEvent[]
   samples: RaceSample[]
 }
@@ -104,7 +104,7 @@ function toJsonPayload(race: Race): RaceExportPayload {
       }
       : null,
     summary: race.summary ?? null,
-    windMeasurement: null,
+    windMeasurement: race.windMeasurement ?? null,
     events: race.events,
     samples: race.samples,
   }

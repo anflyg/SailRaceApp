@@ -122,6 +122,9 @@ public class WindHeadingPlugin: CAPPlugin, CAPBridgedPlugin, CLLocationManagerDe
         let selectedHeadingDegrees =
             headingDiagnostics.backVectorHeadingRowDegrees ??
             headingDiagnostics.backVectorHeadingDegrees
+        let selectedHeadingSource = headingDiagnostics.backVectorHeadingRowDegrees != nil
+            ? "back-vector-row"
+            : "back-vector-column"
 
         guard let headingDegrees = selectedHeadingDegrees else {
             call.resolve([
@@ -129,6 +132,7 @@ public class WindHeadingPlugin: CAPPlugin, CAPBridgedPlugin, CLLocationManagerDe
                 "headingDegrees": NSNull(),
                 "referenceFrame": selectedReferenceFrame.name,
                 "accuracyDegrees": headingAccuracyValue(),
+                "selectedHeadingSource": selectedHeadingSource,
                 "nativeDebug": nativeDebug
             ])
             return
@@ -139,6 +143,7 @@ public class WindHeadingPlugin: CAPPlugin, CAPBridgedPlugin, CLLocationManagerDe
             "headingDegrees": headingDegrees,
             "referenceFrame": selectedReferenceFrame.name,
             "accuracyDegrees": headingAccuracyValue(),
+            "selectedHeadingSource": selectedHeadingSource,
             "nativeDebug": nativeDebug
         ])
     }

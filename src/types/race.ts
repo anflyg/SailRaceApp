@@ -12,6 +12,7 @@ export type Race = {
   startGunTime?: string
   endTime?: string
   course?: CourseDefinition
+  windMeasurement?: WindHeadingMeasurementResult
   samples: RaceSample[]
   events: RaceEvent[]
   summary?: RaceSummary
@@ -74,3 +75,4 @@ export type RaceSummary = {
   averageSpeedKnots?: number
   sampleCount: number
 }
+import type { WindHeadingMeasurementResult } from '../services/sensors/windHeadingService'

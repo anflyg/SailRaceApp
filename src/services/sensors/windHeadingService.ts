@@ -9,6 +9,7 @@ export const MAX_WIND_HEADING_SPREAD_DEGREES = 10
 
 export type WindHeadingReferenceFrame = 'true-north' | 'magnetic-north' | 'mock'
 export type WindHeadingQuality = 'good' | 'ok' | 'poor' | 'unstable' | 'unknown'
+export type WindHeadingSource = 'back-vector-row' | 'back-vector-column' | 'mock'
 export type WindHeadingMeasurementErrorReason = 'failed' | 'insufficient-samples' | 'unstable'
 
 export interface WindHeadingMatrixDebug {
@@ -40,6 +41,8 @@ export interface WindHeadingNativeDebug {
 
 export interface WindHeadingMeasurementResult {
   headingDegrees: number
+  selectedHeadingDegrees: number
+  selectedHeadingSource: WindHeadingSource
   sampleCount: number
   referenceFrame: WindHeadingReferenceFrame
   accuracyDegrees: number | null
@@ -70,6 +73,7 @@ interface NativeWindHeadingSample {
   accuracyDegrees?: number | null
   nativeDebug?: WindHeadingNativeDebug | null
   valid?: boolean
+  selectedHeadingSource?: WindHeadingSource
 }
 
 interface WindHeadingNativePlugin {
@@ -146,6 +150,8 @@ async function measureMockHeading(): Promise<WindHeadingMeasurementResult> {
 
   const result = createMeasurementResult({
     headingDegrees: normalizeDegrees(reading.headingDegrees),
+    selectedHeadingDegrees: normalizeDegrees(reading.headingDegrees),
+    selectedHeadingSource: 'mock',
     sampleCount: reading.sampleCount,
     referenceFrame: 'mock',
     accuracyDegrees: getValidAccuracyDegrees(reading.accuracyDegrees),
@@ -171,11 +177,15 @@ function createMeasurementResult({
   accuracyDegrees,
   spreadDegrees,
   nativeDebug,
+  selectedHeadingDegrees,
+  selectedHeadingSource,
 }: Omit<WindHeadingMeasurementResult, 'quality'>): WindHeadingMeasurementResult {
   const quality = getMeasurementQuality(accuracyDegrees, spreadDegrees)
 
   return {
     headingDegrees,
+    selectedHeadingDegrees,
+    selectedHeadingSource,
     sampleCount,
     referenceFrame,
     accuracyDegrees,
@@ -193,6 +203,7 @@ export async function measureWindHeading(): Promise<WindHeadingMeasurementResult
   const samples: number[] = []
   const accuracySamples: number[] = []
   let latestNativeDebug: WindHeadingNativeDebug | null = null
+  let selectedHeadingSource: WindHeadingSource = 'back-vector-column'
   let referenceFrame: WindHeadingReferenceFrame | null = null
   const startedAt = Date.now()
 
@@ -213,6 +224,9 @@ export async function measureWindHeading(): Promise<WindHeadingMeasurementResult
 
         if (nativeDebug !== null) {
           latestNativeDebug = nativeDebug
+          selectedHeadingSource = nativeDebug.headings.backVectorHeadingRowDegrees !== null
+            ? 'back-vector-row'
+            : 'back-vector-column'
         }
       }
 
@@ -245,6 +259,8 @@ export async function measureWindHeading(): Promise<WindHeadingMeasurementResult
 
   const result = createMeasurementResult({
     headingDegrees,
+    selectedHeadingDegrees: headingDegrees,
+    selectedHeadingSource,
     sampleCount: samples.length,
     referenceFrame,
     accuracyDegrees: averageAccuracyDegrees(accuracySamples),

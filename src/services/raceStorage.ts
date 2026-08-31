@@ -7,6 +7,7 @@ import type {
   RaceSummary,
   SailingDay,
 } from '../types'
+import type { WindHeadingMeasurementResult } from './sensors/windHeadingService'
 
 const STORAGE_KEY = 'aster-race:race-storage:v1'
 const STORAGE_VERSION = 1
@@ -26,6 +27,7 @@ export type CreateRaceInput = {
   startGunTime?: string
   endTime?: string
   course?: CourseDefinition
+  windMeasurement?: WindHeadingMeasurementResult
   samples?: RaceSample[]
   events?: RaceEvent[]
   isFavorite?: boolean
@@ -71,6 +73,7 @@ export function createRace(input: CreateRaceInput = {}): Race {
     startGunTime: input.startGunTime,
     endTime: input.endTime,
     course: input.course,
+    windMeasurement: input.windMeasurement,
     samples: input.samples ? [...input.samples] : [],
     events: input.events ? [...input.events] : [],
     isFavorite: input.isFavorite ?? false,
@@ -375,6 +378,7 @@ function readRace(value: unknown): Race | null {
     startGunTime: isString(value.startGunTime) ? value.startGunTime : undefined,
     endTime: isString(value.endTime) ? value.endTime : undefined,
     course: readCourseDefinition(value.course),
+    windMeasurement: readWindMeasurement(value.windMeasurement),
     samples: Array.isArray(value.samples)
       ? value.samples
         .map(readRaceSample)
@@ -391,6 +395,12 @@ function readRace(value: unknown): Race | null {
   race.summary = calculateRaceSummary(race)
 
   return race
+}
+
+function readWindMeasurement(value: unknown): WindHeadingMeasurementResult | undefined {
+  return isRecord(value) && isFiniteNumber(value.headingDegrees) && isFiniteNumber(value.sampleCount)
+    ? value as unknown as WindHeadingMeasurementResult
+    : undefined
 }
 
 function readNumber(value: unknown): number | undefined {
