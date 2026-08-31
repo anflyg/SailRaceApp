@@ -102,3 +102,13 @@ export const SPEED_SOURCE_DISAGREEMENT_SCENARIO: SailingSimulatorConfig = {
   startTimestamp: 1_700_000_000_000,
   accuracyMeters: 2,
 }
+
+export const COURSE_SOURCE_DISAGREEMENT_SCENARIO: SailingSimulatorConfig = {
+  origin: { latitude: 59.3293, longitude: 18.0686 },
+  courseDegrees: 45,
+  reportedCourseDegrees: 310,
+  targetSpeedKnots: 4.5,
+  timeStepSeconds: 1,
+  startTimestamp: 1_700_000_000_000,
+  accuracyMeters: 2,
+}

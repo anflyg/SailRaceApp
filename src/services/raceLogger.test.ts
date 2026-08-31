@@ -1,11 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   getActiveRaceId,
+  recordSampleIfDue,
   recordLaylineTackEventIfActive,
   startRaceLogging,
   stopActiveRace,
 } from './raceLogger'
 import { getRace, listRaces } from './raceStorage'
+import { createRaceExportFiles } from './raceExport'
 
 class MockStorage implements Storage {
   public get length(): number {
@@ -86,5 +88,36 @@ describe('recordLaylineTackEventIfActive', () => {
     expect(getRace(startedRace.id)?.events).toHaveLength(1)
 
     stopActiveRace({ now: new Date('2026-05-20T12:20:00.000Z') })
+  })
+})
+
+describe('race sample diagnostics round trip', () => {
+  it('persists speed and course diagnostics through storage and all exports', () => {
+    vi.stubGlobal('localStorage', new MockStorage())
+    const race = startRaceLogging({ countdownDurationSeconds: 300, now: new Date('2026-08-18T18:00:00.000Z') })
+    const updated = recordSampleIfDue({
+      gps: { status: 'watching', error: null, latitude: 59.3, longitude: 18, accuracyMeters: 2, speedKnots: 4.5, nativeSpeedKnots: 1.2, positionSpeedKnots: 4.5, fusedSpeedKnots: 4.49, courseDegrees: 45, nativeCourseDegrees: 310, positionCourseDegrees: 45, fusedCourseDegrees: 45, courseReliable: true, timestamp: Date.parse('2026-08-18T18:00:01.000Z'), displayCourseDegrees: 45, presentationTimestamp: Date.parse('2026-08-18T18:00:01.000Z'), sampleCount: 1 },
+    })
+    const loaded = getRace(race.id)
+    expect(updated?.samples[0]).toMatchObject({ nativeSpeedKnots: 1.2, positionSpeedKnots: 4.5, fusedSpeedKnots: 4.49, nativeCourseDegrees: 310, positionCourseDegrees: 45, fusedCourseDegrees: 45 })
+    expect(loaded?.samples[0]).toMatchObject({
+      timestamp: updated?.samples[0]?.timestamp,
+      latitude: updated?.samples[0]?.latitude,
+      longitude: updated?.samples[0]?.longitude,
+      speedKnots: 4.5,
+      nativeSpeedKnots: 1.2,
+      positionSpeedKnots: 4.5,
+      fusedSpeedKnots: 4.49,
+      cogDegrees: 45,
+      nativeCourseDegrees: 310,
+      positionCourseDegrees: 45,
+      fusedCourseDegrees: 45,
+    })
+    const files = createRaceExportFiles(loaded!)
+    expect(files.every((file) => file.content.includes('nativeCourseDegrees') || file.fileName.endsWith('.gpx'))).toBe(true)
+    expect(files.find((file) => file.fileName.endsWith('.json'))?.content).toContain('nativeSpeedKnots')
+    expect(files.find((file) => file.fileName.endsWith('.csv'))?.content).toContain('1.2')
+    expect(files.find((file) => file.fileName.endsWith('.gpx'))?.content).toContain('aster:fusedSpeedKnots')
+    stopActiveRace({ now: new Date('2026-08-18T18:01:00.000Z') })
   })
 })

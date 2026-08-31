@@ -6,7 +6,7 @@ describe('race export diagnostics', () => {
   it('exports speed diagnostics in JSON, CSV and GPX', () => {
     const race: Race = {
       id: 'race-1', dayId: '2026-08-16', name: 'Test', createdAt: '2026-08-16T12:00:00.000Z', samples: [{
-        timestamp: '2026-08-16T12:00:00.000Z', latitude: 59.3, longitude: 18.0, speedKnots: 4.5, nativeSpeedKnots: 1.2, positionSpeedKnots: 4.5, fusedSpeedKnots: 4.49,
+        timestamp: '2026-08-16T12:00:00.000Z', latitude: 59.3, longitude: 18.0, speedKnots: 4.5, nativeSpeedKnots: 1.2, positionSpeedKnots: 4.5, fusedSpeedKnots: 4.49, nativeCourseDegrees: 310, positionCourseDegrees: 45, fusedCourseDegrees: 45,
       }], events: [],
     }
     const files = createRaceExportFiles(race)
@@ -23,5 +23,7 @@ describe('race export diagnostics', () => {
     expect(gpx).toContain('aster:nativeSpeedKnots')
     expect(gpx).toContain('aster:positionSpeedKnots')
     expect(gpx).toContain('aster:fusedSpeedKnots')
+    expect(csv).toContain('nativeCourseDegrees,positionCourseDegrees,fusedCourseDegrees')
+    expect(gpx).toContain('aster:fusedCourseDegrees')
   })
 })

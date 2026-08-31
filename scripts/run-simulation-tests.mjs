@@ -89,6 +89,12 @@ const scenarios = [
     expected: { plannedChecks: 10, speedPassed: 10, coursePassed: 10 },
     speedSourceDisagreement: true,
   },
+  {
+    name: 'course-source-disagreement',
+    label: 'COURSE SOURCE DISAGREEMENT',
+    timeoutMs: 35_000,
+    expected: { plannedChecks: 9, speedPassed: 9, coursePassed: 9 },
+  },
 ]
 
 const scenariosToRun = process.env.SIMULATION_SCENARIO
@@ -519,6 +525,8 @@ async function validateDashboard(page, scenario) {
         ? '045°'
       : scenario.name === 'upwind-to-k1'
         ? '045°'
+      : scenario.name === 'course-source-disagreement'
+        ? '045°'
       : '000°'
   if (scenario.name === 'layline-reactive-tack' || scenario.name === 'upwind-to-k1') {
     const match = /^(\d{3})°$/.exec(courseText ?? '')
@@ -546,7 +554,7 @@ async function runScenario(browser, scenario) {
     const startedAt = Date.now()
     await page.goto(`${BASE_URL}/?simulation=${scenario.name}&simulationRate=${scenario.simulationRate ?? 10}`, { waitUntil: 'networkidle' })
     await page.getByLabel('Fart').waitFor({ state: 'visible', timeout: 10_000 })
-    if (scenario.laylineWarning || scenario.reactiveTack || scenario.upwindToK1 || scenario.speedSourceDisagreement) {
+    if (scenario.laylineWarning || scenario.reactiveTack || scenario.upwindToK1 || scenario.speedSourceDisagreement || scenario.name === 'course-source-disagreement') {
       await page.evaluate(() => {
         const box = document.querySelector('.velocity-made-good')
         const events = []
@@ -626,7 +634,7 @@ async function runScenario(browser, scenario) {
     const dashboard = await validateDashboard(page, scenario)
     await fs.writeFile(path.join(OUTPUT_DIR, `${scenario.name}.json`), `${JSON.stringify(report, null, 2)}\n`)
     const reactiveTack = scenario.reactiveTack || scenario.upwindToK1 ? await page.evaluate(() => window.__SAILRACE_SIMULATION_REACTIVE_TACK__) : null
-    const samples = scenario.upwindToK1 || scenario.speedSourceDisagreement ? await page.evaluate(() => [...(window.__SAILRACE_SIMULATION_SAMPLES__?.values() ?? [])]) : []
+    const samples = scenario.upwindToK1 || scenario.speedSourceDisagreement || scenario.name === 'course-source-disagreement' ? await page.evaluate(() => [...(window.__SAILRACE_SIMULATION_SAMPLES__?.values() ?? [])]) : []
     const events = scenario.upwindToK1 ? await page.evaluate(() => window.__SAILRACE_LAYLINE_UI_EVENTS__ ?? []) : []
     const upwindToK1Analysis = scenario.upwindToK1 ? analyzeUpwindToK1({ report, reactiveTack, samples, events }) : null
     if (scenario.speedSourceDisagreement) {

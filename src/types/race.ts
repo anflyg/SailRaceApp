@@ -45,6 +45,9 @@ export type RaceSample = {
   nativeSpeedKnots?: number
   positionSpeedKnots?: number
   fusedSpeedKnots?: number
+  nativeCourseDegrees?: number
+  positionCourseDegrees?: number
+  fusedCourseDegrees?: number
   cogDegrees?: number
   headingDegrees?: number
   windDirectionDegrees?: number

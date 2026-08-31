@@ -82,6 +82,14 @@ export const SPEED_SOURCE_DISAGREEMENT_SIMULATION_VALIDATION = {
   courseToleranceDegrees: 1,
 } as const
 
+export const COURSE_SOURCE_DISAGREEMENT_SIMULATION_VALIDATION = {
+  validationIntervalSeconds: 3,
+  warmupSeconds: 6,
+  endSeconds: 30,
+  speedToleranceKnots: 0.5,
+  courseToleranceDegrees: 2,
+} as const
+
 export interface SimulationValidationTolerances {
   speedToleranceKnots: number
   courseToleranceDegrees: number
@@ -177,6 +185,7 @@ export interface SimulationValidator {
       FilteredGpsReading,
       'speedKnots' | 'displayCourseDegrees' | 'timestamp' | 'presentationTimestamp'
     > & {
+      courseDegrees?: number | null
       vmgKnots?: number | null
       laylineObservation?: {
         reference: { source: string; headingDegrees: number } | null
@@ -273,6 +282,8 @@ export function createSimulationValidator(config: SimulationValidatorConfig): Si
         ? LAYLINE_REACTIVE_TACK_SIMULATION_VALIDATION
       : config.scenario === 'upwind-to-k1'
         ? UPWIND_TO_K1_SIMULATION_VALIDATION
+      : config.scenario === 'course-source-disagreement'
+        ? COURSE_SOURCE_DISAGREEMENT_SIMULATION_VALIDATION
       : config.scenario === 'speed-source-disagreement'
         ? SPEED_SOURCE_DISAGREEMENT_SIMULATION_VALIDATION
       : STRAIGHT_SIMULATION_VALIDATION
@@ -374,7 +385,9 @@ export function createSimulationValidator(config: SimulationValidatorConfig): Si
       }
 
       const appSpeedKnots = filteredGps.speedKnots
-      const appCourseDegrees = filteredGps.displayCourseDegrees
+      const appCourseDegrees = config.scenario === 'course-source-disagreement'
+        ? filteredGps.courseDegrees ?? filteredGps.displayCourseDegrees
+        : filteredGps.displayCourseDegrees
       const groundTruthSpeedKnots = pendingSample.groundTruthSpeedKnots
       const speedErrorKnots =
         isFiniteNumber(groundTruthSpeedKnots) && isFiniteNumber(appSpeedKnots)

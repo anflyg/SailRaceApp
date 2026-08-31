@@ -145,9 +145,9 @@ export function AppShell() {
   const filteredGps = manualMode.enabled ? MANUAL_FIXTURES.filteredGps : filteredGpsDevice
   const simulationAppVmgKnots = simulationMode.scenario === 'wind-vmg' &&
     filteredGps.speedKnots !== null &&
-    filteredGps.displayCourseDegrees !== null &&
+    filteredGps.courseDegrees !== null &&
     course.windHeadingDegrees !== null
-    ? calculateVelocityMadeGood(filteredGps.speedKnots, filteredGps.displayCourseDegrees, course.windHeadingDegrees)
+    ? calculateVelocityMadeGood(filteredGps.speedKnots, filteredGps.courseDegrees, course.windHeadingDegrees)
     : null
   const simulationLaylineObservation = simulationMode.scenario === 'layline-candidate' || simulationMode.scenario === 'upwind-to-k1'
     ? getLaylineObservation({ course, gps: filteredGps, enabled: laylineEnabled, alphaDegrees: laylineAlphaDegrees })
@@ -169,7 +169,7 @@ export function AppShell() {
   }, [simulationGpsSource, simulationMode.tickIntervalMs])
 
   useEffect(() => {
-    if ((simulationMode.scenario !== 'layline-reactive-tack' && simulationMode.scenario !== 'upwind-to-k1' && simulationMode.scenario !== 'speed-source-disagreement') || simulationGpsSource === null) {
+    if ((simulationMode.scenario !== 'layline-reactive-tack' && simulationMode.scenario !== 'upwind-to-k1' && simulationMode.scenario !== 'speed-source-disagreement' && simulationMode.scenario !== 'course-source-disagreement') || simulationGpsSource === null) {
       return
     }
 
@@ -205,7 +205,7 @@ export function AppShell() {
   }, [filteredGps, simulationAppVmgKnots, simulationGpsSource, simulationLaylineObservation, simulationValidator])
 
   useEffect(() => {
-    if (simulationMode.scenario === 'speed-source-disagreement') {
+    if (simulationMode.scenario === 'speed-source-disagreement' || simulationMode.scenario === 'course-source-disagreement') {
       window.__SAILRACE_SIMULATION_SPEED_DIAGNOSTICS__ = filteredGps
     }
   }, [filteredGps, simulationMode.scenario])

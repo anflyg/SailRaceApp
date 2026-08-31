@@ -27,6 +27,7 @@ export interface SailingSimulatorConfig {
   startTimestamp?: number
   accuracyMeters?: number
   reportedSpeedKnots?: number
+  reportedCourseDegrees?: number
 }
 
 export interface SailingSimulationSample {
@@ -79,7 +80,7 @@ function createSample(
     groundTruthSpeedKnots,
     targetCourseDegrees,
     groundTruthCourseDegrees,
-    courseDegrees,
+    courseDegrees: config.reportedCourseDegrees ?? courseDegrees,
     speedMetersPerSecond: groundTruthSpeedKnots === null
       ? null
       : groundTruthSpeedKnots / KNOTS_PER_METER_PER_SECOND,

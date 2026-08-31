@@ -15,6 +15,7 @@ import {
   type GpsSpeedFusionState,
 } from '../domain/gpsSpeed'
 import { MIN_RELIABLE_COURSE_SPEED_KNOTS } from './useLiveGps'
+import { calculatePositionCourseDegrees, createGpsCourseFusionState, fuseGpsCourseDegrees, GPS_COURSE_MIN_BASELINE_MS, GPS_COURSE_MAX_BASELINE_MS, type GpsCoursePosition } from '../domain/gpsCourse'
 import type { FilteredGpsReading, LiveGpsReading } from '../types'
 
 export const GPS_FILTER_WINDOW_MS = 3000
@@ -34,7 +35,9 @@ interface GpsSample {
   speedKnots: number | null
   positionSpeedKnots: number | null
   fusedSpeedKnots: number | null
-  courseDegrees: number | null
+  nativeCourseDegrees: number | null
+  positionCourseDegrees: number | null
+  fusedCourseDegrees: number | null
 }
 
 interface LastKnownDisplaySpeed extends LastKnownGpsSpeed {
@@ -85,6 +88,9 @@ export function useFilteredGps(gps: LiveGpsReading): FilteredGpsReading {
   const [speedGraceTick, setSpeedGraceTick] = useState(0)
   const lastKnownDisplaySpeedRef = useRef<LastKnownDisplaySpeed | null>(null)
   const fusionStateRef = useRef<GpsSpeedFusionState>(createGpsSpeedFusionState())
+  const courseHistoryRef = useRef<GpsCoursePosition[]>([])
+  const courseFusionStateRef = useRef(createGpsCourseFusionState())
+  const courseFusionResultsRef = useRef(new Map<number, number | null>())
 
   useEffect(() => {
     if (
@@ -98,6 +104,20 @@ export function useFilteredGps(gps: LiveGpsReading): FilteredGpsReading {
     }
 
     const timestamp = gps.timestamp ?? Date.now()
+    const currentCoursePosition: GpsCoursePosition = {
+      latitude: gps.latitude,
+      longitude: gps.longitude,
+      accuracyMeters: gps.accuracyMeters,
+      timestamp: gps.timestamp,
+    }
+    const previousHistoricalCoursePosition = courseHistoryRef.current.findLast((candidate) => (
+      candidate.timestamp !== null && currentCoursePosition.timestamp !== null &&
+      currentCoursePosition.timestamp - candidate.timestamp >= GPS_COURSE_MIN_BASELINE_MS &&
+      currentCoursePosition.timestamp - candidate.timestamp <= GPS_COURSE_MAX_BASELINE_MS
+    )) ?? null
+    if (currentCoursePosition.timestamp !== null) {
+      courseHistoryRef.current = [...courseHistoryRef.current.slice(-8), currentCoursePosition]
+    }
     const cutoff = timestamp - GPS_FILTER_WINDOW_MS
     const timeoutId = window.setTimeout(() => {
       setSamples((current) => {
@@ -109,6 +129,7 @@ export function useFilteredGps(gps: LiveGpsReading): FilteredGpsReading {
         }
         let previousPosition: GpsSpeedPosition | null = null
         let previousSpeedKnots: number | null = null
+        const previousCoursePosition = previousHistoricalCoursePosition
 
         for (let index = current.length - 1; index >= 0; index -= 1) {
           const sample = current[index]
@@ -155,6 +176,7 @@ export function useFilteredGps(gps: LiveGpsReading): FilteredGpsReading {
           previousSpeedKnots,
           fusionStateRef.current,
         )
+        const positionCourseDegrees = calculatePositionCourseDegrees(previousCoursePosition, currentPosition, fusedSpeedKnots)
 
         return [
           ...current.filter((sample) => sample.timestamp >= cutoff),
@@ -167,7 +189,9 @@ export function useFilteredGps(gps: LiveGpsReading): FilteredGpsReading {
             speedKnots: gps.speedKnots,
             positionSpeedKnots,
             fusedSpeedKnots,
-            courseDegrees: gps.courseDegrees,
+            nativeCourseDegrees: gps.courseDegrees,
+            positionCourseDegrees,
+            fusedCourseDegrees: null,
           },
         ]
       })
@@ -255,13 +279,34 @@ export function useFilteredGps(gps: LiveGpsReading): FilteredGpsReading {
     return () => window.clearTimeout(timeoutId)
   }, [speedGraceTick])
 
-  const filteredCourseDegrees = useMemo(() => {
-    const courseValues = samples
-      .map((sample) => sample.courseDegrees)
-      .filter((courseDegrees): courseDegrees is number => courseDegrees !== null)
-
-    return averageAnglesDegrees(courseValues)
+  const courseResults = useMemo(() => {
+    const state = courseFusionStateRef.current
+    const results = samples.map((sample, index) => {
+      const previous = samples.slice(0, index).findLast((candidate) => (
+        candidate.gpsTimestamp !== null && sample.gpsTimestamp !== null &&
+        sample.gpsTimestamp - candidate.gpsTimestamp >= GPS_COURSE_MIN_BASELINE_MS &&
+        sample.gpsTimestamp - candidate.gpsTimestamp <= GPS_COURSE_MAX_BASELINE_MS
+      ))
+      const calculatedPositionCourseDegrees = calculatePositionCourseDegrees(
+        previous ? { latitude: previous.latitude, longitude: previous.longitude, accuracyMeters: previous.accuracyMeters, timestamp: previous.gpsTimestamp } : null,
+        { latitude: sample.latitude, longitude: sample.longitude, accuracyMeters: sample.accuracyMeters, timestamp: sample.gpsTimestamp },
+        sample.fusedSpeedKnots,
+      )
+      const positionCourseDegrees = sample.positionCourseDegrees ?? calculatedPositionCourseDegrees
+      const cachedCourse = sample.gpsTimestamp === null ? undefined : courseFusionResultsRef.current.get(sample.gpsTimestamp)
+      const fusedCourseDegrees = cachedCourse !== undefined
+        ? cachedCourse
+        : fuseGpsCourseDegrees(sample.nativeCourseDegrees, positionCourseDegrees, sample.fusedSpeedKnots, state)
+      if (sample.gpsTimestamp !== null) courseFusionResultsRef.current.set(sample.gpsTimestamp, fusedCourseDegrees)
+      return { ...sample, positionCourseDegrees, fusedCourseDegrees }
+    })
+    const activeTimestamps = new Set(samples.map((sample) => sample.gpsTimestamp).filter((timestamp): timestamp is number => timestamp !== null))
+    courseFusionResultsRef.current.forEach((_value, timestamp) => { if (!activeTimestamps.has(timestamp)) courseFusionResultsRef.current.delete(timestamp) })
+    return results
   }, [samples])
+  const filteredCourseDegrees = useMemo(() => averageAnglesDegrees(
+    courseResults.map((sample) => sample.fusedCourseDegrees).filter((course): course is number => course !== null),
+  ), [courseResults])
 
   const latestSamplePresentationTimestamp = useMemo(
     () => getLatestProcessedGpsTimestamp(samples),
@@ -318,6 +363,9 @@ export function useFilteredGps(gps: LiveGpsReading): FilteredGpsReading {
         nativeSpeedKnots: null,
         positionSpeedKnots: null,
         fusedSpeedKnots: null,
+        nativeCourseDegrees: null,
+        positionCourseDegrees: null,
+        fusedCourseDegrees: null,
         speedKnots: null,
         courseDegrees: null,
         displayCourseDegrees: null,
@@ -327,8 +375,8 @@ export function useFilteredGps(gps: LiveGpsReading): FilteredGpsReading {
       }
     }
     const speedKnots = displaySpeedKnots
-    const latestSample = samples.at(-1) ?? null
-    const courseDegrees = filteredCourseDegrees
+    const latestSample = courseResults.at(-1) ?? null
+    const courseDegrees = courseResults.at(-1)?.fusedCourseDegrees ?? null
     const courseReliable =
       courseDegrees !== null &&
       speedKnots !== null &&
@@ -340,6 +388,9 @@ export function useFilteredGps(gps: LiveGpsReading): FilteredGpsReading {
       nativeSpeedKnots: gps.speedKnots,
       positionSpeedKnots: latestSample?.positionSpeedKnots ?? null,
       fusedSpeedKnots: latestSample?.fusedSpeedKnots ?? null,
+      nativeCourseDegrees: latestSample?.nativeCourseDegrees ?? gps.courseDegrees,
+      positionCourseDegrees: latestSample?.positionCourseDegrees ?? null,
+      fusedCourseDegrees: latestSample?.fusedCourseDegrees ?? null,
       courseDegrees,
       displayCourseDegrees:
         filteredSpeedKnots !== null &&
@@ -359,5 +410,6 @@ export function useFilteredGps(gps: LiveGpsReading): FilteredGpsReading {
     gps,
     presentationTimestamp,
     samples.length,
+    courseResults,
   ])
 }

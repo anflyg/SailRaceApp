@@ -420,6 +420,13 @@ function readRaceSample(value: unknown): RaceSample | null {
     sample.speedKnots = value.speedKnots
   }
 
+  if (isFiniteNumber(value.nativeSpeedKnots)) sample.nativeSpeedKnots = value.nativeSpeedKnots
+  if (isFiniteNumber(value.positionSpeedKnots)) sample.positionSpeedKnots = value.positionSpeedKnots
+  if (isFiniteNumber(value.fusedSpeedKnots)) sample.fusedSpeedKnots = value.fusedSpeedKnots
+  if (isFiniteNumber(value.nativeCourseDegrees)) sample.nativeCourseDegrees = value.nativeCourseDegrees
+  if (isFiniteNumber(value.positionCourseDegrees)) sample.positionCourseDegrees = value.positionCourseDegrees
+  if (isFiniteNumber(value.fusedCourseDegrees)) sample.fusedCourseDegrees = value.fusedCourseDegrees
+
   if (isFiniteNumber(value.cogDegrees)) {
     sample.cogDegrees = value.cogDegrees
   }

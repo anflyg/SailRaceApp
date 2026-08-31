@@ -190,6 +190,9 @@ export function recordSampleIfDue({
   if (gps.courseDegrees !== null) {
     sample.cogDegrees = gps.courseDegrees
   }
+  if (gps.nativeCourseDegrees !== null) sample.nativeCourseDegrees = gps.nativeCourseDegrees
+  if (gps.positionCourseDegrees !== null) sample.positionCourseDegrees = gps.positionCourseDegrees
+  if (gps.fusedCourseDegrees !== null) sample.fusedCourseDegrees = gps.fusedCourseDegrees
 
   if (headingDegrees !== undefined) {
     sample.headingDegrees = headingDegrees

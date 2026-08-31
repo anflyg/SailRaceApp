@@ -59,6 +59,15 @@ describe('simulation mode', () => {
     )).toEqual({ enabled: true, scenario: 'course-noise', simulationRate: 1, tickIntervalMs: 1_000 })
   })
 
+  it('enables the stale native course recovery scenario', () => {
+    expect(getSimulationModeConfig(false, developmentEnvironment, new URLSearchParams('simulation=course-source-disagreement')))
+      .toMatchObject({ enabled: true, scenario: 'course-source-disagreement' })
+    const source = createSimulationGpsSource('course-source-disagreement')
+    for (let second = 0; second < 8; second += 1) source.advance()
+    expect(source.currentSample().courseDegrees).toBe(310)
+    expect(source.currentSample().groundTruthCourseDegrees).toBeCloseTo(45, 5)
+  })
+
   it('enables the wind-vmg scenario only for an allowed build and query', () => {
     expect(getSimulationModeConfig(
       false,

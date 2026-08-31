@@ -81,8 +81,8 @@ export function RaceDashboardView({
     : selectedVelocityMode === 'vmg'
       ? course.windHeadingDegrees
       : null
-  const velocityMadeGood = speedKnots !== null && hasDisplayCourse && referenceHeading !== null
-    ? calculateVelocityMadeGood(speedKnots, courseHeading, referenceHeading)
+  const velocityMadeGood = speedKnots !== null && gps.courseDegrees !== null && referenceHeading !== null
+    ? calculateVelocityMadeGood(speedKnots, gps.courseDegrees, referenceHeading)
     : null
   const velocityLabel = selectedVelocityMode === 'vmc'
     ? 'VMG Bana'
