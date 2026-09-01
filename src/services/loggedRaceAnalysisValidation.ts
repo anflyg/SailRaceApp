@@ -1,7 +1,6 @@
 import { markStartGun, recordSampleIfDue, startRaceLogging, stopActiveRace } from './raceLogger'
-import { getRace, listRaces } from './raceStorage'
+import { deleteRace, getRace, listRaces } from './raceStorage'
 import {
-  ANALYSIS_VALIDATION_RACE_NAME,
   getFixtureTrajectoryPosition,
   validateAnalysisRace,
   type AnalysisValidationReport,
@@ -41,8 +40,9 @@ function toFilteredGpsReading(elapsedSeconds: number): FilteredGpsReading {
 }
 
 export function ensureLoggedRaceAnalysis(): { race: Race; report: LoggedRaceAnalysisReport } {
-  const existingRace = listRaces().find((race) => race.name === LOGGED_RACE_NAME)
-  if (existingRace) return createReport(existingRace, 0)
+  for (const race of listRaces().filter((candidate) => candidate.name === LOGGED_RACE_NAME)) {
+    deleteRace(race.id)
+  }
 
   const startedRace = startRaceLogging({ countdownDurationSeconds: 2.5, course: COURSE, name: LOGGED_RACE_NAME, now: LOGGER_START_TIME })
   markStartGun(new Date(START_GUN_TIME))
@@ -58,10 +58,16 @@ export function ensureLoggedRaceAnalysis(): { race: Race; report: LoggedRaceAnal
 
 function createReport(race: Race, observationCount: number): { race: Race; report: LoggedRaceAnalysisReport } {
   const analysis = validateAnalysisRace(race)
-  const coursePreserved = race.course?.startLine?.port.latitude === COURSE.startLine?.port.latitude && race.course?.startLine?.starboard.longitude === COURSE.startLine?.starboard.longitude
-  const diagnosticsPreserved = race.samples.length > 0 && race.samples.every((sample) => sample.speedKnots === 6 && sample.cogDegrees !== undefined && sample.accuracy === 2)
-  const storagePass = race.id.length > 0 && Boolean(race.summary) && coursePreserved && diagnosticsPreserved
-  const loggingPass = race.samples.length > 0 && race.startGunTime === new Date(START_GUN_TIME).toISOString() && race.endTime !== undefined && race.samples.every((sample, index, samples) => index === 0 || sample.timestamp >= samples[index - 1].timestamp)
+  const expectedStartLine = COURSE.startLine!
+  const coursePreserved = race.course?.startLine?.port.latitude === expectedStartLine.port.latitude && race.course.startLine.port.longitude === expectedStartLine.port.longitude && race.course.startLine.starboard.latitude === expectedStartLine.starboard.latitude && race.course.startLine.starboard.longitude === expectedStartLine.starboard.longitude
+  const diagnosticsPreserved = race.samples.length > 0 && race.samples.every((sample) => {
+    const elapsedSeconds = (Date.parse(sample.timestamp) - START_GUN_TIME) / 1000
+    const expectedCourse = elapsedSeconds >= 6 ? 45 : 0
+    return sample.speedKnots === 6 && sample.nativeSpeedKnots === 6 && sample.positionSpeedKnots === 6 && sample.fusedSpeedKnots === 6 && sample.cogDegrees === expectedCourse && sample.nativeCourseDegrees === expectedCourse && sample.positionCourseDegrees === expectedCourse && sample.fusedCourseDegrees === expectedCourse && sample.accuracy === 2
+  })
+  const storagePass = race.id.length > 0 && Boolean(race.summary) && race.summary?.sampleCount === race.samples.length && coursePreserved && diagnosticsPreserved
+  const expectedTimestamps = Array.from({ length: 9 }, (_, index) => new Date(START_GUN_TIME + index * 1000).toISOString())
+  const loggingPass = observationCount === 9 && race.samples.length === 9 && race.startGunTime === new Date(START_GUN_TIME).toISOString() && race.endTime === new Date(START_GUN_TIME + 8_500).toISOString() && JSON.stringify(race.samples.map((sample) => sample.timestamp)) === JSON.stringify(expectedTimestamps)
   const replayErrors = analysis.replayChecks.map((check) => ({ position: check.actualPosition?.errorMeters ?? Infinity, speed: check.speed.error ?? Infinity, course: check.course.error ?? Infinity }))
 
   return {
@@ -80,5 +86,3 @@ function createReport(race: Race, observationCount: number): { race: Race; repor
     },
   }
 }
-
-export { ANALYSIS_VALIDATION_RACE_NAME }

@@ -206,6 +206,7 @@ export function AppShell() {
 
     return () => {
       delete window.__SAILRACE_ANALYSIS_VALIDATION_REPORT__
+      delete window.__SAILRACE_LOGGED_RACE_ANALYSIS_REPORT__
     }
   }, [isAnalysisValidation, isLoggedRaceAnalysis, loggedRaceAnalysis])
 
@@ -421,7 +422,7 @@ export function AppShell() {
         manualLaylineCountdownValue={manualMode.enabled ? manualMode.laylineCountdownValue : null}
       />
     ),
-    analysis: <RaceAnalysisView initialRaceId={analysisValidationRace?.id ?? loggedRaceAnalysis?.race.id} />,
+    analysis: <RaceAnalysisView initialRaceId={analysisValidationRace?.id ?? loggedRaceAnalysis?.race.id} initialRace={loggedRaceAnalysis?.race} />,
   }[activeView]
 
   return (

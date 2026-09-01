@@ -8,7 +8,9 @@ import { buildReplayTimeline, getReplayFrame } from '../../services/raceReplay'
 import { analyzeRaceStart, type StartAnalysisResult } from '../../services/startAnalysis'
 import {
   deleteRace as deleteStoredRace,
+  createDateKey,
   listRacesByDay,
+  listRaces,
   listSailingDays,
   renameRace,
   toggleFavorite,
@@ -43,8 +45,8 @@ const analysisSections: Array<{ id: AnalysisSection; label: string }> = [
   { id: 'data', label: 'Data' },
 ]
 
-export function RaceAnalysisView({ initialRaceId }: { initialRaceId?: string } = {}) {
-  const [groups, setGroups] = useState(loadRaceGroups)
+export function RaceAnalysisView({ initialRaceId, initialRace }: { initialRaceId?: string; initialRace?: Race } = {}) {
+  const [groups, setGroups] = useState(() => loadRaceGroups(initialRaceId, initialRace))
   const [exportingRaceId, setExportingRaceId] = useState<string | null>(null)
   const [analysisState, setAnalysisState] = useState<AnalysisState>({
     activeSection: initialRaceId ? 'overview' : 'library',
@@ -52,6 +54,10 @@ export function RaceAnalysisView({ initialRaceId }: { initialRaceId?: string } =
     ghostRaceId: null,
     currentReplayTime: 0,
   })
+  useEffect(() => {
+    if (!initialRaceId) return
+    setGroups(loadRaceGroups(initialRaceId, initialRace))
+  }, [initialRace, initialRaceId])
   const allRaces = useMemo(() => (
     groups.flatMap((group) => group.races)
   ), [groups])
@@ -319,13 +325,26 @@ function StartAnalysisView({ race }: { race: Race | null }) {
   )
 }
 
-function loadRaceGroups(): RaceLibraryGroup[] {
-  return listSailingDays()
+function loadRaceGroups(initialRaceId?: string, initialRace?: Race): RaceLibraryGroup[] {
+  const groups = listSailingDays()
     .map((day) => ({
       day,
       races: listRacesByDay(day.date),
     }))
     .filter((group) => group.races.length > 0)
+
+  if (initialRaceId && groups.some((group) => group.races.some((race) => race.id === initialRaceId))) {
+    return groups
+  }
+
+  const storedInitialRace = initialRace ?? (initialRaceId ? listRaces().find((race) => race.id === initialRaceId) : null)
+
+  return storedInitialRace
+    ? [...groups, {
+      day: { id: storedInitialRace.dayId, date: createDateKey(storedInitialRace.createdAt), raceIds: [storedInitialRace.id] },
+      races: [storedInitialRace],
+    }]
+    : groups
 }
 
 function AnalysisPlaceholder({

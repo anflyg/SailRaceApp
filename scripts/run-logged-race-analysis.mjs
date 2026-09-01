@@ -9,6 +9,7 @@ const baseUrl = `http://${host}:${port}`
 const outputPath = path.resolve('simulation-results/latest/logged-race-analysis.json')
 const server = spawn('npm', ['run', 'dev:simulation', '--', '--host', host, '--port', String(port), '--strictPort'], { stdio: 'pipe' })
 const output = []
+let page
 server.stdout.on('data', (chunk) => output.push(chunk.toString()))
 server.stderr.on('data', (chunk) => output.push(chunk.toString()))
 
@@ -21,9 +22,12 @@ try {
     await new Promise((resolve) => setTimeout(resolve, 100))
   }
   const browser = await chromium.launch({ headless: true })
-  const page = await browser.newPage()
+  page = await browser.newPage()
+  const pageErrors = []
+  page.on('pageerror', (error) => pageErrors.push(error.message))
+  page.on('console', (message) => output.push(`[browser:${message.type()}] ${message.text()}`))
   await page.goto(`${baseUrl}/?simulation=logged-race-analysis`)
-  await page.getByText('Logged race analysis fixture').first().waitFor()
+  await page.getByText('Logged race analysis fixture').first().waitFor({ state: 'attached', timeout: 10_000 })
   const serviceReport = await page.evaluate(() => window.__SAILRACE_LOGGED_RACE_ANALYSIS_REPORT__)
   const map = page.getByLabel('Racekarta, tryck för att förstora')
   const mapVisible = await map.isVisible()
@@ -33,7 +37,8 @@ try {
   const report = {
     ...serviceReport,
     browser: { loggedRaceExists: true, overview: mapVisible, trackPresent: Boolean(stroke), startAnalysis: startVisible, nonScalingStroke: stroke === 'non-scaling-stroke' },
-    pass: Boolean(serviceReport?.pass) && mapVisible && Boolean(stroke) && startVisible && stroke === 'non-scaling-stroke',
+    pageErrors,
+    pass: Boolean(serviceReport?.pass) && mapVisible && Boolean(stroke) && startVisible && stroke === 'non-scaling-stroke' && pageErrors.length === 0,
   }
   await browser.close()
   await fs.mkdir(path.dirname(outputPath), { recursive: true })
@@ -41,6 +46,10 @@ try {
   console.log(JSON.stringify(report, null, 2))
 } catch (error) {
   console.error(error instanceof Error ? error.message : error)
+  if (page) {
+    console.error((await page.locator('body').innerText().catch(() => '')))
+    console.error(await page.evaluate(() => ({ storage: localStorage.getItem('aster-race:race-storage:v1'), report: window.__SAILRACE_LOGGED_RACE_ANALYSIS_REPORT__ })))
+  }
   console.error(output.join(''))
   process.exitCode = 1
 } finally {
