@@ -20,23 +20,23 @@ export const ANALYSIS_VALIDATION_TRUTH = {
   crossingSpeedKnots: PHYSICAL_SPEED_KNOTS,
   crossingCourseDegrees: 0,
   replay: [
-    { timeSeconds: 0, speedKnots: 6, courseDegrees: 0 },
-    { timeSeconds: 2, speedKnots: 6, courseDegrees: 0 },
-    { timeSeconds: 2.5, speedKnots: 6, courseDegrees: 0 },
-    { timeSeconds: 6, speedKnots: 6, courseDegrees: 45 },
-    { timeSeconds: 8, speedKnots: 6, courseDegrees: 45 },
+    { timeSeconds: 0, position: { latitude: 59.299930680303, longitude: 18.0005 }, speedKnots: 6, courseDegrees: 0 },
+    { timeSeconds: 2, position: { latitude: 59.299986136061, longitude: 18.0005 }, speedKnots: 6, courseDegrees: 0 },
+    { timeSeconds: 2.5, position: { latitude: 59.3, longitude: 18.0005 }, speedKnots: 6, courseDegrees: 0 },
+    { timeSeconds: 6, position: { latitude: 59.300097047575, longitude: 18.0005 }, speedKnots: 6, courseDegrees: 45 },
+    { timeSeconds: 7, position: { latitude: 59.300116654146, longitude: 18.000538403375 }, speedKnots: 6, courseDegrees: 45 },
+    { timeSeconds: 8, position: { latitude: 59.300136260717, longitude: 18.00057680675 }, speedKnots: 6, courseDegrees: 45 },
   ],
 } as const
 
-function positionOnPhysicalTrajectory(elapsedSeconds: number): GeoPoint {
-  const secondsFromCrossing = elapsedSeconds - CROSSING_SECONDS
-  const distanceMeters = Math.abs(secondsFromCrossing) * PHYSICAL_SPEED_METERS_PER_SECOND
-  const isPostChange = secondsFromCrossing >= 3.5
-  const courseRadians = Math.PI / 4
-  const eastMeters = isPostChange ? distanceMeters * Math.sin(courseRadians) : 0
-  const northMeters = isPostChange
-    ? distanceMeters * Math.cos(courseRadians)
-    : secondsFromCrossing * PHYSICAL_SPEED_METERS_PER_SECOND
+export function getFixtureTrajectoryPosition(elapsedSeconds: number): GeoPoint {
+  const elapsedAfterTurn = Math.max(0, elapsedSeconds - 6)
+  const turnDistanceMeters = (6 - CROSSING_SECONDS) * PHYSICAL_SPEED_METERS_PER_SECOND
+  const postTurnDistanceMeters = elapsedAfterTurn * PHYSICAL_SPEED_METERS_PER_SECOND
+  const eastMeters = postTurnDistanceMeters / Math.sqrt(2)
+  const northMeters = elapsedSeconds <= 6
+    ? (elapsedSeconds - CROSSING_SECONDS) * PHYSICAL_SPEED_METERS_PER_SECOND
+    : turnDistanceMeters + postTurnDistanceMeters / Math.sqrt(2)
 
   return {
     latitude: ORIGIN.latitude + northMeters / METERS_PER_LATITUDE_DEGREE,
@@ -45,7 +45,7 @@ function positionOnPhysicalTrajectory(elapsedSeconds: number): GeoPoint {
 }
 
 function fixtureSample(elapsedSeconds: number, courseDegrees: number): RaceSample {
-  const position = positionOnPhysicalTrajectory(elapsedSeconds)
+  const position = getFixtureTrajectoryPosition(elapsedSeconds)
 
   return {
     timestamp: new Date(FIXTURE_START + elapsedSeconds * 1000).toISOString(),
@@ -126,12 +126,12 @@ export function validateAnalysisFixture(): AnalysisValidationReport {
   const replayChecks = ANALYSIS_VALIDATION_TRUTH.replay.map((truth) => {
     const frame = getReplayFrame(timeline, truth.timeSeconds)
     const actual = frame?.sample
-    const actualPosition = actual ? { latitude: actual.latitude, longitude: actual.longitude, errorMeters: positionErrorMeters(positionOnPhysicalTrajectory(truth.timeSeconds), actual) } : null
+    const actualPosition = actual ? { latitude: actual.latitude, longitude: actual.longitude, errorMeters: positionErrorMeters(truth.position, actual) } : null
     const speedError = actual?.speedKnots === undefined ? null : Math.abs(actual.speedKnots - truth.speedKnots)
     const courseError = angleErrorDegrees(truth.courseDegrees, actual?.cogDegrees ?? null)
     return {
       timeSeconds: truth.timeSeconds, interpolationMode: frame?.interpolationMode ?? null,
-      expectedPosition: positionOnPhysicalTrajectory(truth.timeSeconds), actualPosition,
+      expectedPosition: truth.position, actualPosition,
       speed: numericReport(truth.speedKnots, actual?.speedKnots, speedError),
       course: numericReport(truth.courseDegrees, actual?.cogDegrees, courseError),
       pass: actualPosition !== null && actualPosition.errorMeters <= 1 && speedError !== null && speedError <= 0.1 && courseError !== null && courseError <= 1,
