@@ -17,6 +17,7 @@ import {
   startSimulationTicker,
 } from './simulationMode'
 import { createSimulationValidator } from '../simulation/simulationValidator'
+import { ensureAnalysisValidationRace } from '../services/analysisValidation'
 import { getLaylineObservation } from '../features/race/laylineObservation'
 import { useDeviceAttitude } from '../hooks/useDeviceAttitude'
 import { useFilteredGps } from '../hooks/useFilteredGps'
@@ -110,17 +111,21 @@ function getCourseDefinition(course: CourseState): CourseDefinition | undefined 
 export function AppShell() {
   const manualMode = useMemo(getManualModeConfig, [])
   const simulationMode = useMemo(() => getSimulationModeConfig(manualMode.enabled), [manualMode.enabled])
+  const isAnalysisValidation = simulationMode.scenario === 'analysis-validation'
+  const analysisValidationRace = useMemo(() => (
+    isAnalysisValidation ? ensureAnalysisValidationRace() : null
+  ), [isAnalysisValidation])
   const simulationGpsSource = useMemo(() => (
-    simulationMode.scenario === null ? null : createSimulationGpsSource(simulationMode.scenario)
-  ), [simulationMode.scenario])
+    simulationMode.scenario === null || isAnalysisValidation ? null : createSimulationGpsSource(simulationMode.scenario)
+  ), [isAnalysisValidation, simulationMode.scenario])
   const simulationValidator = useMemo(() => (
-    simulationMode.scenario === null ? null : createSimulationValidator({ scenario: simulationMode.scenario })
-  ), [simulationMode.scenario])
+    simulationMode.scenario === null || isAnalysisValidation ? null : createSimulationValidator({ scenario: simulationMode.scenario })
+  ), [isAnalysisValidation, simulationMode.scenario])
   const simulationReportLoggedRef = useRef(false)
   const simulationCourseState = useMemo(() => getSimulationCourseState(simulationMode.scenario), [simulationMode.scenario])
   const simulationLaylineSettings = useMemo(() => getSimulationLaylineSettings(simulationMode.scenario), [simulationMode.scenario])
   const [activeView, setActiveView] = useState<AppView>(
-    simulationMode.enabled ? 'race' : (manualMode.initialView ?? 'setup'),
+    isAnalysisValidation ? 'analysis' : simulationMode.enabled ? 'race' : (manualMode.initialView ?? 'setup'),
   )
   const [course, setCourse] = useState<CourseState>(() => (
     manualMode.enabled
@@ -396,7 +401,7 @@ export function AppShell() {
         manualLaylineCountdownValue={manualMode.enabled ? manualMode.laylineCountdownValue : null}
       />
     ),
-    analysis: <RaceAnalysisView />,
+    analysis: <RaceAnalysisView initialRaceId={analysisValidationRace?.id} />,
   }[activeView]
 
   return (

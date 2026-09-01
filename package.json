@@ -10,6 +10,7 @@
     "build:simulation": "tsc -b && vite build --mode simulation",
     "test": "vitest run",
     "simulation:test": "node scripts/run-simulation-tests.mjs",
+    "analysis:validation": "node scripts/run-analysis-validation.mjs",
     "manual:screenshots": "node scripts/capture-manual-screenshots.mjs",
     "manual:docx": "python3 scripts/generate_manual_docx.py",
     "preview": "vite preview",

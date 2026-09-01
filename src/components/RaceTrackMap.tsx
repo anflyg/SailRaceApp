@@ -157,6 +157,7 @@ export function RaceTrackMap({
               key={track.id}
               className={`race-map-track ${track.className ?? ''}`}
               d={path}
+              vectorEffect="non-scaling-stroke"
               aria-label={track.label}
             />
           ) : null
@@ -169,6 +170,7 @@ export function RaceTrackMap({
             y1={startLine.port.y}
             x2={startLine.starboard.x}
             y2={startLine.starboard.y}
+            vectorEffect="non-scaling-stroke"
           />
         ) : null}
 
@@ -182,6 +184,7 @@ export function RaceTrackMap({
             y1={projectedHighlightSegment.before.y}
             x2={projectedHighlightSegment.after.x}
             y2={projectedHighlightSegment.after.y}
+            vectorEffect="non-scaling-stroke"
           />
         ) : null}
 

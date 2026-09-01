@@ -43,12 +43,12 @@ const analysisSections: Array<{ id: AnalysisSection; label: string }> = [
   { id: 'data', label: 'Data' },
 ]
 
-export function RaceAnalysisView() {
+export function RaceAnalysisView({ initialRaceId }: { initialRaceId?: string } = {}) {
   const [groups, setGroups] = useState(loadRaceGroups)
   const [exportingRaceId, setExportingRaceId] = useState<string | null>(null)
   const [analysisState, setAnalysisState] = useState<AnalysisState>({
-    activeSection: 'library',
-    selectedRaceId: null,
+    activeSection: initialRaceId ? 'overview' : 'library',
+    selectedRaceId: initialRaceId ?? null,
     ghostRaceId: null,
     currentReplayTime: 0,
   })
