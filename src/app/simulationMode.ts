@@ -20,7 +20,7 @@ const SIMULATION_QUERY_KEY = 'simulation'
 export const SIMULATION_TICK_MS = 1_000
 const SIMULATION_RATES = [1, 10, 20] as const
 
-export type SimulationScenario = 'straight' | 'variable-speed' | 'variable-course' | 'tack-course' | 'course-noise' | 'wind-vmg' | 'layline-candidate' | 'layline-warning' | 'layline-reactive-tack' | 'upwind-to-k1' | 'speed-source-disagreement' | 'course-source-disagreement' | 'analysis-validation'
+export type SimulationScenario = 'straight' | 'variable-speed' | 'variable-course' | 'tack-course' | 'course-noise' | 'wind-vmg' | 'layline-candidate' | 'layline-warning' | 'layline-reactive-tack' | 'upwind-to-k1' | 'speed-source-disagreement' | 'course-source-disagreement' | 'analysis-validation' | 'logged-race-analysis'
 export type SimulationRate = (typeof SIMULATION_RATES)[number]
 
 export interface SimulationModeConfig {
@@ -42,7 +42,7 @@ export function getSimulationModeConfig(
 ): SimulationModeConfig {
   const requestedScenario = search?.get(SIMULATION_QUERY_KEY)
   const scenario: SimulationScenario | null =
-    requestedScenario === 'straight' || requestedScenario === 'variable-speed' || requestedScenario === 'variable-course' || requestedScenario === 'tack-course' || requestedScenario === 'course-noise' || requestedScenario === 'wind-vmg' || requestedScenario === 'layline-candidate' || requestedScenario === 'layline-warning' || requestedScenario === 'layline-reactive-tack' || requestedScenario === 'upwind-to-k1' || requestedScenario === 'speed-source-disagreement' || requestedScenario === 'analysis-validation'
+    requestedScenario === 'straight' || requestedScenario === 'variable-speed' || requestedScenario === 'variable-course' || requestedScenario === 'tack-course' || requestedScenario === 'course-noise' || requestedScenario === 'wind-vmg' || requestedScenario === 'layline-candidate' || requestedScenario === 'layline-warning' || requestedScenario === 'layline-reactive-tack' || requestedScenario === 'upwind-to-k1' || requestedScenario === 'speed-source-disagreement' || requestedScenario === 'analysis-validation' || requestedScenario === 'logged-race-analysis'
       || requestedScenario === 'course-source-disagreement' ? requestedScenario
       : null
   const simulationBuildAllowed = environment.DEV || environment.MODE === 'simulation'
@@ -89,6 +89,8 @@ export function createSimulationGpsSource(scenario: SimulationScenario): Simulat
       return createSimulatedGpsSource(createSailingSimulator(COURSE_SOURCE_DISAGREEMENT_SCENARIO))
     case 'analysis-validation':
       throw new Error('Analysis validation does not use a sailing GPS source')
+    case 'logged-race-analysis':
+      throw new Error('Logged race analysis does not use a sailing GPS source')
   }
 }
 

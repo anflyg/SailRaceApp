@@ -18,6 +18,7 @@ import {
 } from './simulationMode'
 import { createSimulationValidator } from '../simulation/simulationValidator'
 import { ensureAnalysisValidationRace, validateAnalysisFixture, type AnalysisValidationReport } from '../services/analysisValidation'
+import { ensureLoggedRaceAnalysis, type LoggedRaceAnalysisReport } from '../services/loggedRaceAnalysisValidation'
 import { getLaylineObservation } from '../features/race/laylineObservation'
 import { useDeviceAttitude } from '../hooks/useDeviceAttitude'
 import { useFilteredGps } from '../hooks/useFilteredGps'
@@ -51,6 +52,7 @@ declare global {
     }
     __SAILRACE_SIMULATION_SPEED_DIAGNOSTICS__?: FilteredGpsReading
     __SAILRACE_ANALYSIS_VALIDATION_REPORT__?: AnalysisValidationReport
+    __SAILRACE_LOGGED_RACE_ANALYSIS_REPORT__?: LoggedRaceAnalysisReport
   }
 }
 
@@ -113,20 +115,24 @@ export function AppShell() {
   const manualMode = useMemo(getManualModeConfig, [])
   const simulationMode = useMemo(() => getSimulationModeConfig(manualMode.enabled), [manualMode.enabled])
   const isAnalysisValidation = simulationMode.scenario === 'analysis-validation'
+  const isLoggedRaceAnalysis = simulationMode.scenario === 'logged-race-analysis'
   const analysisValidationRace = useMemo(() => (
     isAnalysisValidation ? ensureAnalysisValidationRace() : null
   ), [isAnalysisValidation])
+  const loggedRaceAnalysis = useMemo(() => (
+    isLoggedRaceAnalysis ? ensureLoggedRaceAnalysis() : null
+  ), [isLoggedRaceAnalysis])
   const simulationGpsSource = useMemo(() => (
-    simulationMode.scenario === null || isAnalysisValidation ? null : createSimulationGpsSource(simulationMode.scenario)
-  ), [isAnalysisValidation, simulationMode.scenario])
+    simulationMode.scenario === null || isAnalysisValidation || isLoggedRaceAnalysis ? null : createSimulationGpsSource(simulationMode.scenario)
+  ), [isAnalysisValidation, isLoggedRaceAnalysis, simulationMode.scenario])
   const simulationValidator = useMemo(() => (
-    simulationMode.scenario === null || isAnalysisValidation ? null : createSimulationValidator({ scenario: simulationMode.scenario })
-  ), [isAnalysisValidation, simulationMode.scenario])
+    simulationMode.scenario === null || isAnalysisValidation || isLoggedRaceAnalysis ? null : createSimulationValidator({ scenario: simulationMode.scenario })
+  ), [isAnalysisValidation, isLoggedRaceAnalysis, simulationMode.scenario])
   const simulationReportLoggedRef = useRef(false)
   const simulationCourseState = useMemo(() => getSimulationCourseState(simulationMode.scenario), [simulationMode.scenario])
   const simulationLaylineSettings = useMemo(() => getSimulationLaylineSettings(simulationMode.scenario), [simulationMode.scenario])
   const [activeView, setActiveView] = useState<AppView>(
-    isAnalysisValidation ? 'analysis' : simulationMode.enabled ? 'race' : (manualMode.initialView ?? 'setup'),
+    isAnalysisValidation || isLoggedRaceAnalysis ? 'analysis' : simulationMode.enabled ? 'race' : (manualMode.initialView ?? 'setup'),
   )
   const [course, setCourse] = useState<CourseState>(() => (
     manualMode.enabled
@@ -194,11 +200,14 @@ export function AppShell() {
     if (isAnalysisValidation) {
       window.__SAILRACE_ANALYSIS_VALIDATION_REPORT__ = validateAnalysisFixture()
     }
+    if (isLoggedRaceAnalysis && loggedRaceAnalysis) {
+      window.__SAILRACE_LOGGED_RACE_ANALYSIS_REPORT__ = loggedRaceAnalysis.report
+    }
 
     return () => {
       delete window.__SAILRACE_ANALYSIS_VALIDATION_REPORT__
     }
-  }, [isAnalysisValidation])
+  }, [isAnalysisValidation, isLoggedRaceAnalysis, loggedRaceAnalysis])
 
   useEffect(() => {
     if (simulationGpsSource === null || simulationValidator === null) {
@@ -412,7 +421,7 @@ export function AppShell() {
         manualLaylineCountdownValue={manualMode.enabled ? manualMode.laylineCountdownValue : null}
       />
     ),
-    analysis: <RaceAnalysisView initialRaceId={analysisValidationRace?.id} />,
+    analysis: <RaceAnalysisView initialRaceId={analysisValidationRace?.id ?? loggedRaceAnalysis?.race.id} />,
   }[activeView]
 
   return (

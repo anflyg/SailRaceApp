@@ -114,8 +114,7 @@ function numericReport(expected: number, actual: number | undefined, error: numb
   return { expected, actual: actual ?? null, error }
 }
 
-export function validateAnalysisFixture(): AnalysisValidationReport {
-  const race = ANALYSIS_VALIDATION_RACE as Race
+export function validateAnalysisRace(race: Race): AnalysisValidationReport {
   const start = analyzeRaceStart(race)
   const timeline = buildReplayTimeline(race)
   const startPosition = start.crossingPoint ?? null
@@ -148,4 +147,8 @@ export function validateAnalysisFixture(): AnalysisValidationReport {
       actualAccuracyMeters: start.crossingAccuracyMeters ?? null, actualUncertaintySeconds: start.uncertaintySeconds ?? null, actualUncertaintyMeters: start.uncertaintyMeters ?? null, pass: startPass,
     }, replayChecks, pass: startPass && replayChecks.every((check) => check.pass),
   }
+}
+
+export function validateAnalysisFixture(): AnalysisValidationReport {
+  return validateAnalysisRace(ANALYSIS_VALIDATION_RACE as Race)
 }
