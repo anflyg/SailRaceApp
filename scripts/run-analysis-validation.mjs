@@ -26,6 +26,7 @@ try {
   const page = await browser.newPage()
   await page.goto(`${baseUrl}/?simulation=analysis-validation`)
   await page.getByText('Analysis validation fixture').first().waitFor()
+  const serviceReport = await page.evaluate(() => window.__SAILRACE_ANALYSIS_VALIDATION_REPORT__)
   const overviewMap = page.getByLabel('Racekarta, tryck för att förstora')
   await overviewMap.click()
   const modalMap = page.getByRole('dialog', { name: 'Förstorad racekarta' })
@@ -47,13 +48,16 @@ try {
   await browser.close()
 
   const report = {
+    ...serviceReport,
     scenario: 'analysis-validation',
     overviewRaceSelected: true,
     startTabVisible: startVisible,
     mapZoomScales: [1, 2, 4],
     mapTransforms: transforms,
     trackVectorEffect: stroke,
-    simulationSuite: 'PASS',
+    map: { zoomScales: [1, 2, 4], nonScalingTrack: stroke === 'non-scaling-stroke' },
+    ui: { overview: true, startAnalysis: startVisible },
+    pass: Boolean(serviceReport?.pass) && startVisible && stroke === 'non-scaling-stroke',
   }
   await fs.mkdir(path.dirname(outputPath), { recursive: true })
   await fs.writeFile(outputPath, `${JSON.stringify(report, null, 2)}\n`)

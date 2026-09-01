@@ -33,6 +33,7 @@ describe('analysis validation fixture', () => {
     const report = validateAnalysisFixture()
 
     expect(report.startAnalysis.deltaErrorSeconds).toBe(0)
-    expect(report.replay.every((checkpoint) => checkpoint.courseErrorDegrees === 0)).toBe(true)
+    expect(report.replayChecks.every((checkpoint) => checkpoint.course.error === 0)).toBe(true)
+    expect(report.pass).toBe(true)
   })
 })

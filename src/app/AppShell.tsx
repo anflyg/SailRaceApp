@@ -17,7 +17,7 @@ import {
   startSimulationTicker,
 } from './simulationMode'
 import { createSimulationValidator } from '../simulation/simulationValidator'
-import { ensureAnalysisValidationRace } from '../services/analysisValidation'
+import { ensureAnalysisValidationRace, validateAnalysisFixture, type AnalysisValidationReport } from '../services/analysisValidation'
 import { getLaylineObservation } from '../features/race/laylineObservation'
 import { useDeviceAttitude } from '../hooks/useDeviceAttitude'
 import { useFilteredGps } from '../hooks/useFilteredGps'
@@ -50,6 +50,7 @@ declare global {
       currentSample(): ReturnType<NonNullable<ReturnType<typeof createSimulationGpsSource>>['currentSample']>
     }
     __SAILRACE_SIMULATION_SPEED_DIAGNOSTICS__?: FilteredGpsReading
+    __SAILRACE_ANALYSIS_VALIDATION_REPORT__?: AnalysisValidationReport
   }
 }
 
@@ -188,6 +189,16 @@ export function AppShell() {
       delete window.__SAILRACE_SIMULATION_CONTROL__
     }
   }, [simulationGpsSource, simulationMode.scenario])
+
+  useEffect(() => {
+    if (isAnalysisValidation) {
+      window.__SAILRACE_ANALYSIS_VALIDATION_REPORT__ = validateAnalysisFixture()
+    }
+
+    return () => {
+      delete window.__SAILRACE_ANALYSIS_VALIDATION_REPORT__
+    }
+  }, [isAnalysisValidation])
 
   useEffect(() => {
     if (simulationGpsSource === null || simulationValidator === null) {
