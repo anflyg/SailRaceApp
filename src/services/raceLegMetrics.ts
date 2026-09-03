@@ -1,5 +1,4 @@
 import { analyzeRaceLegs, type RaceLeg, type RaceLegType } from './raceLegAnalysis'
-import { createRace, listRaces } from './raceStorage'
 import type { Race, RaceSample } from '../types'
 
 export type RaceLegMetric = RaceLeg & {
@@ -26,8 +25,8 @@ export function calculateRaceLegMetrics(race: Race): RaceLegMetricsResult {
   const metrics = segmentation.legs.map((leg, index) => calculateMetric(leg, race.samples, index))
   const upwind = metrics.filter((leg) => leg.type === 'start-to-k1' || leg.type === 'l1-to-k1')
   const downwind = metrics.filter((leg) => leg.type === 'k1-to-l1')
-  const bestUpwind = selectBest(upwind, true)
-  const bestDownwind = selectBest(downwind, false)
+  const bestUpwind = selectBestLeg(upwind, true)
+  const bestDownwind = selectBestLeg(downwind, false)
   const bestIds = new Set([bestUpwind?.id, bestDownwind?.id])
 
   return {
@@ -38,30 +37,6 @@ export function calculateRaceLegMetrics(race: Race): RaceLegMetricsResult {
     bestUpwind,
     bestDownwind,
   }
-}
-
-export function ensureMetricsValidationRace(): Race {
-  const name = 'Metrics validation fixture'
-  const existing = listRaces().find((race) => race.name === name)
-  if (existing) return existing
-  const base = Date.parse('2024-01-01T12:00:00Z')
-  const sample = (seconds: number, latitude: number, longitude: number, speed: number, vmgWind?: number, vmgCourse?: number): RaceSample => ({
-    timestamp: new Date(base + seconds * 1000).toISOString(), latitude, longitude, speedKnots: speed, vmgWindKnots: vmgWind, vmgCourseKnots: vmgCourse,
-  })
-  return createRace({
-    name,
-    date: new Date(base),
-    createdAt: new Date(base).toISOString(),
-    startGunTime: new Date(base).toISOString(),
-    course: { startLine: { port: { latitude: 59.3, longitude: 18 }, starboard: { latitude: 59.3, longitude: 18.001 } }, windwardMark: { latitude: 59.301, longitude: 18 }, leewardMark: { latitude: 59.301, longitude: 18.001 } },
-    samples: [
-      sample(0, 59.3, 18, 4, 3, 2), sample(10, 59.3006, 18.00001, 5, 3, 2), sample(20, 59.30095, 18.00002, 6, 3, 2), sample(30, 59.30105, 18.0001, 7, 3, 2),
-      sample(40, 59.30102, 18.0006, 5), sample(50, 59.30101, 18.00095, 6), sample(60, 59.30102, 18.00105, 7),
-      sample(70, 59.3009, 18.00098, 5), sample(80, 59.3005, 18.0005, 6), sample(90, 59.30095, 18.0001, 6, 4, 3), sample(100, 59.30102, 18.00002, 6, 4, 3),
-      sample(110, 59.30112, 18.00001, 6, 4, 3), sample(120, 59.3011, 18.0003, 6, 4, 3),
-    ],
-    events: [],
-  })
 }
 
 export function getRaceLegLabel(type: RaceLegType, sequenceIndex: number): string {
@@ -89,15 +64,15 @@ function calculateMetric(leg: RaceLeg, samples: RaceSample[], sequenceIndex: num
   }
 }
 
-function selectBest(legs: RaceLegMetric[], upwind: boolean): RaceLegMetric | null {
+export function selectBestLeg(legs: RaceLegMetric[], upwind: boolean): RaceLegMetric | null {
   if (!legs.length) return null
   const withVmg = legs.filter((leg) => leg.averageVmgWindKnots !== null)
   if (upwind && withVmg.length >= 2) return withVmg.reduce((best, leg) => (leg.averageVmgWindKnots! > best.averageVmgWindKnots! ? leg : best))
-  return legs.reduce((best, leg) => {
-    if (!best) return leg
-    if (!upwind && leg.averageSpeedKnots !== null && (best.averageSpeedKnots === null || leg.averageSpeedKnots > best.averageSpeedKnots)) return leg
-    return leg.durationSeconds < best.durationSeconds ? leg : best
-  }, legs[0])
+  if (!upwind) {
+    const withSpeed = legs.filter((leg) => leg.averageSpeedKnots !== null)
+    if (withSpeed.length) return withSpeed.reduce((best, leg) => leg.averageSpeedKnots! > best.averageSpeedKnots! || (leg.averageSpeedKnots === best.averageSpeedKnots && leg.durationSeconds < best.durationSeconds) ? leg : best)
+  }
+  return legs.reduce((best, leg) => leg.durationSeconds < best.durationSeconds ? leg : best)
 }
 
 function values(samples: RaceSample[], read: (sample: RaceSample) => number | undefined): number[] {

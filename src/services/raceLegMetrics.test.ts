@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { calculateRaceLegMetrics } from './raceLegMetrics'
+import { calculateRaceLegMetrics, selectBestLeg, type RaceLegMetric } from './raceLegMetrics'
 import type { Race } from '../types'
 
 const origin = { latitude: 59.3, longitude: 18 }
@@ -7,6 +7,26 @@ const k1 = { latitude: 59.301, longitude: 18 }
 const l1 = { latitude: 59.301, longitude: 18.001 }
 const timestamp = (seconds: number) => new Date(Date.parse('2024-01-01T12:00:00Z') + seconds * 1000).toISOString()
 const point = (seconds: number, latitude: number, longitude: number, speed: number | undefined, vmgWind: number | undefined, vmgCourse: number | undefined) => ({ timestamp: timestamp(seconds), latitude, longitude, speedKnots: speed, vmgWindKnots: vmgWind, vmgCourseKnots: vmgCourse })
+const metric = (label: string, averageSpeedKnots: number | null, durationSeconds: number): RaceLegMetric => ({
+  id: label,
+  type: 'k1-to-l1',
+  label,
+  startSampleIndex: 0,
+  endSampleIndex: 1,
+  startTime: timestamp(0),
+  endTime: timestamp(durationSeconds),
+  startPosition: origin,
+  endPosition: l1,
+  durationSeconds,
+  distanceMeters: 100,
+  endMarker: 'L1',
+  averageSpeedKnots,
+  maxSpeedKnots: averageSpeedKnots,
+  averageVmgWindKnots: null,
+  averageVmgCourseKnots: null,
+  sampleCount: 2,
+  isBest: false,
+})
 
 const race: Race = {
   id: 'metrics', dayId: 'day', name: 'metrics', createdAt: timestamp(0), startGunTime: timestamp(0), course: { windwardMark: k1, leewardMark: l1 }, events: [], samples: [
@@ -34,5 +54,12 @@ describe('race leg metrics', () => {
   it('does not treat missing values as zero', () => {
     const result = calculateRaceLegMetrics({ ...race, samples: race.samples.map((sample) => ({ ...sample, speedKnots: undefined, vmgWindKnots: undefined, vmgCourseKnots: undefined })) })
     expect(result.legs.every((leg) => leg.averageSpeedKnots === null && leg.maxSpeedKnots === null && leg.averageVmgWindKnots === null)).toBe(true)
+  })
+
+  it('selects the fastest downwind leg before considering duration', () => {
+    const slowerShorter = metric('Läns 2', 5.8, 60)
+    const fasterLonger = metric('Läns 1', 6.2, 80)
+    expect(selectBestLeg([fasterLonger, slowerShorter], false)?.label).toBe('Läns 1')
+    expect(selectBestLeg([fasterLonger, metric('Läns 2', 6.2, 60)], false)?.label).toBe('Läns 2')
   })
 })

@@ -83,6 +83,23 @@ export function ensureAnalysisValidationRace(): Race {
   return existingRace ?? createRace({ date: ANALYSIS_VALIDATION_RACE.createdAt, ...ANALYSIS_VALIDATION_RACE })
 }
 
+export function ensureMetricsValidationRace(): Race {
+  const name = 'Metrics validation fixture'
+  const existing = listRaces().find((race) => race.name === name)
+  if (existing) return existing
+  const base = Date.parse('2024-01-01T12:00:00Z')
+  const sample = (seconds: number, latitude: number, longitude: number, speed: number, vmgWind?: number, vmgCourse?: number): RaceSample => ({ timestamp: new Date(base + seconds * 1000).toISOString(), latitude, longitude, speedKnots: speed, vmgWindKnots: vmgWind, vmgCourseKnots: vmgCourse })
+  return createRace({
+    name, date: new Date(base), createdAt: new Date(base).toISOString(), startGunTime: new Date(base).toISOString(),
+    course: { startLine: { port: { latitude: 59.3, longitude: 18 }, starboard: { latitude: 59.3, longitude: 18.001 } }, windwardMark: { latitude: 59.301, longitude: 18 }, leewardMark: { latitude: 59.301, longitude: 18.001 } },
+    samples: [
+      sample(0, 59.3, 18, 4, 3, 2), sample(10, 59.3006, 18.00001, 5, 3, 2), sample(20, 59.30095, 18.00002, 6, 3, 2), sample(30, 59.30105, 18.0001, 7),
+      sample(40, 59.30102, 18.0006, 5), sample(50, 59.30101, 18.00095, 6), sample(60, 59.30102, 18.00105, 7), sample(70, 59.3009, 18.00098, 5), sample(80, 59.3005, 18.0005, 6),
+      sample(90, 59.30095, 18.0001, 6, 4, 3), sample(100, 59.30102, 18.00002, 6, 4, 3), sample(110, 59.30112, 18.00001, 6, 4, 3), sample(120, 59.3011, 18.0003, 6, 4, 3),
+    ], events: [],
+  })
+}
+
 type PositionReport = { latitude: number; longitude: number; errorMeters: number }
 type NumericReport = { expected: number; actual: number | null; error: number | null }
 
