@@ -18,7 +18,7 @@ const route = [
   sample(0, origin.latitude, origin.longitude), sample(10, 59.3006, 18.00001), sample(20, 59.30095, 18.00002),
   sample(30, 59.30105, 18.0001), sample(40, 59.30102, 18.0006), sample(50, 59.30101, 18.00095),
   sample(60, 59.30102, 18.00105), sample(70, 59.3009, 18.00098), sample(80, 59.3005, 18.0005),
-  sample(90, 59.30095, 18.0001), sample(100, 59.30102, 18.00002), sample(110, 59.30112, 18.00001),
+  sample(90, 59.30095, 18.0001), sample(100, 59.30102, 18.00002), sample(110, 59.30112, 18.00001), sample(120, 59.3011, 18.0003),
 ]
 
 describe('race leg analysis', () => {
@@ -51,5 +51,37 @@ describe('race leg analysis', () => {
     const result = analyzeRaceLegs(fixture(nearMiss))
     expect(result.markerSequence).toEqual([])
     expect(result.legs).toEqual([])
+  })
+
+  it('rejects an aborted rounding that turns back toward the start', () => {
+    const aborted = [
+      sample(0, origin.latitude, origin.longitude),
+      sample(10, 59.3006, 18.00001),
+      sample(20, 59.30095, 18.00002),
+      sample(30, 59.30105, 18.00002),
+      sample(40, 59.3007, 18.00001),
+      sample(50, 59.3003, 18.00001),
+    ]
+    const result = analyzeRaceLegs(fixture(aborted))
+
+    expect(result.markerSequence).toEqual([])
+    expect(result.legs).toEqual([])
+  })
+
+  it('detects a rounding with sparse samples when next-leg progress is clear', () => {
+    const sparse = [
+      sample(0, origin.latitude, origin.longitude),
+      sample(20, 59.3007, 18.00001),
+      sample(40, 59.30097, 18.00002),
+      sample(60, 59.30104, 18.0005),
+      sample(80, 59.30102, 18.00098),
+      sample(100, 59.3008, 18.00099),
+      sample(120, 59.3002, 18.0005),
+      sample(140, 59.30097, 18.00002),
+      sample(160, 59.30102, 18.0003),
+    ]
+    const result = analyzeRaceLegs(fixture(sparse))
+
+    expect(result.markerSequence).toEqual(['K1', 'L1', 'K1'])
   })
 })

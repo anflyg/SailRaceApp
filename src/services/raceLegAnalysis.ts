@@ -25,6 +25,11 @@ export type RaceLegAnalysisResult = {
 }
 
 const MARK_DETECTION_RADIUS_METERS = 25
+// A rounding must gain at least 10 m of separation from the mark and 10 m of
+// progress toward the next mark within the next four recorded samples.
+const DEPARTURE_LOOKAHEAD_SAMPLES = 4
+const MIN_MARK_DEPARTURE_METERS = 10
+const MIN_NEXT_MARK_PROGRESS_METERS = 10
 
 export function analyzeRaceLegs(race: Race): RaceLegAnalysisResult {
   const windwardMark = race.course?.windwardMark
@@ -45,7 +50,8 @@ export function analyzeRaceLegs(race: Race): RaceLegAnalysisResult {
 
   while (scanFrom < race.samples.length - 2) {
     const point = nextMarker === 'K1' ? windwardMark : leewardMark
-    const markerIndex = findNextRounding(race.samples, scanFrom, point)
+    const nextPoint = nextMarker === 'K1' ? leewardMark : windwardMark
+    const markerIndex = findNextRounding(race.samples, scanFrom, point, nextPoint)
     if (markerIndex === null) break
     expectedMarkers.push({ marker: nextMarker, point })
     const legStartIndex = legs.length === 0 ? startIndex : legs[legs.length - 1].endSampleIndex
@@ -65,16 +71,36 @@ function findNextRounding(
   samples: RaceSample[],
   startIndex: number,
   marker: { latitude: number; longitude: number },
+  nextMarker: { latitude: number; longitude: number },
 ): number | null {
   for (let index = startIndex + 1; index < samples.length - 1; index += 1) {
     const previousDistance = distanceMeters(samples[index - 1], marker)
     const currentDistance = distanceMeters(samples[index], marker)
     const nextDistance = distanceMeters(samples[index + 1], marker)
-    if (currentDistance <= MARK_DETECTION_RADIUS_METERS && currentDistance <= previousDistance && currentDistance <= nextDistance && previousDistance > currentDistance && nextDistance > currentDistance) {
+    if (currentDistance <= MARK_DETECTION_RADIUS_METERS && currentDistance <= previousDistance && currentDistance <= nextDistance && previousDistance > currentDistance && nextDistance > currentDistance && confirmsDeparture(samples, index, marker, nextMarker)) {
       return index
     }
   }
   return null
+}
+
+function confirmsDeparture(
+  samples: RaceSample[],
+  candidateIndex: number,
+  roundedMarker: { latitude: number; longitude: number },
+  nextMarker: { latitude: number; longitude: number },
+): boolean {
+  const candidateMarkDistance = distanceMeters(samples[candidateIndex], roundedMarker)
+  const candidateNextDistance = distanceMeters(samples[candidateIndex], nextMarker)
+  const lookaheadEnd = Math.min(samples.length - 1, candidateIndex + DEPARTURE_LOOKAHEAD_SAMPLES)
+
+  for (let index = candidateIndex + 1; index <= lookaheadEnd; index += 1) {
+    const markDeparture = distanceMeters(samples[index], roundedMarker) - candidateMarkDistance
+    const nextMarkProgress = candidateNextDistance - distanceMeters(samples[index], nextMarker)
+    if (markDeparture >= MIN_MARK_DEPARTURE_METERS && nextMarkProgress >= MIN_NEXT_MARK_PROGRESS_METERS) return true
+  }
+
+  return false
 }
 
 function createLeg(samples: RaceSample[], startIndex: number, endIndex: number, startMarker: RaceLegMarker | undefined, endMarker: 'K1' | 'L1'): RaceLeg {
