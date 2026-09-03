@@ -17,7 +17,7 @@ import {
   startSimulationTicker,
 } from './simulationMode'
 import { createSimulationValidator } from '../simulation/simulationValidator'
-import { ensureAnalysisValidationRace, validateAnalysisFixture, type AnalysisValidationReport } from '../services/analysisValidation'
+import { validateAnalysisFixture, type AnalysisValidationReport } from '../services/analysisValidation'
 import { ensureLoggedRaceAnalysis, type LoggedRaceAnalysisReport } from '../services/loggedRaceAnalysisValidation'
 import { getLaylineObservation } from '../features/race/laylineObservation'
 import { useDeviceAttitude } from '../hooks/useDeviceAttitude'
@@ -43,6 +43,7 @@ import type {
   RollPitchCalibration,
 } from '../types'
 import type { WindHeadingMeasurementResult } from '../services/sensors/windHeadingService'
+import { ensureMetricsValidationRace } from '../services/raceLegMetrics'
 
 declare global {
   interface Window {
@@ -117,7 +118,7 @@ export function AppShell() {
   const isAnalysisValidation = simulationMode.scenario === 'analysis-validation'
   const isLoggedRaceAnalysis = simulationMode.scenario === 'logged-race-analysis'
   const analysisValidationRace = useMemo(() => (
-    isAnalysisValidation ? ensureAnalysisValidationRace() : null
+    isAnalysisValidation ? ensureMetricsValidationRace() : null
   ), [isAnalysisValidation])
   const loggedRaceAnalysis = useMemo(() => (
     isLoggedRaceAnalysis ? ensureLoggedRaceAnalysis() : null

@@ -25,8 +25,13 @@ try {
   const browser = await chromium.launch({ headless: true })
   const page = await browser.newPage()
   await page.goto(`${baseUrl}/?simulation=analysis-validation`)
-  await page.getByText('Analysis validation fixture').first().waitFor()
+  await page.getByText('Metrics validation fixture').first().waitFor()
   const serviceReport = await page.evaluate(() => window.__SAILRACE_ANALYSIS_VALIDATION_REPORT__)
+  const legs = page.getByLabel('Benstatistik')
+  const legSectionVisible = await legs.isVisible()
+  const legLabelsVisible = await Promise.all(['Kryss 1', 'Läns 1', 'Kryss 2'].map((label) => page.getByText(label, { exact: true }).first().isVisible()))
+  const bestBadgeVisible = await page.getByText('Bäst', { exact: true }).first().isVisible()
+  const metricVisible = await page.getByText(/Medelfart/).first().isVisible()
   const overviewMap = page.getByLabel('Racekarta, tryck för att förstora')
   await overviewMap.click()
   const modalMap = page.getByRole('dialog', { name: 'Förstorad racekarta' })
@@ -57,7 +62,8 @@ try {
     trackVectorEffect: stroke,
     map: { zoomScales: [1, 2, 4], nonScalingTrack: stroke === 'non-scaling-stroke' },
     ui: { overview: true, startAnalysis: startVisible },
-    pass: Boolean(serviceReport?.pass) && startVisible && stroke === 'non-scaling-stroke',
+    legSection: { visible: legSectionVisible, labels: legLabelsVisible, bestBadge: bestBadgeVisible, metric: metricVisible },
+    pass: Boolean(serviceReport?.pass) && startVisible && stroke === 'non-scaling-stroke' && legSectionVisible && legLabelsVisible.every(Boolean) && bestBadgeVisible && metricVisible,
   }
   await fs.mkdir(path.dirname(outputPath), { recursive: true })
   await fs.writeFile(outputPath, `${JSON.stringify(report, null, 2)}\n`)

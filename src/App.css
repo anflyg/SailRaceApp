@@ -1149,6 +1149,37 @@ button:focus-visible {
   overflow-y: auto;
 }
 
+.race-leg-analysis {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(185, 198, 211, 0.18);
+  border-radius: 10px;
+  background: rgba(3, 20, 38, 0.58);
+}
+
+.race-leg-analysis-heading,
+.race-leg-card-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.race-leg-analysis h3,
+.race-leg-card h4 { margin: 0; color: var(--text-high); }
+.race-leg-analysis h3 { font-size: 1rem; }
+.race-leg-summary { display: grid; gap: 3px; color: var(--text-muted); font-size: 0.72rem; font-weight: 800; text-align: right; }
+.race-leg-card-list { display: grid; gap: 7px; }
+.race-leg-card { display: grid; gap: 8px; padding: 9px; border: 1px solid rgba(185, 198, 211, 0.14); border-radius: 8px; background: rgba(3, 20, 38, 0.58); }
+.race-leg-card h4 { font-size: 0.88rem; }
+.race-leg-card dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 10px; margin: 0; }
+.race-leg-card dl div { display: flex; justify-content: space-between; gap: 8px; }
+.race-leg-card dt { color: var(--text-muted); font-size: 0.68rem; font-weight: 800; }
+.race-leg-card dd { margin: 0; color: var(--text-high); font-size: 0.76rem; font-weight: 900; font-variant-numeric: tabular-nums; }
+.race-leg-best-badge { padding: 3px 7px; border-radius: 999px; background: rgba(53, 194, 255, 0.18); color: var(--primary-strong); font-size: 0.62rem; font-weight: 900; text-transform: uppercase; }
+.race-leg-analysis-fallback { margin: 0; color: var(--text-muted); font-size: 0.78rem; }
+
 .race-track-map {
   display: grid;
   min-height: 240px;

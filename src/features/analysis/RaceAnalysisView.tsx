@@ -6,6 +6,7 @@ import { useRaceReplay, type ReplaySpeed } from '../../hooks/useRaceReplay'
 import { exportRaceDownloads } from '../../services/raceExport'
 import { buildReplayTimeline, getReplayFrame } from '../../services/raceReplay'
 import { analyzeRaceStart, type StartAnalysisResult } from '../../services/startAnalysis'
+import { calculateRaceLegMetrics, type RaceLegMetricsResult } from '../../services/raceLegMetrics'
 import {
   deleteRace as deleteStoredRace,
   createDateKey,
@@ -422,6 +423,9 @@ function RaceOverview({
   const [expandedMapZoomScale, setExpandedMapZoomScale] = useState(MAP_MIN_ZOOM)
   const [expandedMapPanOffset, setExpandedMapPanOffset] = useState<RaceMapPanOffset>(DEFAULT_RACE_MAP_PAN_OFFSET)
   const currentSample = replay.replayFrame?.sample ?? null
+  const legMetrics = useMemo(() => (
+    race ? calculateRaceLegMetrics(race) : null
+  ), [race])
   const ghostOptions = useMemo(() => (
     race ? allRaces.filter((candidate) => candidate.id !== race.id) : []
   ), [allRaces, race])
@@ -672,7 +676,47 @@ function RaceOverview({
             ? 'Närmaste datapunkt'
             : 'Exakt datapunkt'}
       </p>
+
+      <RaceLegMetricsSection metrics={legMetrics} />
     </div>
+  )
+}
+
+function RaceLegMetricsSection({ metrics }: { metrics: RaceLegMetricsResult | null }) {
+  if (!metrics || metrics.legs.length === 0) {
+    return <p className="race-leg-analysis-fallback">Benanalys kräver K1 och L1.</p>
+  }
+
+  return (
+    <section className="race-leg-analysis" aria-label="Benstatistik">
+      <div className="race-leg-analysis-heading">
+        <div>
+          <p className="analysis-kicker">Ben</p>
+          <h3>{metrics.totalLegs} ben · {metrics.upwindCount} kryss · {metrics.downwindCount} läns</h3>
+        </div>
+        <div className="race-leg-summary">
+          {metrics.bestUpwind?.averageVmgWindKnots !== null && metrics.bestUpwind?.averageVmgWindKnots !== undefined ? <span>Bästa kryss {formatSpeed(metrics.bestUpwind.averageVmgWindKnots)} VMG</span> : null}
+          {metrics.bestDownwind?.averageSpeedKnots !== null && metrics.bestDownwind?.averageSpeedKnots !== undefined ? <span>Bästa läns {formatSpeed(metrics.bestDownwind.averageSpeedKnots)}</span> : null}
+        </div>
+      </div>
+      <div className="race-leg-card-list">
+        {metrics.legs.map((leg) => (
+          <article key={leg.id} className="race-leg-card">
+            <div className="race-leg-card-title">
+              <h4>{leg.label}</h4>
+              {leg.isBest ? <span className="race-leg-best-badge">Bäst</span> : null}
+            </div>
+            <dl>
+              <div><dt>Tid</dt><dd>{formatDuration(leg.durationSeconds)}</dd></div>
+              <div><dt>Distans</dt><dd>{formatDistance(leg.distanceMeters)}</dd></div>
+              <div><dt>Medelfart</dt><dd>{formatNullableSpeed(leg.averageSpeedKnots)}</dd></div>
+              {leg.averageVmgWindKnots !== null ? <div><dt>VMG vind</dt><dd>{formatSpeed(leg.averageVmgWindKnots)}</dd></div> : null}
+              <div><dt>Samples</dt><dd>{leg.sampleCount}</dd></div>
+            </dl>
+          </article>
+        ))}
+      </div>
+    </section>
   )
 }
 
@@ -739,6 +783,10 @@ function formatSpeed(speedKnots: number | undefined): string {
   }
 
   return `${speedKnots.toFixed(1).replace('.', ',')} kn`
+}
+
+function formatNullableSpeed(speedKnots: number | null): string {
+  return speedKnots === null ? '--' : formatSpeed(speedKnots)
 }
 
 function formatSignedSpeed(speedKnots: number | undefined): string {
