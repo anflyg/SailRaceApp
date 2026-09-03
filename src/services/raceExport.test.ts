@@ -13,7 +13,7 @@ describe('race export diagnostics', () => {
     const json = JSON.parse(files.find((file) => file.fileName.endsWith('.json'))!.content)
     expect(json.exportVersion).toBe(2)
     expect(json.appVersion).toBe('0.1.0')
-    expect(json.buildNumber).toBe('13')
+    expect(json.buildNumber).toBe('14')
     expect(json.samples[0]).toMatchObject({ speedKnots: 4.5, nativeSpeedKnots: 1.2, positionSpeedKnots: 4.5, fusedSpeedKnots: 4.49 })
     expect(json.windMeasurement).toMatchObject({ selectedHeadingSource: 'back-vector-row', nativeDebug: { clTrueHeadingDegrees: 60 } })
     const csv = files.find((file) => file.fileName.endsWith('.csv'))!.content
