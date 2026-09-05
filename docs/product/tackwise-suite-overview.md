@@ -12,6 +12,12 @@ The suite consists of:
 - **TackWise Analysis** - web-based post-race analysis.
 - **TackWise Cloud** - shared identity, sync and storage infrastructure.
 
+The implementation repositories are separated by responsibility:
+- `anflyg/SailRaceApp` owns TackWise Race and remains the suite-level source of truth for product, security and privacy architecture.
+- `anflyg/TackWiseAnalysis` owns the Analysis web frontend.
+- `anflyg/tackwise-api` owns the shared cloud/backend/API implementation for Race and Analysis.
+- `anflyg/tackwise-contracts` owns shared versioned schemas and contracts.
+
 ## Core product principles
 
 ### Offline-first racing

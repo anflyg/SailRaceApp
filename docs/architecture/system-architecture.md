@@ -8,6 +8,8 @@ Initial target architecture. Update this document when accepted design decisions
 
 - **TackWise Race (iPhone)** - race execution and local recording.
 - **TackWise Analysis (web)** - post-race user interface.
+- **`anflyg/tackwise-api` (Cloudflare Worker)** - shared backend/API for Race and Analysis, including future session validation, entitlement checks, synchronization, privileged Supabase operations, private R2 access and analysis orchestration.
+- **`anflyg/tackwise-contracts`** - shared versioned schemas and API contracts between clients, API and Analysis.
 - **Apple** - end-user identity provider through Sign in with Apple.
 - **Supabase Auth** - session/auth integration and internal TackWise user UUID.
 - **Supabase PostgreSQL** - structured metadata such as users, races, licences and analysis metadata/results.
@@ -25,6 +27,10 @@ Initial target architecture. Update this document when accepted design decisions
 - Opaque IDs rather than personal data in object names/keys.
 - Early-stage infrastructure target: USD 0-10/month where practical.
 
+## Repository boundaries
+
+`anflyg/SailRaceApp` owns the iPhone application and remains the current source of truth for suite-level product, architecture, security and privacy decisions. `anflyg/TackWiseAnalysis` owns the web frontend and analysis UI. `anflyg/tackwise-api` owns the shared cloud/backend/API implementation. `anflyg/tackwise-contracts` owns shared contracts. These boundaries do not change the offline-first requirement: race-critical execution and recording remain local to the iPhone app.
+
 ## Logical flow
 
 ```text
@@ -35,7 +41,7 @@ Supabase Auth ---- Supabase PostgreSQL
      |                    |
      |                    +-- structured metadata/results
      |
-iPhone Race ---- Cloudflare API/Workers ---- Analysis Web
+iPhone Race ---- tackwise-api Worker ---- Analysis Web
      |                    |
      +------------------> R2 private race objects
 ```
