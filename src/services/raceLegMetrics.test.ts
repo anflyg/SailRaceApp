@@ -10,7 +10,7 @@ const point = (seconds: number, latitude: number, longitude: number, speed: numb
 const metric = (label: string, averageSpeedKnots: number | null, durationSeconds: number): RaceLegMetric => ({
   id: label,
   type: 'k1-to-l1',
-  label,
+  label: { kind: 'downwind', number: 1 },
   startSampleIndex: 0,
   endSampleIndex: 1,
   startTime: timestamp(0),
@@ -39,16 +39,20 @@ const race: Race = {
 describe('race leg metrics', () => {
   it('calculates persisted metrics, labels and best legs', () => {
     const result = calculateRaceLegMetrics(race)
-    expect(result.legs.map((leg) => leg.label)).toEqual(['Kryss 1', 'Läns 1', 'Kryss 2'])
+    expect(result.legs.map((leg) => leg.label)).toEqual([
+      { kind: 'upwind', number: 1 },
+      { kind: 'downwind', number: 1 },
+      { kind: 'upwind', number: 2 },
+    ])
     expect(result.legs.map((leg) => leg.durationSeconds)).toEqual([20, 30, 50])
     expect(result.legs[0].averageSpeedKnots).toBe(5)
     expect(result.legs[0].maxSpeedKnots).toBe(6)
     expect(result.legs[0].averageVmgWindKnots).toBe(3)
     expect(result.legs[1].averageVmgWindKnots).toBeNull()
     expect(result.legs[1].averageSpeedKnots).toBeCloseTo(6)
-    expect(result.bestUpwind?.label).toBe('Kryss 2')
-    expect(result.bestDownwind?.label).toBe('Läns 1')
-    expect(result.legs.filter((leg) => leg.isBest).map((leg) => leg.label)).toEqual(['Läns 1', 'Kryss 2'])
+    expect(result.bestUpwind?.label).toEqual({ kind: 'upwind', number: 2 })
+    expect(result.bestDownwind?.label).toEqual({ kind: 'downwind', number: 1 })
+    expect(result.legs.filter((leg) => leg.isBest).map((leg) => leg.label)).toEqual([{ kind: 'downwind', number: 1 }, { kind: 'upwind', number: 2 }])
   })
 
   it('does not treat missing values as zero', () => {
@@ -59,7 +63,7 @@ describe('race leg metrics', () => {
   it('selects the fastest downwind leg before considering duration', () => {
     const slowerShorter = metric('Läns 2', 5.8, 60)
     const fasterLonger = metric('Läns 1', 6.2, 80)
-    expect(selectBestLeg([fasterLonger, slowerShorter], false)?.label).toBe('Läns 1')
-    expect(selectBestLeg([fasterLonger, metric('Läns 2', 6.2, 60)], false)?.label).toBe('Läns 2')
+    expect(selectBestLeg([fasterLonger, slowerShorter], false)?.id).toBe('Läns 1')
+    expect(selectBestLeg([fasterLonger, metric('Läns 2', 6.2, 60)], false)?.id).toBe('Läns 2')
   })
 })

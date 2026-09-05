@@ -52,6 +52,7 @@ describe('appSettingsStorage layline alpha', () => {
         enabled: true,
         alphaDegrees: 999,
       },
+      displayMode: 'standard',
     }))
     vi.stubGlobal('localStorage', storage)
 
@@ -59,6 +60,22 @@ describe('appSettingsStorage layline alpha', () => {
 
     expect(loaded.layline.enabled).toBe(true)
     expect(loaded.layline.alphaDegrees).toBe(110)
+    expect(loaded.language).toBe('sv')
+  })
+
+  it('bevarar äldre layline-inställningar när displayMode finns kvar', () => {
+    const storage = new MockStorage()
+    storage.setItem(STORAGE_KEY, JSON.stringify({
+      layline: {
+        enabled: false,
+        alphaDegrees: 72,
+      },
+      displayMode: 'sun',
+    }))
+    vi.stubGlobal('localStorage', storage)
+
+    expect(loadAppSettings().layline).toEqual({ enabled: false, alphaDegrees: 72 })
+    expect(loadAppSettings().language).toBe('sv')
   })
 
   it('sparar och läser tillbaka layline-inställningar', () => {
@@ -70,75 +87,17 @@ describe('appSettingsStorage layline alpha', () => {
         enabled: false,
         alphaDegrees: 72,
       },
-      displayMode: 'standard',
     })
 
     const loaded = loadAppSettings()
     expect(loaded.layline.enabled).toBe(false)
     expect(loaded.layline.alphaDegrees).toBe(72)
   })
-})
 
-describe('appSettingsStorage display mode', () => {
-  it('använder standard som default', () => {
-    vi.stubGlobal('localStorage', new MockStorage())
-
-    expect(loadAppSettings().displayMode).toBe('standard')
-  })
-
-  it('sparar sun', () => {
+  it('sparar och läser tillbaka valt språk', () => {
     const storage = new MockStorage()
     vi.stubGlobal('localStorage', storage)
-
-    saveAppSettings({
-      layline: {
-        enabled: true,
-        alphaDegrees: 90,
-      },
-      displayMode: 'sun',
-    })
-
-    expect(JSON.parse(storage.getItem(STORAGE_KEY) ?? '{}').displayMode).toBe('sun')
-  })
-
-  it('laddar sun efter omstart', () => {
-    const storage = new MockStorage()
-    storage.setItem(STORAGE_KEY, JSON.stringify({
-      layline: {
-        enabled: true,
-        alphaDegrees: 90,
-      },
-      displayMode: 'sun',
-    }))
-    vi.stubGlobal('localStorage', storage)
-
-    expect(loadAppSettings().displayMode).toBe('sun')
-  })
-
-  it('normaliserar äldre settings utan displayMode till standard', () => {
-    const storage = new MockStorage()
-    storage.setItem(STORAGE_KEY, JSON.stringify({
-      layline: {
-        enabled: false,
-        alphaDegrees: 72,
-      },
-    }))
-    vi.stubGlobal('localStorage', storage)
-
-    expect(loadAppSettings().displayMode).toBe('standard')
-  })
-
-  it('normaliserar ogiltigt displayMode till standard', () => {
-    const storage = new MockStorage()
-    storage.setItem(STORAGE_KEY, JSON.stringify({
-      layline: {
-        enabled: true,
-        alphaDegrees: 90,
-      },
-      displayMode: 'invalid',
-    }))
-    vi.stubGlobal('localStorage', storage)
-
-    expect(loadAppSettings().displayMode).toBe('standard')
+    saveAppSettings({ layline: { enabled: true, alphaDegrees: 90 }, language: 'en' })
+    expect(loadAppSettings().language).toBe('en')
   })
 })

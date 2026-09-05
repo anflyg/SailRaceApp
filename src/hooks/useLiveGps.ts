@@ -81,7 +81,7 @@ function getErrorMessage(error: unknown): string {
     }
   }
 
-  return 'GPS är inte tillgänglig.'
+  return 'gps_unavailable'
 }
 
 export function useLiveGps(enabled = true, gpsSource: GpsSource = capacitorGpsSource): LiveGpsReading {
@@ -107,7 +107,7 @@ export function useLiveGps(enabled = true, gpsSource: GpsSource = capacitorGpsSo
 
     const startWatching = async () => {
       if (!gpsSource.isAvailable()) {
-        updateStatus('unavailable', 'GPS stöds inte på den här enheten.')
+        updateStatus('unavailable', 'gps_unsupported')
         return
       }
 
@@ -117,7 +117,7 @@ export function useLiveGps(enabled = true, gpsSource: GpsSource = capacitorGpsSo
         const permission = await gpsSource.requestPermission()
 
         if (permission !== 'granted') {
-          updateStatus('error', 'GPS-behörighet nekades.')
+          updateStatus('error', 'gps_permission_denied')
           return
         }
 
@@ -138,7 +138,7 @@ export function useLiveGps(enabled = true, gpsSource: GpsSource = capacitorGpsSo
           }
 
           if (!position) {
-            updateStatus('unavailable', 'GPS-position saknas.')
+            updateStatus('unavailable', 'gps_position_missing')
             return
           }
 

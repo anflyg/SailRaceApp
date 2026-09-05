@@ -1,7 +1,7 @@
-# Aster Race TestFlight 0.1.0
+# TackWise Race TestFlight 0.1.0
 
 ## Första TestFlight-versionen
-Detta är första TestFlight-builden av Aster Race.
+Detta är första TestFlight-builden av TackWise Race.
 
 ## Fokus i denna version
 - Bana: sättning av A, B, K1, L1.

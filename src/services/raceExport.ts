@@ -232,7 +232,7 @@ function toGpxContent(race: Race): string {
   const validCreatedTime = Number.isFinite(createdTime) ? new Date(createdTime).toISOString() : new Date().toISOString()
 
   return `<?xml version="1.0" encoding="UTF-8"?>
-<gpx version="1.1" creator="Aster Race" xmlns="http://www.topografix.com/GPX/1/1" xmlns:aster="https://aster-race.app/gpx/extensions/1">
+<gpx version="1.1" creator="TackWise Race" xmlns="http://www.topografix.com/GPX/1/1" xmlns:aster="https://aster-race.app/gpx/extensions/1">
   <metadata>
     <name>${trackName}</name>
     <time>${validCreatedTime}</time>
@@ -308,7 +308,7 @@ export function createRaceExportZip(race: Race): ZippedRaceExport {
   }
 }
 
-export async function exportRaceDownloads(race: Race): Promise<void> {
+export async function exportRaceDownloads(race: Race, labels: { text: string; dialogTitle: string } = { text: 'TackWise Race export', dialogTitle: 'TackWise Race' }): Promise<void> {
   const zipExport = createRaceExportZip(race)
 
   if (Capacitor.isNativePlatform()) {
@@ -327,10 +327,10 @@ export async function exportRaceDownloads(race: Race): Promise<void> {
     })
 
     await Share.share({
-      title: race.name || 'Aster Race export',
-      text: 'Export från Aster Race',
+      title: race.name || 'TackWise Race export',
+      text: labels.text,
       url: fileUri.uri,
-      dialogTitle: 'Exportera race',
+      dialogTitle: labels.dialogTitle,
     })
 
     return

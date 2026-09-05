@@ -4,25 +4,24 @@ import {
   MIN_LAYLINE_ALPHA_DEGREES,
   type LaylineSettings,
 } from '../types'
+import type { AppLanguage } from '../i18n/translations'
 
 const STORAGE_KEY = 'aster-race:app-settings:v1'
-
-export type DisplayMode = 'standard' | 'sun'
 
 export const DEFAULT_LAYLINE_SETTINGS: LaylineSettings = {
   enabled: true,
   alphaDegrees: DEFAULT_LAYLINE_ALPHA_DEGREES,
 }
 
-interface AppSettingsState {
+export interface AppSettingsState {
   layline: LaylineSettings
-  displayMode: DisplayMode
+  language: AppLanguage
 }
 
 function createDefaultSettingsState(): AppSettingsState {
   return {
     layline: DEFAULT_LAYLINE_SETTINGS,
-    displayMode: 'standard',
+    language: 'sv',
   }
 }
 
@@ -50,7 +49,7 @@ export function loadAppSettings(): AppSettingsState {
   }
 }
 
-export function saveAppSettings(state: AppSettingsState): void {
+export function saveAppSettings(state: Pick<AppSettingsState, 'layline'> & Partial<Pick<AppSettingsState, 'language'>>): void {
   const storage = getLocalStorage()
 
   if (!storage) {
@@ -80,7 +79,7 @@ function normalizeSettingsState(value: unknown): AppSettingsState {
         ? clampLaylineAlphaDegrees(laylineValue.alphaDegrees)
         : DEFAULT_LAYLINE_SETTINGS.alphaDegrees,
     },
-    displayMode: value.displayMode === 'sun' ? 'sun' : 'standard',
+    language: value.language === 'en' ? 'en' : 'sv',
   }
 }
 

@@ -1,6 +1,6 @@
-# SailRaceApp
+# TackWise Race
 
-SailRaceApp is a mobile-first sailing race app foundation built with React, TypeScript, Vite and Capacitor for iOS.
+TackWise Race is the iPhone product in the TackWise sailing-instrument suite, built with React, TypeScript, Vite and Capacitor for iOS.
 
 ## Stack
 

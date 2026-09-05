@@ -3,6 +3,8 @@ import { formatMeters } from '../../domain/format'
 import { calculateStartMetrics } from '../../domain/startLine'
 import { useCountdown } from '../../hooks/useCountdown'
 import type { CountdownDuration, CourseState, FilteredGpsReading, GeoPoint, LiveGpsReading } from '../../types'
+import { useTranslation } from '../../i18n/LanguageContext'
+import type { TranslationKey } from '../../i18n/translations'
 
 const durations: CountdownDuration[] = [5, 4, 3, 2, 1]
 
@@ -69,6 +71,7 @@ export function StartTimerView({
   onRunningChange,
   onFinish,
 }: StartTimerViewProps) {
+  const { t } = useTranslation()
   const { seconds, status, toggle, pause, reset } = useCountdown(selectedMinutes * 60)
   const longPressRef = useRef<number | null>(null)
   const longPressTriggered = useRef(false)
@@ -198,9 +201,9 @@ export function StartTimerView({
             <span>GPS</span>
             <strong>{formatGpsLabel(gps)}</strong>
           </div>
-          {startMetrics.statusText ? (
+          {startMetrics.status ? (
             <p className="start-status" role="status">
-              {startMetrics.statusText}
+              {t((`start.status.${startMetrics.status}`) as TranslationKey)}
             </p>
           ) : null}
         </div>

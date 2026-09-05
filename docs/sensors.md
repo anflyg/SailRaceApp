@@ -2,7 +2,7 @@
 
 ## Mounting Assumption
 
-SailRaceApp assumes the iPhone is mounted vertically on the mast:
+TackWise Race assumes the iPhone is mounted vertically on the mast:
 
 - phone top edge points upward
 - phone back side points toward bow

@@ -1,4 +1,5 @@
 import type { AppView } from '../types'
+import { useTranslation } from '../i18n/LanguageContext'
 
 interface NavigationBarProps {
   currentView: AppView
@@ -6,17 +7,14 @@ interface NavigationBarProps {
   onChange: (view: AppView) => void
 }
 
-const viewItems: Array<{ view: AppView; label: string }> = [
-  { view: 'setup', label: 'Setup' },
-  { view: 'course', label: 'Bana' },
-  { view: 'timer', label: 'Start' },
-  { view: 'race', label: 'Segling' },
-  { view: 'analysis', label: 'Analys' },
+const viewItems: Array<{ view: AppView; label: 'navigation.setup' | 'navigation.course' | 'navigation.start' | 'navigation.sailing' | 'navigation.analysis' }> = [
+  { view: 'setup', label: 'navigation.setup' }, { view: 'course', label: 'navigation.course' }, { view: 'timer', label: 'navigation.start' }, { view: 'race', label: 'navigation.sailing' }, { view: 'analysis', label: 'navigation.analysis' },
 ]
 
 export function NavigationBar({ currentView, isLocked = false, onChange }: NavigationBarProps) {
+  const { t } = useTranslation()
   return (
-    <nav className="navigation-bar" aria-label="Primary navigation">
+    <nav className="navigation-bar" aria-label={t('navigation.label')}>
       {viewItems.map((item) => {
         const isActive = currentView === item.view
         const isDisabled = isLocked && !isActive
@@ -29,7 +27,7 @@ export function NavigationBar({ currentView, isLocked = false, onChange }: Navig
             onClick={() => onChange(item.view)}
             disabled={isDisabled}
           >
-            {item.label}
+            {t(item.label)}
           </button>
         )
       })}

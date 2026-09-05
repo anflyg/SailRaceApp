@@ -1,4 +1,4 @@
-# TestFlight Checklist (Aster Race)
+# TestFlight Checklist (TackWise Race)
 
 ## 1) Branch och preflight
 1. Säkerställ att du bygger från `main` eller en release-branch (inte `feature/*`).
@@ -21,7 +21,7 @@
 4. Vänta tills Organizer öppnas automatiskt med den nya arkiven.
 
 ## 3) Ladda upp via Organizer
-1. I Organizer: välj senaste arkiven för `Aster Race`.
+1. I Organizer: välj senaste arkiven för `TackWise Race`.
 2. Klicka **Distribute App**.
 3. Välj **App Store Connect**.
 4. Välj **Upload**.
@@ -30,7 +30,7 @@
 7. Vänta på “Upload Successful”.
 
 ## 4) App Store Connect (vad du fyller i)
-1. Gå till **App Store Connect → My Apps → Aster Race → TestFlight**.
+1. Gå till **App Store Connect → My Apps → TackWise Race → TestFlight**.
 2. Vänta tills bygget är “Ready to Test”.
 3. Lägg till:
    - **What to Test**: se text nedan.
@@ -39,7 +39,7 @@
 4. Lägg till intern testgrupp och/eller extern grupp.
 
 ## 5) Beta App Description (kort)
-`Aster Race är ett seglingsinstrument för start och race med bana, starttimer, fart, riktning, VMG och sensordata för iPhone.`
+`TackWise Race är ett seglingsinstrument för start och race med bana, starttimer, fart, riktning, VMG och sensordata för iPhone.`
 
 ## 6) What to Test / testinstruktion (kort)
 `Testa bana (A/B/K1/L1), vindmätning, starttimer, seglingsvyn (fart/riktning/VMG), samt export till ZIP. Rapportera avvikelser i riktning/vind, GPS-stabilitet, UI-läsbarhet och exportdelning.`

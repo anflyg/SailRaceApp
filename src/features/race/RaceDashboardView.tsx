@@ -8,6 +8,7 @@ import {
 import { useLaylineWarning } from './useLaylineWarning'
 import { playLaylineSignal, playLaylineTick } from '../../services/laylineAudio'
 import { recordLaylineTackEventIfActive } from '../../services/raceLogger'
+import { useTranslation } from '../../i18n/LanguageContext'
 import type { CourseState, FilteredGpsReading, GeoPoint, RollPitchValues } from '../../types'
 
 type VelocityMode = 'vmg' | 'vmc'
@@ -40,6 +41,7 @@ export function RaceDashboardView({
   laylineAlphaDegrees,
   manualLaylineCountdownValue = null,
 }: RaceDashboardViewProps) {
+  const { t } = useTranslation()
   const [activeVelocityMode, setActiveVelocityMode] = useState<VelocityMode>('vmc')
   const previousCountdownValueRef = useRef<number | null>(null)
   const speedKnots = gps.speedKnots
@@ -85,10 +87,10 @@ export function RaceDashboardView({
     ? calculateVelocityMadeGood(speedKnots, gps.courseDegrees, referenceHeading)
     : null
   const velocityLabel = selectedVelocityMode === 'vmc'
-    ? 'VMG Bana'
+    ? t('sailing.vmgCourse')
     : selectedVelocityMode === 'vmg'
-      ? 'VMG Vind'
-      : 'Ej satt'
+      ? t('sailing.vmgWind')
+      : t('sailing.notSet')
   const velocityValue = activeLaylineWarning.isActive
     ? `${activeLaylineWarning.countdownValue ?? '--'}`
     : velocityMadeGood !== null
@@ -174,14 +176,14 @@ export function RaceDashboardView({
   return (
     <section className="view-section race-view">
       <div className="race-grid">
-        <div className="metric-box" aria-label="Fart">
+        <div className="metric-box" aria-label={t('sailing.speed')}>
           <span className="metric-value">{speedKnots !== null ? formatKnots(speedKnots) : '--'}</span>
-          <span className="metric-label">Fart</span>
+          <span className="metric-label">{t('sailing.speed')}</span>
         </div>
 
-        <div className="metric-box" aria-label="Riktning">
+        <div className="metric-box" aria-label={t('sailing.heading')}>
           <span className="metric-value">{hasDisplayCourse ? formatDegrees(courseHeading) : '--'}</span>
-          <span className="metric-label">Riktning</span>
+          <span className="metric-label">{t('sailing.heading')}</span>
         </div>
 
         <div
@@ -202,7 +204,7 @@ export function RaceDashboardView({
         </div>
       </div>
 
-      <div className="roll-pitch-strip" aria-label="Rullning och stampning">
+      <div className="roll-pitch-strip" aria-label={t('sailing.rollPitch')}>
         <span>R {rollPitch ? formatSignedDegrees(rollPitch.rollDegrees) : '—'}</span>
         <span>S {rollPitch ? formatSignedDegrees(rollPitch.pitchDegrees) : '—'}</span>
       </div>

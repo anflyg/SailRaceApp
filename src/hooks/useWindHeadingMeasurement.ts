@@ -42,7 +42,7 @@ export function useWindHeadingMeasurement(): WindHeadingMeasurementState {
 
       if (!result) {
         setStatus('unavailable')
-        setError('Kunde inte mäta vind')
+        setError('wind_measurement_failed')
         return null
       }
 
@@ -64,7 +64,7 @@ export function useWindHeadingMeasurement(): WindHeadingMeasurementState {
       }
 
       setStatus('error')
-      setError(measurementError instanceof Error ? measurementError.message : 'Kunde inte mäta vind')
+      setError(measurementError instanceof Error ? measurementError.message : 'wind_measurement_failed')
       return null
     }
   }, [])

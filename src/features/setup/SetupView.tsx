@@ -1,23 +1,21 @@
-import { formatDegrees, formatKnots, formatSignedDegrees } from '../../domain/format'
+import { formatSignedDegrees } from '../../domain/format'
 import { getGpsStatusDisplay } from '../../domain/gps'
 import {
   clampLaylineAlphaDegrees,
-  type DisplayMode,
 } from '../../services/appSettingsStorage'
 import {
   MAX_LAYLINE_ALPHA_DEGREES,
   MIN_LAYLINE_ALPHA_DEGREES,
 } from '../../types'
+import { useTranslation } from '../../i18n/LanguageContext'
 import type {
   DeviceAttitudeReading,
-  FilteredGpsReading,
   LiveGpsReading,
   RollPitchValues,
 } from '../../types'
 
 interface SetupViewProps {
   gps: LiveGpsReading
-  filteredGps: FilteredGpsReading
   attitude: DeviceAttitudeReading
   rollPitch: RollPitchValues | null
   isCalibrated: boolean
@@ -26,17 +24,10 @@ interface SetupViewProps {
   laylineAlphaDegrees: number
   onLaylineEnabledChange: (enabled: boolean) => void
   onLaylineAlphaDegreesChange: (alphaDegrees: number) => void
-  displayMode: DisplayMode
-  onDisplayModeChange: (displayMode: DisplayMode) => void
-}
-
-function sensorStatusLabel(isAvailable: boolean): string {
-  return isAvailable ? 'OK' : 'SAKNAS'
 }
 
 export function SetupView({
   gps,
-  filteredGps,
   attitude,
   rollPitch,
   isCalibrated,
@@ -45,69 +36,29 @@ export function SetupView({
   laylineAlphaDegrees,
   onLaylineEnabledChange,
   onLaylineAlphaDegreesChange,
-  displayMode,
-  onDisplayModeChange,
 }: SetupViewProps) {
+  const { language, setLanguage, t } = useTranslation()
   const gpsStatus = getGpsStatusDisplay(gps)
-  const gpsStatusText = gpsStatus.statusText ?? 'OK'
-  const speedLabel = filteredGps.speedKnots !== null ? `${formatKnots(filteredGps.speedKnots)} kn` : '—'
-  const courseLabel = filteredGps.courseReliable && filteredGps.courseDegrees !== null
-    ? formatDegrees(filteredGps.courseDegrees)
-    : '—'
   const canCalibrate = attitude.rollDegrees !== null && attitude.pitchDegrees !== null
+  const systemStatusIssues = [
+    !gpsStatus.isGood ? t(gpsStatus.status === 'missing' ? 'status.gpsUnavailable' : 'status.gpsUnreliable') : null,
+    !attitude.motionAvailable ? t('status.motionUnavailable') : null,
+    !attitude.headingAvailable ? t('status.headingUnavailable') : null,
+  ].filter((issue): issue is string => issue !== null)
+  const systemStatusLabel = systemStatusIssues.length === 0
+    ? t('status.allSensorsOk')
+    : systemStatusIssues.join(' · ')
 
   return (
     <section className="view-section setup-view">
-      <h1 className="setup-title">SETUP</h1>
-
-      <div className="setup-display-mode-control" role="group" aria-label="Visningsläge">
-        <button
-          type="button"
-          className={displayMode === 'standard' ? 'active' : ''}
-          aria-pressed={displayMode === 'standard'}
-          onClick={() => onDisplayModeChange('standard')}
-        >
-          STANDARD
-        </button>
-        <button
-          type="button"
-          className={displayMode === 'sun' ? 'active' : ''}
-          aria-pressed={displayMode === 'sun'}
-          onClick={() => onDisplayModeChange('sun')}
-        >
-          SOL
-        </button>
-      </div>
-
-      <div className="setup-status-grid">
-        <span>GPS</span>
-        <span>{gpsStatus.label.replace('GPS ', '')}</span>
-        <span>{gpsStatusText}</span>
-
-        <span>Fart</span>
-        <span>{speedLabel}</span>
-        <span />
-
-        <span>COG</span>
-        <span>{courseLabel}</span>
-        <span />
-
-        <span>Motion</span>
-        <span />
-        <span>{sensorStatusLabel(attitude.motionAvailable)}</span>
-
-        <span>Heading</span>
-        <span />
-        <span>{sensorStatusLabel(attitude.headingAvailable)}</span>
-      </div>
-
+      <h2 className="setup-section-heading">{t('setup.calibration')}</h2>
       <div className="setup-calibration-panel">
         <div className="setup-roll-pitch">
           <span>R {rollPitch ? formatSignedDegrees(rollPitch.rollDegrees) : '—'}</span>
           <span>S {rollPitch ? formatSignedDegrees(rollPitch.pitchDegrees) : '—'}</span>
         </div>
         <p className={`setup-calibration-status ${isCalibrated ? 'calibrated' : ''}`}>
-          {isCalibrated ? 'Kalibrerad' : 'Ej kalibrerad'}
+          {isCalibrated ? t('setup.calibrated') : t('setup.notCalibrated')}
         </p>
       </div>
 
@@ -117,28 +68,28 @@ export function SetupView({
         onClick={onCalibrate}
         disabled={!canCalibrate}
       >
-        Kalibrera nolläge
+        {t('setup.calibrate')}
       </button>
 
-      <div className="setup-layline-panel" aria-label="Layline-inställningar">
+      <h2 className="setup-section-heading">{t('setup.layline')}</h2>
+      <div className="setup-layline-panel" aria-label={t('setup.laylineSettings')}>
         <div className="setup-layline-header">
-          <h2>Layline</h2>
           <button
             type="button"
             className={`setup-layline-toggle ${laylineEnabled ? 'enabled' : 'disabled'}`}
             onClick={() => onLaylineEnabledChange(!laylineEnabled)}
             aria-pressed={laylineEnabled}
           >
-            {laylineEnabled ? 'På' : 'Av'}
+            {laylineEnabled ? t('setup.on') : t('setup.off')}
           </button>
         </div>
 
         <div className="setup-layline-alpha-row">
-          <span>Alpha</span>
+          <span>{t('setup.alpha')}</span>
           <div className="setup-layline-alpha-control">
             <button
               type="button"
-              aria-label="Minska alpha"
+              aria-label={t('setup.decreaseAlpha')}
               onClick={() => onLaylineAlphaDegreesChange(
                 clampLaylineAlphaDegrees(laylineAlphaDegrees - 1),
               )}
@@ -149,7 +100,7 @@ export function SetupView({
             <strong>{laylineAlphaDegrees}°</strong>
             <button
               type="button"
-              aria-label="Öka alpha"
+              aria-label={t('setup.increaseAlpha')}
               onClick={() => onLaylineAlphaDegreesChange(
                 clampLaylineAlphaDegrees(laylineAlphaDegrees + 1),
               )}
@@ -158,6 +109,23 @@ export function SetupView({
               +
             </button>
           </div>
+        </div>
+      </div>
+
+      <div className="setup-language">
+        <h2 className="setup-section-heading">{t('setup.language')}</h2>
+        <div className="analysis-segmented-control" role="group" aria-label={t('setup.language')}>
+          <button type="button" className={language === 'sv' ? 'active' : ''} aria-pressed={language === 'sv'} onClick={() => setLanguage('sv')}>{t('language.swedish')}</button>
+          <button type="button" className={language === 'en' ? 'active' : ''} aria-pressed={language === 'en'} onClick={() => setLanguage('en')}>{t('language.english')}</button>
+        </div>
+      </div>
+
+      <div className="setup-system-status" aria-live="polite">
+        <h2 className="setup-section-heading">{t('setup.status')}</h2>
+        <div className="setup-system-status-panel">
+          <strong className={systemStatusIssues.length === 0 ? 'ready' : ''}>
+            {systemStatusLabel}
+          </strong>
         </div>
       </div>
     </section>

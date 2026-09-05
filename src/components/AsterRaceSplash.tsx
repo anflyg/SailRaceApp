@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import primaryLogo from '../assets/branding/aster-race-primary-logo.png'
+import tackwiseLogo from '../../brand/source/tackwise-logo-stacked.svg'
 import './AsterRaceSplash.css'
 
 interface AsterRaceSplashProps {
@@ -30,12 +30,11 @@ export default function AsterRaceSplash({ onComplete }: AsterRaceSplashProps) {
   return (
     <div
       className={`aster-race-splash ${isLeaving ? 'aster-race-splash--leaving' : ''}`}
-      aria-label="Aster Race start screen"
+      aria-label="TackWise Race"
     >
-      <div className="aster-race-splash__halo" aria-hidden="true" />
       <div className="aster-race-splash__content">
-        <img className="aster-race-splash__logo" src={primaryLogo} alt="Aster Race" />
-        <p className="aster-race-splash__tagline">Performance Instrument</p>
+        <img className="aster-race-splash__logo" src={tackwiseLogo} alt="TackWise" />
+        <p className="aster-race-splash__product">RACE</p>
       </div>
     </div>
   )

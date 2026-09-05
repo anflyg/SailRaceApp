@@ -19,7 +19,7 @@ const DeviceMotionNative = registerPlugin<DeviceMotionNativePlugin>('WindHeading
 
 const unavailableReading: DeviceAttitudeReading = {
   status: 'unavailable',
-  error: 'Motion saknas.',
+  error: 'motion_unavailable',
   rollDegrees: null,
   pitchDegrees: null,
   motionAvailable: false,
@@ -59,7 +59,7 @@ export async function getDeviceAttitude(): Promise<DeviceAttitudeReading> {
     return {
       ...unavailableReading,
       status: 'error',
-      error: error instanceof Error ? error.message : 'Motion saknas.',
+      error: error instanceof Error ? error.message : 'motion_unavailable',
     }
   }
 }

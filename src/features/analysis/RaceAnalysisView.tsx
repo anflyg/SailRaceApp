@@ -17,6 +17,8 @@ import {
   toggleFavorite,
 } from '../../services/raceStorage'
 import type { Race, SailingDay } from '../../types'
+import { useTranslation } from '../../i18n/LanguageContext'
+import type { Translate } from '../../i18n/LanguageContext'
 
 type AnalysisSection = 'library' | 'overview' | 'start' | 'graphs' | 'data'
 
@@ -38,15 +40,12 @@ const MAP_MIN_ZOOM = 1
 const MAP_MAX_ZOOM = 4
 const MAP_ZOOM_STEP = 0.5
 
-const analysisSections: Array<{ id: AnalysisSection; label: string }> = [
-  { id: 'library', label: 'Bibliotek' },
-  { id: 'overview', label: 'Översikt' },
-  { id: 'start', label: 'Start' },
-  { id: 'graphs', label: 'Grafer' },
-  { id: 'data', label: 'Data' },
+const analysisSections: Array<{ id: AnalysisSection; label: 'analysis.library' | 'analysis.overview' | 'navigation.start' | 'analysis.graphs' | 'analysis.data' }> = [
+  { id: 'library', label: 'analysis.library' }, { id: 'overview', label: 'analysis.overview' }, { id: 'start', label: 'navigation.start' }, { id: 'graphs', label: 'analysis.graphs' }, { id: 'data', label: 'analysis.data' },
 ]
 
 export function RaceAnalysisView({ initialRaceId, initialRace }: { initialRaceId?: string; initialRace?: Race } = {}) {
+  const { t } = useTranslation()
   const [groups, setGroups] = useState(() => loadRaceGroups(initialRaceId, initialRace))
   const [exportingRaceId, setExportingRaceId] = useState<string | null>(null)
   const [analysisState, setAnalysisState] = useState<AnalysisState>({
@@ -136,7 +135,7 @@ export function RaceAnalysisView({ initialRaceId, initialRace }: { initialRaceId
   }
 
   const handleDeleteRace = (race: Race) => {
-    const shouldDelete = window.confirm(`Radera "${race.name}"? Detta kan inte ångras.`)
+    const shouldDelete = window.confirm(t('dialog.deleteRace', { name: race.name }))
 
     if (!shouldDelete) {
       return
@@ -147,7 +146,7 @@ export function RaceAnalysisView({ initialRaceId, initialRace }: { initialRaceId
   }
 
   const handleRenameRace = (race: Race) => {
-    const nextName = window.prompt('Nytt namn på race', race.name)
+    const nextName = window.prompt(t('dialog.renameRace'), race.name)
 
     if (nextName === null || nextName.trim() === '') {
       return
@@ -168,9 +167,9 @@ export function RaceAnalysisView({ initialRaceId, initialRace }: { initialRaceId
     setExportingRaceId(race.id)
 
     try {
-      await exportRaceDownloads(race)
+      await exportRaceDownloads(race, { text: t('export.shareText'), dialogTitle: t('export.dialogTitle') })
     } catch {
-      window.alert('Kunde inte exportera race')
+      window.alert(t('dialog.exportFailed'))
     } finally {
       setExportingRaceId(null)
     }
@@ -189,18 +188,7 @@ export function RaceAnalysisView({ initialRaceId, initialRace }: { initialRaceId
 
   return (
     <section className="view-section analysis-view">
-      <div className="analysis-header">
-        <div>
-          <p className="analysis-kicker">After action</p>
-          <h2>{isLibraryActive ? 'Racebibliotek' : selectedRace?.name ?? 'Raceanalys'}</h2>
-        </div>
-        <p className="placeholder-note">
-          Sparade race kommer senare att skapas automatiskt från startklockan. Välj ett race för
-          kommande replay, startanalys, grafer och rådata.
-        </p>
-      </div>
-
-      <div className="analysis-segmented-control" role="tablist" aria-label="Analysundersidor">
+      <div className="analysis-segmented-control" role="tablist" aria-label={t('analysis.tabs')}>
         {analysisSections.map((section) => (
           <button
             key={section.id}
@@ -210,7 +198,7 @@ export function RaceAnalysisView({ initialRaceId, initialRace }: { initialRaceId
             className={analysisState.activeSection === section.id ? 'active' : ''}
             onClick={() => handleSectionChange(section.id)}
           >
-            {section.label}
+            {t(section.label)}
           </button>
         ))}
       </div>
@@ -248,6 +236,7 @@ export function RaceAnalysisView({ initialRaceId, initialRace }: { initialRaceId
 }
 
 function StartAnalysisView({ race }: { race: Race | null }) {
+  const { language, t } = useTranslation()
   const startAnalysis = useMemo(() => (
     race ? analyzeRaceStart(race) : null
   ), [race])
@@ -255,14 +244,14 @@ function StartAnalysisView({ race }: { race: Race | null }) {
   if (!race || !startAnalysis) {
     return (
       <div className="analysis-placeholder-panel">
-        <h3>Välj race i biblioteket</h3>
-        <p>Startanalys kräver ett valt race med startlinje, startskott och GPS-spår.</p>
+        <h3>{t('analysis.selectRace')}</h3>
+        <p>{t('analysis.startRequiresRace')}</p>
       </div>
     )
   }
 
-  const resultText = getStartResultText(startAnalysis)
-  const statusMessage = getStartStatusMessage(startAnalysis.status)
+  const resultText = getStartResultText(startAnalysis, t)
+  const statusMessage = getStartStatusMessage(startAnalysis.status, t)
   const canShowMap = race.samples.length > 0
 
   return (
@@ -283,42 +272,42 @@ function StartAnalysisView({ race }: { race: Race | null }) {
       ) : null}
 
       <div className={`start-analysis-result ${startAnalysis.status}`}>
-        <p className="analysis-kicker">Resultat</p>
+        <p className="analysis-kicker">{t('analysis.result')}</p>
         <h3>{resultText}</h3>
         <p>{statusMessage}</p>
       </div>
 
       <dl className="start-analysis-grid">
         <div>
-          <dt>Startskott</dt>
-          <dd>{formatRaceDateTime(startAnalysis.startGunTime)}</dd>
+          <dt>{t('analysis.startGun')}</dt>
+          <dd>{formatRaceDateTime(startAnalysis.startGunTime, language)}</dd>
         </div>
         <div>
-          <dt>Linje passerad</dt>
-          <dd>{formatRaceDateTime(startAnalysis.crossingTime)}</dd>
+          <dt>{t('analysis.lineCrossed')}</dt>
+          <dd>{formatRaceDateTime(startAnalysis.crossingTime, language)}</dd>
         </div>
         <div>
-          <dt>Tid mot start</dt>
-          <dd>{formatStartDelta(startAnalysis.deltaSeconds)}</dd>
+          <dt>{t('analysis.timeToStart')}</dt>
+          <dd>{formatStartDelta(startAnalysis.deltaSeconds, t)}</dd>
         </div>
         <div>
-          <dt>Fart vid linje</dt>
+          <dt>{t('analysis.speedAtLine')}</dt>
           <dd>{formatSpeed(startAnalysis.crossingSpeedKnots)}</dd>
         </div>
         <div>
-          <dt>Kurs vid linje</dt>
+          <dt>{t('analysis.courseAtLine')}</dt>
           <dd>{formatDegrees(startAnalysis.crossingCogDegrees)}</dd>
         </div>
         <div>
-          <dt>GPS accuracy</dt>
+          <dt>{t('analysis.gpsAccuracy')}</dt>
           <dd>{formatAccuracy(startAnalysis.crossingAccuracyMeters)}</dd>
         </div>
         <div>
-          <dt>Osäkerhet tid</dt>
+          <dt>{t('analysis.timeUncertainty')}</dt>
           <dd>{formatUncertaintySeconds(startAnalysis.uncertaintySeconds)}</dd>
         </div>
         <div>
-          <dt>Osäkerhet distans</dt>
+          <dt>{t('analysis.distanceUncertainty')}</dt>
           <dd>{formatUncertaintyMeters(startAnalysis.uncertaintyMeters)}</dd>
         </div>
       </dl>
@@ -355,11 +344,12 @@ function AnalysisPlaceholder({
   section: AnalysisSection
   race: Race | null
 }) {
+  const { language, t } = useTranslation()
   if (!race) {
     return (
       <div className="analysis-placeholder-panel">
-        <h3>Välj race i biblioteket</h3>
-        <p>Biblioteket är startpunkten för analys. Övriga undersidor fylls på när replay-systemet kopplas in.</p>
+        <h3>{t('analysis.selectRace')}</h3>
+        <p>{t('analysis.libraryStartingPoint')}</p>
       </div>
     )
   }
@@ -368,35 +358,35 @@ function AnalysisPlaceholder({
     <div className="analysis-placeholder-panel">
       <div className="analysis-placeholder-heading">
         <div>
-          <p className="analysis-kicker">{getSectionLabel(section)}</p>
-          <h3>Replay kommer här</h3>
+          <p className="analysis-kicker">{t(analysisSections.find((candidate) => candidate.id === section)?.label ?? 'analysis.overview')}</p>
+          <h3>{t('analysis.replayComingSoon')}</h3>
         </div>
-        {race.isFavorite ? <span className="favorite-badge">Favorit</span> : null}
+        {race.isFavorite ? <span className="favorite-badge">{t('common.favorite')}</span> : null}
       </div>
 
       <dl className="selected-race-basics">
         <div>
-          <dt>Race</dt>
+          <dt>{t('analysis.race')}</dt>
           <dd>{race.name}</dd>
         </div>
         <div>
-          <dt>Start</dt>
-          <dd>{formatRaceDateTime(race.startGunTime ?? race.createdAt)}</dd>
+          <dt>{t('navigation.start')}</dt>
+          <dd>{formatRaceDateTime(race.startGunTime ?? race.createdAt, language)}</dd>
         </div>
         <div>
-          <dt>Duration</dt>
+          <dt>{t('analysis.duration')}</dt>
           <dd>{formatDuration(race.summary?.durationSeconds)}</dd>
         </div>
         <div>
-          <dt>Distans</dt>
+          <dt>{t('common.distance')}</dt>
           <dd>{formatDistance(race.summary?.distanceMeters)}</dd>
         </div>
         <div>
-          <dt>Maxfart</dt>
+          <dt>{t('analysis.maxSpeed')}</dt>
           <dd>{formatSpeed(race.summary?.maxSpeedKnots)}</dd>
         </div>
         <div>
-          <dt>Samples</dt>
+          <dt>{t('common.samples')}</dt>
           <dd>{race.summary?.sampleCount ?? race.samples.length}</dd>
         </div>
       </dl>
@@ -419,6 +409,7 @@ function RaceOverview({
   selectedGhostRaceId: string | null
   onGhostRaceChange: (ghostRaceId: string | null) => void
 }) {
+  const { language, t } = useTranslation()
   const [isMapExpanded, setIsMapExpanded] = useState(false)
   const [expandedMapZoomScale, setExpandedMapZoomScale] = useState(MAP_MIN_ZOOM)
   const [expandedMapPanOffset, setExpandedMapPanOffset] = useState<RaceMapPanOffset>(DEFAULT_RACE_MAP_PAN_OFFSET)
@@ -461,7 +452,7 @@ function RaceOverview({
       id: ghostRace.id,
       point: ghostSample,
       className: 'ghost-boat',
-      label: `Ghost: ${ghostRace.name}`,
+      label: `${t('analysis.ghost')}: ${ghostRace.name}`,
     }]
     : []
   const openMap = () => {
@@ -511,8 +502,8 @@ function RaceOverview({
   if (!race) {
     return (
       <div className="analysis-placeholder-panel">
-        <h3>Välj race i biblioteket</h3>
-        <p>Översikt kräver ett valt race. Gå till Bibliotek och öppna ett sparat race.</p>
+        <h3>{t('analysis.selectRace')}</h3>
+        <p>{t('analysis.overviewRequiresRace')}</p>
       </div>
     )
   }
@@ -522,12 +513,12 @@ function RaceOverview({
       <div className="analysis-placeholder-panel">
         <div className="analysis-placeholder-heading">
           <div>
-            <p className="analysis-kicker">Översikt</p>
+            <p className="analysis-kicker">{t('analysis.overview')}</p>
             <h3>{race.name}</h3>
           </div>
-          {race.isFavorite ? <span className="favorite-badge">Favorit</span> : null}
+          {race.isFavorite ? <span className="favorite-badge">{t('common.favorite')}</span> : null}
         </div>
-        <p>Inga datapunkter finns för detta race ännu.</p>
+        <p>{t('analysis.noSamples')}</p>
       </div>
     )
   }
@@ -540,17 +531,17 @@ function RaceOverview({
         currentMarkers={ghostMarkers}
         tracks={mapTracks}
         onActivate={openMap}
-        activationLabel="Racekarta, tryck för att förstora"
+        activationLabel={t('analysis.openMap')}
       />
 
       {isMapExpanded ? (
-        <div className="race-map-modal" role="dialog" aria-modal="true" aria-label="Förstorad racekarta">
+        <div className="race-map-modal" role="dialog" aria-modal="true" aria-label={t('analysis.expandedMap')}>
           <div className="race-map-modal-content">
             <div className="race-map-modal-controls">
               <button type="button" onClick={zoomOut} disabled={expandedMapZoomScale <= MAP_MIN_ZOOM}>−</button>
               <button type="button" onClick={zoomIn} disabled={expandedMapZoomScale >= MAP_MAX_ZOOM}>+</button>
-              <button type="button" onClick={resetMapView}>Återställ vy</button>
-              <button type="button" className="race-map-modal-close" onClick={closeMap}>Stäng</button>
+              <button type="button" onClick={resetMapView}>{t('common.reset')}</button>
+              <button type="button" className="race-map-modal-close" onClick={closeMap}>{t('common.close')}</button>
             </div>
 
             <div className="race-map-modal-track">
@@ -572,39 +563,39 @@ function RaceOverview({
 
       <div className="ghost-replay-panel">
         <div className="ghost-race-labels">
-          <span>Huvud: {race.name}</span>
-          <span>Ghost: {ghostRace ? ghostRace.name : 'Ingen ghost'}</span>
+          <span>{t('analysis.primary')}: {race.name}</span>
+          <span>{t('analysis.ghost')}: {ghostRace ? ghostRace.name : t('analysis.noGhost')}</span>
         </div>
         <label>
-          <span>Ghost-race</span>
+          <span>{t('analysis.ghostRace')}</span>
           <select
             value={ghostRace?.id ?? ''}
             onChange={(event) => onGhostRaceChange(event.currentTarget.value || null)}
             disabled={ghostOptions.length === 0}
           >
-            <option value="">Ingen ghost</option>
+            <option value="">{t('analysis.noGhost')}</option>
             {ghostOptions.map((candidate) => (
               <option key={candidate.id} value={candidate.id}>
-                {formatGhostRaceOption(candidate)}
+                {formatGhostRaceOption(candidate, language)}
               </option>
             ))}
           </select>
         </label>
         {selectedGhostRaceId && !ghostRace ? (
-          <p>Valt ghost-race kunde inte hittas.</p>
+          <p>{t('analysis.ghostMissing')}</p>
         ) : null}
       </div>
 
       <div className="replay-control-bar">
         <button type="button" className="primary-button replay-play-button" onClick={replay.togglePlay}>
-          {replay.isPlaying ? 'Paus' : 'Spela'}
+          {replay.isPlaying ? t('analysis.pause') : t('analysis.play')}
         </button>
 
         <button type="button" className="secondary-button replay-reset-button" onClick={replay.reset}>
-          Reset
+          {t('analysis.resetReplay')}
         </button>
 
-        <div className="replay-speed-control" aria-label="Replayhastighet">
+        <div className="replay-speed-control" aria-label={t('analysis.replaySpeed')}>
           {[1, 2, 4].map((speed) => (
             <button
               key={speed}
@@ -630,37 +621,37 @@ function RaceOverview({
           step={0.1}
           value={replay.currentReplayTime}
           onChange={(event) => replay.seek(event.currentTarget.valueAsNumber)}
-          aria-label="Replaytid"
+          aria-label={t('analysis.replayTime')}
         />
       </div>
 
       <dl className="replay-data-panel">
         <div>
-          <dt>Tid</dt>
+          <dt>{t('common.time')}</dt>
           <dd>{formatDuration(replay.currentReplayTime)}</dd>
         </div>
         <div>
-          <dt>Fart</dt>
+          <dt>{t('common.speed')}</dt>
           <dd>{formatSpeed(currentSample?.speedKnots)}</dd>
         </div>
         <div>
-          <dt>Kurs/COG</dt>
+          <dt>{t('analysis.courseCog')}</dt>
           <dd>{formatDegrees(currentSample?.cogDegrees)}</dd>
         </div>
         <div>
-          <dt>VMG bana</dt>
+          <dt>{t('sailing.vmgCourse')}</dt>
           <dd>{formatSignedSpeed(currentSample?.vmgCourseKnots)}</dd>
         </div>
         <div>
-          <dt>VMG vind</dt>
+          <dt>{t('sailing.vmgWind')}</dt>
           <dd>{formatSignedSpeed(currentSample?.vmgWindKnots)}</dd>
         </div>
         <div>
-          <dt>Lat</dt>
+          <dt>{t('analysis.latitude')}</dt>
           <dd>{formatCoordinate(currentSample?.latitude)}</dd>
         </div>
         <div>
-          <dt>Lon</dt>
+          <dt>{t('analysis.longitude')}</dt>
           <dd>{formatCoordinate(currentSample?.longitude)}</dd>
         </div>
         <div>
@@ -671,10 +662,10 @@ function RaceOverview({
 
       <p className="replay-sample-status">
         {replay.replayFrame?.interpolationMode === 'interpolated'
-          ? 'Interpolerad datapunkt'
+          ? t('analysis.interpolatedPoint')
           : replay.replayFrame?.interpolationMode === 'nearest'
-            ? 'Närmaste datapunkt'
-            : 'Exakt datapunkt'}
+            ? t('analysis.nearestPoint')
+            : t('analysis.exactPoint')}
       </p>
 
       <RaceLegMetricsSection metrics={legMetrics} />
@@ -683,35 +674,36 @@ function RaceOverview({
 }
 
 function RaceLegMetricsSection({ metrics }: { metrics: RaceLegMetricsResult | null }) {
+  const { t } = useTranslation()
   if (!metrics || metrics.legs.length === 0) {
-    return <p className="race-leg-analysis-fallback">Benanalys kräver K1 och L1.</p>
+    return <p className="race-leg-analysis-fallback">{t('analysis.legsRequireMarks')}</p>
   }
 
   return (
-    <section className="race-leg-analysis" aria-label="Benstatistik">
+    <section className="race-leg-analysis" aria-label={t('analysis.legStats')}>
       <div className="race-leg-analysis-heading">
         <div>
-          <p className="analysis-kicker">Ben</p>
-          <h3>{metrics.totalLegs} ben · {metrics.upwindCount} kryss · {metrics.downwindCount} läns</h3>
+          <p className="analysis-kicker">{t('analysis.legs')}</p>
+          <h3>{metrics.totalLegs} {t('analysis.legs').toLowerCase()} · {metrics.upwindCount} {t('analysis.upwind').toLowerCase()} · {metrics.downwindCount} {t('analysis.downwind').toLowerCase()}</h3>
         </div>
         <div className="race-leg-summary">
-          {metrics.bestUpwind?.averageVmgWindKnots !== null && metrics.bestUpwind?.averageVmgWindKnots !== undefined ? <span>Bästa kryss {formatSpeed(metrics.bestUpwind.averageVmgWindKnots)} VMG</span> : null}
-          {metrics.bestDownwind?.averageSpeedKnots !== null && metrics.bestDownwind?.averageSpeedKnots !== undefined ? <span>Bästa läns {formatSpeed(metrics.bestDownwind.averageSpeedKnots)}</span> : null}
+          {metrics.bestUpwind?.averageVmgWindKnots !== null && metrics.bestUpwind?.averageVmgWindKnots !== undefined ? <span>{t('analysis.bestUpwind')} {formatSpeed(metrics.bestUpwind.averageVmgWindKnots)} VMG</span> : null}
+          {metrics.bestDownwind?.averageSpeedKnots !== null && metrics.bestDownwind?.averageSpeedKnots !== undefined ? <span>{t('analysis.bestDownwind')} {formatSpeed(metrics.bestDownwind.averageSpeedKnots)}</span> : null}
         </div>
       </div>
       <div className="race-leg-card-list">
         {metrics.legs.map((leg) => (
           <article key={leg.id} className="race-leg-card">
             <div className="race-leg-card-title">
-              <h4>{leg.label}</h4>
-              {leg.isBest ? <span className="race-leg-best-badge">Bäst</span> : null}
+              <h4>{t(leg.label.kind === 'upwind' ? 'analysis.upwind' : 'analysis.downwind')} {leg.label.number}</h4>
+              {leg.isBest ? <span className="race-leg-best-badge">{t('analysis.best')}</span> : null}
             </div>
             <dl>
-              <div><dt>Tid</dt><dd>{formatDuration(leg.durationSeconds)}</dd></div>
-              <div><dt>Distans</dt><dd>{formatDistance(leg.distanceMeters)}</dd></div>
-              <div><dt>Medelfart</dt><dd>{formatNullableSpeed(leg.averageSpeedKnots)}</dd></div>
-              {leg.averageVmgWindKnots !== null ? <div><dt>VMG vind</dt><dd>{formatSpeed(leg.averageVmgWindKnots)}</dd></div> : null}
-              <div><dt>Samples</dt><dd>{leg.sampleCount}</dd></div>
+              <div><dt>{t('common.time')}</dt><dd>{formatDuration(leg.durationSeconds)}</dd></div>
+              <div><dt>{t('common.distance')}</dt><dd>{formatDistance(leg.distanceMeters)}</dd></div>
+              <div><dt>{t('analysis.averageSpeed')}</dt><dd>{formatNullableSpeed(leg.averageSpeedKnots)}</dd></div>
+              {leg.averageVmgWindKnots !== null ? <div><dt>{t('sailing.vmgWind')}</dt><dd>{formatSpeed(leg.averageVmgWindKnots)}</dd></div> : null}
+              <div><dt>{t('common.samples')}</dt><dd>{leg.sampleCount}</dd></div>
             </dl>
           </article>
         ))}
@@ -720,11 +712,7 @@ function RaceLegMetricsSection({ metrics }: { metrics: RaceLegMetricsResult | nu
   )
 }
 
-function getSectionLabel(section: AnalysisSection): string {
-  return analysisSections.find((candidate) => candidate.id === section)?.label ?? 'Översikt'
-}
-
-function formatRaceDateTime(value: string | undefined): string {
+function formatRaceDateTime(value: string | undefined, language: 'sv' | 'en'): string {
   if (value === undefined) {
     return '--'
   }
@@ -732,10 +720,10 @@ function formatRaceDateTime(value: string | undefined): string {
   const date = new Date(value)
 
   if (!Number.isFinite(date.getTime())) {
-    return 'Okänd tid'
+    return '--'
   }
 
-  return new Intl.DateTimeFormat('sv-SE', {
+  return new Intl.DateTimeFormat(language === 'sv' ? 'sv-SE' : 'en-GB', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
@@ -744,8 +732,8 @@ function formatRaceDateTime(value: string | undefined): string {
   }).format(date)
 }
 
-function formatGhostRaceOption(race: Race): string {
-  return `${race.name} · ${formatRaceDateTime(race.createdAt)}`
+function formatGhostRaceOption(race: Race, language: 'sv' | 'en'): string {
+  return `${race.name} · ${formatRaceDateTime(race.createdAt, language)}`
 }
 
 function formatDuration(durationSeconds: number | undefined): string {
@@ -825,20 +813,20 @@ function formatAccuracy(value: number | undefined): string {
   return `±${value.toFixed(1).replace('.', ',')} m`
 }
 
-function formatStartDelta(deltaSeconds: number | undefined): string {
+function formatStartDelta(deltaSeconds: number | undefined, t: Translate): string {
   if (deltaSeconds === undefined) {
     return '--'
   }
 
   if (deltaSeconds < 0) {
-    return `${formatSignedSeconds(deltaSeconds)} tidig`
+    return `${formatSignedSeconds(deltaSeconds)} ${t('analysis.early')}`
   }
 
   if (deltaSeconds > 0) {
-    return `${formatSignedSeconds(deltaSeconds)} sen`
+    return `${formatSignedSeconds(deltaSeconds)} ${t('analysis.late')}`
   }
 
-  return '0 s perfekt'
+  return t('analysis.perfect')
 }
 
 function formatSignedSeconds(value: number): string {
@@ -864,33 +852,28 @@ function formatUncertaintyMeters(value: number | undefined): string {
   return `±${Math.ceil(value)} m`
 }
 
-function getStartResultText(startAnalysis: StartAnalysisResult): string {
+function getStartResultText(startAnalysis: StartAnalysisResult, t: Translate): string {
   if (startAnalysis.status !== 'ok' && startAnalysis.status !== 'uncertain') {
-    return 'Ingen starttid beräknad'
+    return t('analysis.noStartTime')
   }
 
   if (startAnalysis.deltaSeconds === undefined) {
-    return 'Ingen starttid beräknad'
+    return t('analysis.noStartTime')
   }
 
   if (startAnalysis.deltaSeconds < 0) {
-    return `${formatSignedSeconds(startAnalysis.deltaSeconds)} tidig / risk för tjuvstart`
+    return `${formatSignedSeconds(startAnalysis.deltaSeconds)} ${t('analysis.earlyRisk')}`
   }
 
   if (startAnalysis.deltaSeconds > 0) {
-    return `${formatSignedSeconds(startAnalysis.deltaSeconds)} sen`
+    return `${formatSignedSeconds(startAnalysis.deltaSeconds)} ${t('analysis.late')}`
   }
 
-  return '0 s på linjen'
+  return t('analysis.onLine')
 }
 
-function getStartStatusMessage(status: StartAnalysisResult['status']): string {
+function getStartStatusMessage(status: StartAnalysisResult['status'], t: Translate): string {
   return {
-    ok: 'Tydlig linjepassage hittades i startfönstret.',
-    uncertain: 'Passagen hittades, men sample-gap eller GPS accuracy gör resultatet osäkert.',
-    'missing-start-line': 'Startlinje saknas.',
-    'missing-start-gun': 'Startskott saknas.',
-    'not-enough-samples': 'För få datapunkter i startfönstret.',
-    'no-crossing': 'Ingen tydlig linjepassage hittades.',
+    ok: t('analysis.startStatusOk'), uncertain: t('analysis.startStatusUncertain'), 'missing-start-line': t('analysis.startLineMissing'), 'missing-start-gun': t('analysis.startGunMissing'), 'not-enough-samples': t('analysis.notEnoughSamples'), 'no-crossing': t('analysis.noCrossing'),
   }[status]
 }

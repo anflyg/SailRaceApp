@@ -5,11 +5,12 @@ import {
   getCourseDisplayReference,
   getStartLineAdvantageMeters,
   type CourseDisplayReference,
-  type StartLineAdvantage,
 } from '../../domain/navigation'
 import { useWindHeadingMeasurement } from '../../hooks/useWindHeadingMeasurement'
-import type { WindHeadingMeasurementResult, WindHeadingQuality } from '../../services/sensors/windHeadingService'
+import type { WindHeadingMeasurementResult } from '../../services/sensors/windHeadingService'
 import type { CoursePoint, CoursePointKey, CourseState, LiveGpsReading } from '../../types'
+import { useTranslation } from '../../i18n/LanguageContext'
+import type { TranslationKey } from '../../i18n/translations'
 
 interface CourseSetupViewProps {
   course: CourseState
@@ -45,42 +46,6 @@ function getCourseMarkClassName(kind: string, point: CoursePoint | null): string
   return `course-mark ${kind} ${point?.quality ?? 'unset'}`
 }
 
-function getDisplayReferenceLabel(reference: CourseDisplayReference): string {
-  return {
-    'course-axis': 'bana',
-    'start-line': 'startlinje',
-    'north-fallback': 'nord',
-  }[reference.kind]
-}
-
-function getWindQualityLabel(measurement: WindHeadingMeasurementResult): string {
-  if (measurement.quality === 'good' && measurement.accuracyDegrees !== null) {
-    return measurement.accuracyDegrees <= 5 ? 'mycket bra' : 'bra'
-  }
-
-  const labels: Record<WindHeadingQuality, string> = {
-    good: 'bra',
-    ok: 'tveksam',
-    poor: 'dålig',
-    unstable: 'ostabil',
-    unknown: 'okänd',
-  }
-
-  return labels[measurement.quality]
-}
-
-function formatStartLineAdvantage(advantage: StartLineAdvantage | null): string | null {
-  if (!advantage) {
-    return null
-  }
-
-  if (advantage.favoredEnd === 'neutral') {
-    return 'Startlinjefördel: neutral'
-  }
-
-  return `Startlinjefördel: ${advantage.favoredEnd} +${Math.round(advantage.meters)} m`
-}
-
 export function CourseSetupView({
   course,
   gps,
@@ -90,9 +55,9 @@ export function CourseSetupView({
   onClearCourse,
   gpsStatusMessage,
 }: CourseSetupViewProps) {
+  const { t } = useTranslation()
   const {
     status: windMeasurementStatus,
-    error: windMeasurementError,
     lastMeasurement,
     measureWindHeading,
     resetWindHeadingMeasurement,
@@ -100,13 +65,21 @@ export function CourseSetupView({
 
   const displayReference = getCourseDisplayReference(course)
   const startLineAdvantage = getStartLineAdvantageMeters(course)
-  const startLineAdvantageLabel = formatStartLineAdvantage(startLineAdvantage)
+  const startLineAdvantageLabel = !startLineAdvantage
+    ? null
+    : startLineAdvantage.favoredEnd === 'neutral'
+      ? t('course.startLineNeutral')
+      : t('course.startLineAdvantage', { end: startLineAdvantage.favoredEnd, meters: Math.round(startLineAdvantage.meters) })
   const windArrowRotation = getWindArrowRotation(course.windHeadingDegrees, displayReference)
   const windRelativeDisplayAngle = course.windHeadingDegrees !== null
     ? shortestAngleDeltaDegrees(course.windHeadingDegrees, displayReference.headingDegrees)
     : null
+  const referenceLabel = t(({ 'course-axis': 'course.courseReference', 'start-line': 'course.startLineReference', 'north-fallback': 'course.north' } as const)[displayReference.kind] as TranslationKey)
+  const qualityKey = lastMeasurement?.quality === 'good' && lastMeasurement.accuracyDegrees !== null && lastMeasurement.accuracyDegrees <= 5
+    ? 'course.qualityVeryGood'
+    : ({ good: 'course.qualityGood', ok: 'course.qualityQuestionable', poor: 'course.qualityPoor', unstable: 'course.qualityUnstable', unknown: 'course.qualityUnknown' } as const)[lastMeasurement?.quality ?? 'unknown']
   const windMeasurementSummary = lastMeasurement
-    ? `Vind satt: ${formatDegrees(lastMeasurement.headingDegrees)} · Kvalitet: ${getWindQualityLabel(lastMeasurement)} · Källa: ${lastMeasurement.selectedHeadingSource}`
+    ? `${t('course.windSet')}: ${formatDegrees(lastMeasurement.headingDegrees)} · ${t('course.quality')}: ${t(qualityKey)} · ${t('course.source')}: ${lastMeasurement.selectedHeadingSource}`
     : null
   const isMeasuringWind = windMeasurementStatus === 'measuring'
 
@@ -132,14 +105,10 @@ export function CourseSetupView({
   }
 
   const windStatusMessage = {
-    measuring: 'Mäter vind i 4 sekunder...',
-    success: 'Vind satt',
-    unstable: 'Vindmätning ostabil. Håll båten i vindögat och försök igen.',
-    error: 'Kunde inte mäta vind',
-    unavailable: 'Kunde inte mäta vind',
+    measuring: t('course.measuringWind'), success: t('course.windSet'), unstable: t('course.windUnstable'), error: t('course.windMeasurementFailed'), unavailable: t('course.windMeasurementFailed'),
     idle: null,
   }[windMeasurementStatus]
-  const statusMessage = windMeasurementError ?? windStatusMessage ?? gpsStatusMessage
+  const statusMessage = windStatusMessage ?? (gpsStatusMessage === 'gps-position-unavailable' ? t('course.gpsPositionUnavailable') : gpsStatusMessage)
   const gpsStatus = getGpsStatusDisplay(gps)
   const startLineQuality = getStartLineQuality(course.points.startA, course.points.startB)
 
@@ -185,7 +154,7 @@ export function CourseSetupView({
           className={`wind-arrow-button ${course.windHeadingDegrees !== null ? 'set' : 'unset'} ${isMeasuringWind ? 'measuring' : ''}`}
           onClick={handleWindArrowClick}
           disabled={isMeasuringWind}
-          aria-label="Vind"
+          aria-label={t('course.wind')}
           style={{
             transform: `translateX(-50%) rotate(${windArrowRotation}deg)`,
           }}
@@ -196,31 +165,31 @@ export function CourseSetupView({
 
       <div className="course-footer">
         <div className="course-gps-status" role="status">
-          <span>{gpsStatus.label}</span>
-          {gpsStatus.statusText ? <span>{gpsStatus.statusText}</span> : null}
+          <span>{gpsStatus.isGood ? gpsStatus.label : 'GPS —'}</span>
+          {gpsStatus.status ? <span>{gpsStatus.status === 'missing' ? t('status.gpsUnavailable') : t('status.gpsUnreliable')}</span> : null}
         </div>
         {statusMessage ? (
           <p className="course-status" role="status">
             {statusMessage}
           </p>
         ) : null}
-        <div className="course-display-debug" aria-label="Banvy debug">
+        <div className="course-display-debug" aria-label={t('course.debug')}>
           {windMeasurementSummary ? (
             <span>{windMeasurementSummary}</span>
           ) : null}
           {lastMeasurement?.nativeDebug ? (
-            <span>True: {lastMeasurement.nativeDebug.clTrueHeadingDegrees === null ? '—' : formatDegrees(lastMeasurement.nativeDebug.clTrueHeadingDegrees)} · Mag: {lastMeasurement.nativeDebug.clMagneticHeadingDegrees === null ? '—' : formatDegrees(lastMeasurement.nativeDebug.clMagneticHeadingDegrees)}</span>
+            <span>{t('course.trueHeading')}: {lastMeasurement.nativeDebug.clTrueHeadingDegrees === null ? '—' : formatDegrees(lastMeasurement.nativeDebug.clTrueHeadingDegrees)} · {t('course.magneticHeading')}: {lastMeasurement.nativeDebug.clMagneticHeadingDegrees === null ? '—' : formatDegrees(lastMeasurement.nativeDebug.clMagneticHeadingDegrees)}</span>
           ) : null}
-          <span>Referens: {getDisplayReferenceLabel(displayReference)}</span>
+          <span>{t('course.reference')}: {referenceLabel}</span>
           {windRelativeDisplayAngle !== null ? (
-            <span>Vind relativt referens: {formatSignedDegrees(windRelativeDisplayAngle)}</span>
+            <span>{t('course.windRelative')}: {formatSignedDegrees(windRelativeDisplayAngle)}</span>
           ) : null}
           {startLineAdvantageLabel ? (
             <span>{startLineAdvantageLabel}</span>
           ) : null}
         </div>
         <button type="button" className="primary-button clear-button" onClick={handleClearCourse}>
-          Rensa bana
+          {t('course.clear')}
         </button>
       </div>
     </section>

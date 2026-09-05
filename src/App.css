@@ -1,8 +1,8 @@
 :root {
-  color-scheme: dark;
+  color-scheme: light;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  color: #FFFFFF;
-  background: #031426;
+  color: #080808;
+  background: #F3F2ED;
   --app-side-padding: 10px;
   --app-safe-top-padding: max(18px, calc(env(safe-area-inset-top, 0px) + 12px));
   --app-safe-bottom-padding: max(14px, calc(env(safe-area-inset-bottom, 0px) + 14px));
@@ -19,7 +19,7 @@ body,
 html,
 body,
 #root {
-  background: #031426;
+  background: #F3F2ED;
 }
 
 body {
@@ -27,7 +27,7 @@ body {
   height: 100vh;
   height: 100dvh;
   overflow: hidden;
-  background: #031426;
+  background: #F3F2ED;
 }
 
 #root {
@@ -50,7 +50,7 @@ button {
   grid-template-rows: auto minmax(0, 1fr);
   gap: 8px;
   overflow: hidden;
-  background: #031426;
+  background: #F3F2ED;
 }
 
 .navigation-bar {
@@ -132,61 +132,13 @@ button {
   gap: 14px;
 }
 
-.setup-title {
+.setup-section-heading {
   margin: 0;
-  color: var(--text-high);
-  font-size: clamp(2rem, 8vw, 3.1rem);
-  font-weight: 900;
-  letter-spacing: 0;
-}
-
-.setup-display-mode-control {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 5px;
-  padding: 5px;
-  border: 1px solid rgba(185, 198, 211, 0.22);
-  border-radius: 14px;
-  background: rgba(3, 20, 38, 0.72);
-}
-
-.setup-display-mode-control button {
-  min-height: 38px;
-  padding: 8px;
-  border: 0;
-  border-radius: 10px;
-  background: transparent;
-  color: var(--text-muted);
-}
-
-.setup-display-mode-control button.active {
-  background: #0d6fa8;
-  color: var(--text-high);
-  box-shadow: 0 0 0 1px rgba(53, 194, 255, 0.4) inset;
-}
-
-.setup-status-grid {
-  display: grid;
-  grid-template-columns: minmax(76px, 0.7fr) minmax(82px, 1fr) minmax(86px, 0.9fr);
-  gap: 10px 12px;
-  align-items: center;
-  padding: 14px;
-  border-radius: 18px;
-  background: rgba(7, 31, 61, 0.92);
-  font-size: clamp(1rem, 4.5vw, 1.4rem);
-  font-weight: 800;
-}
-
-.setup-status-grid span:nth-child(3n + 2) {
-  color: var(--text-high);
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-
-.setup-status-grid span:nth-child(3n + 3) {
-  color: var(--accent);
-  text-align: right;
-  font-size: 0.9em;
+  color: var(--theme-text-muted);
+  font-size: 0.82rem;
+  font-weight: 850;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 
 .setup-calibration-panel {
@@ -233,17 +185,8 @@ button {
 .setup-layline-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 10px;
-}
-
-.setup-layline-header h2 {
-  margin: 0;
-  color: var(--text-high);
-  font-size: 1.05rem;
-  font-weight: 900;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
 }
 
 .setup-layline-toggle {
@@ -313,6 +256,33 @@ button {
   font-variant-numeric: tabular-nums;
 }
 
+.setup-system-status {
+  display: grid;
+  gap: 4px;
+  padding-top: 2px;
+}
+
+.setup-system-status-panel {
+  display: grid;
+  min-height: 0;
+  align-items: center;
+  padding: 14px;
+  border-radius: 18px;
+  background: var(--theme-panel-muted);
+}
+
+.setup-system-status-panel strong {
+  color: var(--theme-orange);
+  max-width: 100%;
+  font-size: 0.9rem;
+  font-weight: 750;
+  line-height: 1.35;
+}
+
+.setup-system-status strong.ready {
+  color: var(--theme-green);
+}
+
 .primary-button,
 .secondary-button {
   min-height: 58px;
@@ -341,8 +311,7 @@ button:focus-visible {
 }
 
 .course-header,
-.course-footer,
-.analysis-header {
+.course-footer {
   display: grid;
   gap: 10px;
 }
@@ -861,23 +830,12 @@ button:focus-visible {
   overflow: hidden;
 }
 
-.analysis-header {
-  flex: 0 0 auto;
-  gap: 6px;
-}
-
-.analysis-header h2,
 .analysis-placeholder-panel h3,
 .race-library-empty h3,
 .race-day-heading h3 {
   margin: 0;
   color: var(--text-high);
   letter-spacing: 0;
-}
-
-.analysis-header h2 {
-  font-size: clamp(1.55rem, 5vw, 2.05rem);
-  line-height: 1.05;
 }
 
 .analysis-kicker {
@@ -889,23 +847,15 @@ button:focus-visible {
   text-transform: uppercase;
 }
 
-.placeholder-note {
-  margin: 0;
-  color: var(--text-muted);
-  font-size: 0.88rem;
-  font-weight: 650;
-  line-height: 1.35;
-}
-
 .analysis-segmented-control {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   flex: 0 0 auto;
   gap: 5px;
   padding: 5px;
-  border: 1px solid rgba(185, 198, 211, 0.22);
+  border: 1px solid var(--theme-border);
   border-radius: 14px;
-  background: rgba(3, 20, 38, 0.72);
+  background: var(--theme-panel-subtle);
 }
 
 .analysis-segmented-control button {
@@ -915,15 +865,15 @@ button:focus-visible {
   border: 0;
   border-radius: 10px;
   background: transparent;
-  color: var(--text-muted);
+  color: var(--theme-text-muted);
   font-size: clamp(0.68rem, 2.3vw, 0.82rem);
   font-weight: 850;
 }
 
 .analysis-segmented-control button.active {
-  background: #0d6fa8;
-  color: var(--text-high);
-  box-shadow: 0 0 0 1px rgba(53, 194, 255, 0.4) inset;
+  background: var(--theme-blue);
+  color: #FFFFFF;
+  box-shadow: 0 0 0 1px var(--theme-blue) inset;
 }
 
 .race-library {
@@ -1765,12 +1715,6 @@ button:focus-visible {
     font-size: clamp(2.1rem, 10vw, 3rem);
   }
 
-  .setup-status-grid {
-    grid-template-columns: minmax(64px, 0.65fr) minmax(74px, 1fr) minmax(78px, 0.95fr);
-    gap: 9px 8px;
-    padding: 12px;
-  }
-
   .setup-roll-pitch {
     font-size: clamp(1.8rem, 9vw, 2.8rem);
   }
@@ -1827,333 +1771,325 @@ button:focus-visible {
   }
 }
 
-:root[data-theme='sun'],
-:root[data-theme='sun'] body,
-:root[data-theme='sun'] #root {
+:root,
+:root body,
+:root #root {
   color: var(--theme-text);
   background: var(--theme-page-background);
 }
 
-.app-shell[data-theme='sun'] {
+.app-shell {
   color: var(--theme-text);
   background: var(--theme-page-background);
 }
 
-.app-shell[data-theme='sun'] .view-section {
+.app-shell .view-section {
   background: var(--theme-panel-background);
   border-color: var(--theme-border);
 }
 
-.app-shell[data-theme='sun'] .nav-button,
-.app-shell[data-theme='sun'] .secondary-button,
-.app-shell[data-theme='sun'] .duration-button {
+.app-shell .nav-button,
+.app-shell .secondary-button,
+.app-shell .duration-button {
   background: var(--theme-panel-muted);
   border-color: var(--theme-border);
   color: var(--theme-text);
 }
 
-.app-shell[data-theme='sun'] .nav-button.active,
-.app-shell[data-theme='sun'] .primary-button,
-.app-shell[data-theme='sun'] .duration-button.active {
+.app-shell .nav-button.active,
+.app-shell .primary-button,
+.app-shell .duration-button.active {
   background: var(--theme-panel-background);
   border-color: var(--theme-blue);
   color: var(--theme-text);
   box-shadow: 0 0 0 2px rgba(0, 111, 148, 0.22) inset;
 }
 
-.app-shell[data-theme='sun'] .setup-display-mode-control,
-.app-shell[data-theme='sun'] .analysis-segmented-control,
-.app-shell[data-theme='sun'] .replay-speed-control {
+.app-shell .analysis-segmented-control,
+.app-shell .replay-speed-control {
   background: var(--theme-panel-subtle);
   border-color: var(--theme-border);
 }
 
-.app-shell[data-theme='sun'] .setup-display-mode-control button,
-.app-shell[data-theme='sun'] .analysis-segmented-control button,
-.app-shell[data-theme='sun'] .replay-speed-control button {
+.app-shell .analysis-segmented-control button,
+.app-shell .replay-speed-control button {
   color: var(--theme-text-muted);
 }
 
-.app-shell[data-theme='sun'] .setup-display-mode-control button.active,
-.app-shell[data-theme='sun'] .analysis-segmented-control button.active,
-.app-shell[data-theme='sun'] .replay-speed-control button.active {
-  background: var(--theme-panel-background);
-  color: var(--theme-text);
-  box-shadow: 0 0 0 2px rgba(0, 111, 148, 0.48) inset;
+.app-shell .analysis-segmented-control button.active,
+.app-shell .replay-speed-control button.active {
+  background: var(--theme-blue);
+  color: #FFFFFF;
+  box-shadow: 0 0 0 2px var(--theme-blue) inset;
 }
 
-.app-shell[data-theme='sun'] .setup-status-grid,
-.app-shell[data-theme='sun'] .setup-calibration-panel,
-.app-shell[data-theme='sun'] .setup-layline-panel,
-.app-shell[data-theme='sun'] .setup-layline-alpha-control button {
+.app-shell .setup-calibration-panel,
+.app-shell .setup-layline-panel,
+.app-shell .setup-layline-alpha-control button {
   background: var(--theme-panel-muted);
   border-color: var(--theme-border);
   color: var(--theme-text);
 }
 
-.app-shell[data-theme='sun'] .setup-status-grid span:nth-child(3n + 3) {
-  color: var(--theme-orange);
-}
-
-.app-shell[data-theme='sun'] .setup-calibration-status.calibrated {
+.app-shell .setup-calibration-status.calibrated {
   color: var(--theme-green);
 }
 
-.app-shell[data-theme='sun'] .setup-layline-toggle.enabled {
+.app-shell .setup-layline-toggle.enabled {
   background: rgba(0, 111, 148, 0.08);
   border-color: var(--theme-blue);
   color: var(--theme-blue);
 }
 
-.app-shell[data-theme='sun'] .setup-layline-toggle.disabled {
+.app-shell .setup-layline-toggle.disabled {
   background: var(--theme-panel-subtle);
   border-color: var(--theme-border);
   color: var(--theme-text-muted);
 }
 
-.app-shell[data-theme='sun'] .course-status,
-.app-shell[data-theme='sun'] .course-gps-status span:last-child {
+.app-shell .course-status,
+.app-shell .course-gps-status span:last-child {
   color: var(--theme-orange);
 }
 
-.app-shell[data-theme='sun'] .course-schematic {
+.app-shell .course-schematic {
   background: var(--theme-panel-muted);
   border-color: var(--theme-border);
 }
 
-.app-shell[data-theme='sun'] .course-axis-line {
+.app-shell .course-axis-line {
   background: rgba(34, 40, 44, 0.32);
 }
 
-.app-shell[data-theme='sun'] .course-schematic::before {
+.app-shell .course-schematic::before {
   background: var(--theme-border-strong);
 }
 
-.app-shell[data-theme='sun'] .course-schematic.start-line-good::before {
+.app-shell .course-schematic.start-line-good::before {
   background: var(--theme-green);
 }
 
-.app-shell[data-theme='sun'] .course-schematic.start-line-poor::before {
+.app-shell .course-schematic.start-line-poor::before {
   background: var(--theme-orange);
 }
 
-.app-shell[data-theme='sun'] .course-mark {
+.app-shell .course-mark {
   background: var(--theme-panel-background);
   border-color: var(--theme-border-strong);
   color: var(--theme-text);
 }
 
-.app-shell[data-theme='sun'] .course-mark.unset {
+.app-shell .course-mark.unset {
   background: var(--theme-panel-muted);
   border-color: var(--theme-border-strong);
   color: var(--theme-text-muted);
   opacity: 0.72;
 }
 
-.app-shell[data-theme='sun'] .course-mark.good {
+.app-shell .course-mark.good {
   background: var(--theme-panel-background);
   border-color: var(--theme-green);
 }
 
-.app-shell[data-theme='sun'] .course-mark.poor {
+.app-shell .course-mark.poor {
   background: var(--theme-panel-background);
   border-color: var(--theme-orange);
 }
 
-.app-shell[data-theme='sun'] .wind-arrow-button {
+.app-shell .wind-arrow-button {
   background: var(--theme-panel-background);
   border-color: var(--theme-border-strong);
   color: var(--theme-text);
 }
 
-.app-shell[data-theme='sun'] .wind-arrow-button.unset {
+.app-shell .wind-arrow-button.unset {
   background: var(--theme-panel-muted);
   border-color: var(--theme-border-strong);
   opacity: 0.62;
 }
 
-.app-shell[data-theme='sun'] .wind-arrow-button.set {
+.app-shell .wind-arrow-button.set {
   background: var(--theme-panel-background);
   border-color: var(--theme-blue);
   color: var(--theme-blue);
 }
 
-.app-shell[data-theme='sun'] .wind-arrow-button.measuring {
+.app-shell .wind-arrow-button.measuring {
   background: var(--theme-panel-background);
   border-color: var(--theme-orange);
   color: var(--theme-orange);
 }
 
-.app-shell[data-theme='sun'] .large-timer {
+.app-shell .large-timer {
   color: var(--theme-text);
   text-shadow: none;
 }
 
-.app-shell[data-theme='sun'] .large-timer.timer-idle {
+.app-shell .large-timer.timer-idle {
   background: var(--theme-panel-muted);
   border-color: var(--theme-border-strong);
 }
 
-.app-shell[data-theme='sun'] .large-timer.timer-running {
+.app-shell .large-timer.timer-running {
   background: var(--theme-panel-muted);
   border-width: 4px;
   border-color: var(--theme-green);
 }
 
-.app-shell[data-theme='sun'] .large-timer.timer-negative {
+.app-shell .large-timer.timer-negative {
   background: var(--theme-panel-muted);
   border-width: 4px;
   border-color: var(--theme-red);
 }
 
-.app-shell[data-theme='sun'] .start-run-panel,
-.app-shell[data-theme='sun'] .race-view .metric-box,
-.app-shell[data-theme='sun'] .roll-pitch-strip {
+.app-shell .start-run-panel,
+.app-shell .race-view .metric-box,
+.app-shell .roll-pitch-strip {
   background: var(--theme-panel-muted);
   border-color: var(--theme-border);
   color: var(--theme-text);
   box-shadow: none;
 }
 
-.app-shell[data-theme='sun'] .race-view .metric-box.velocity-made-good {
+.app-shell .race-view .metric-box.velocity-made-good {
   background: var(--theme-panel-muted);
   color: var(--theme-text);
 }
 
-.app-shell[data-theme='sun'] .race-view .velocity-mode-vmg {
+.app-shell .race-view .velocity-mode-vmg {
   border-width: 4px;
   border-color: var(--theme-blue);
 }
 
-.app-shell[data-theme='sun'] .race-view .velocity-mode-vmc {
+.app-shell .race-view .velocity-mode-vmc {
   border-width: 4px;
   border-color: var(--theme-orange);
 }
 
-.app-shell[data-theme='sun'] .race-view .velocity-mode-layline {
+.app-shell .race-view .velocity-mode-layline {
   border-width: 4px;
   border-color: var(--theme-magenta);
 }
 
-.app-shell[data-theme='sun'] .race-view .velocity-mode-unset {
+.app-shell .race-view .velocity-mode-unset {
   border-color: var(--theme-border-strong);
   color: var(--theme-text-muted);
 }
 
-.app-shell[data-theme='sun'] .race-view .velocity-made-good .metric-label,
-.app-shell[data-theme='sun'] .race-view .velocity-mode-layline .metric-label {
+.app-shell .race-view .velocity-made-good .metric-label,
+.app-shell .race-view .velocity-mode-layline .metric-label {
   color: var(--theme-text-muted);
 }
 
-.app-shell[data-theme='sun'] .race-view .velocity-mode-vmg .metric-context-label {
+.app-shell .race-view .velocity-mode-vmg .metric-context-label {
   background: rgba(0, 111, 148, 0.08);
   border-color: var(--theme-blue);
   color: var(--theme-blue);
 }
 
-.app-shell[data-theme='sun'] .race-view .velocity-mode-vmc .metric-context-label {
+.app-shell .race-view .velocity-mode-vmc .metric-context-label {
   background: rgba(168, 79, 0, 0.08);
   border-color: var(--theme-orange);
   color: var(--theme-orange);
 }
 
-.app-shell[data-theme='sun'] .race-library-card,
-.app-shell[data-theme='sun'] .race-card-stats span,
-.app-shell[data-theme='sun'] .selected-race-basics div,
-.app-shell[data-theme='sun'] .race-library-empty,
-.app-shell[data-theme='sun'] .analysis-placeholder-panel,
-.app-shell[data-theme='sun'] .race-track-map,
-.app-shell[data-theme='sun'] .ghost-replay-panel,
-.app-shell[data-theme='sun'] .start-analysis-result,
-.app-shell[data-theme='sun'] .start-analysis-grid div,
-.app-shell[data-theme='sun'] .replay-timeline,
-.app-shell[data-theme='sun'] .replay-data-panel div {
+.app-shell .race-library-card,
+.app-shell .race-card-stats span,
+.app-shell .selected-race-basics div,
+.app-shell .race-library-empty,
+.app-shell .analysis-placeholder-panel,
+.app-shell .race-track-map,
+.app-shell .ghost-replay-panel,
+.app-shell .start-analysis-result,
+.app-shell .start-analysis-grid div,
+.app-shell .replay-timeline,
+.app-shell .replay-data-panel div {
   background: var(--theme-panel-muted);
   border-color: var(--theme-border);
 }
 
-.app-shell[data-theme='sun'] .race-library-card.selected,
-.app-shell[data-theme='sun'] .race-track-map-interactive:hover,
-.app-shell[data-theme='sun'] .race-track-map-interactive:focus-visible {
+.app-shell .race-library-card.selected,
+.app-shell .race-track-map-interactive:hover,
+.app-shell .race-track-map-interactive:focus-visible {
   border-color: var(--theme-blue);
   box-shadow: 0 0 0 1px rgba(0, 111, 148, 0.3) inset;
 }
 
-.app-shell[data-theme='sun'] .favorite-badge {
+.app-shell .favorite-badge {
   background: rgba(168, 79, 0, 0.08);
   border-color: var(--theme-orange);
   color: var(--theme-orange);
 }
 
-.app-shell[data-theme='sun'] .race-card-actions button,
-.app-shell[data-theme='sun'] .race-map-modal-controls button,
-.app-shell[data-theme='sun'] .ghost-replay-panel select {
+.app-shell .race-card-actions button,
+.app-shell .race-map-modal-controls button,
+.app-shell .ghost-replay-panel select {
   background: var(--theme-panel-background);
   border-color: var(--theme-border);
   color: var(--theme-text);
 }
 
-.app-shell[data-theme='sun'] .race-card-actions .danger-action {
+.app-shell .race-card-actions .danger-action {
   background: var(--theme-panel-background);
   border-color: var(--theme-red);
   color: var(--theme-text);
 }
 
-.app-shell[data-theme='sun'] .start-analysis-result.ok {
+.app-shell .start-analysis-result.ok {
   border-color: var(--theme-green);
 }
 
-.app-shell[data-theme='sun'] .start-analysis-result.uncertain {
+.app-shell .start-analysis-result.uncertain {
   border-color: var(--theme-orange);
 }
 
-:root[data-theme='sun'] .race-map-modal {
+:root .race-map-modal {
   background: rgba(243, 242, 237, 0.92);
 }
 
-.app-shell[data-theme='sun'] .race-map-modal-track,
-.app-shell[data-theme='sun'] .race-map-open-button,
-.app-shell[data-theme='sun'] .race-track-map-hint {
+.app-shell .race-map-modal-track,
+.app-shell .race-map-open-button,
+.app-shell .race-track-map-hint {
   background: var(--theme-panel-muted);
   border-color: var(--theme-border);
   color: var(--theme-text-muted);
 }
 
-.app-shell[data-theme='sun'] .race-map-water {
+.app-shell .race-map-water {
   fill: #E8F2F3;
 }
 
-.app-shell[data-theme='sun'] .race-map-track {
+.app-shell .race-map-track {
   stroke: #005A82;
 }
 
-.app-shell[data-theme='sun'] .race-map-track.primary-track {
+.app-shell .race-map-track.primary-track {
   filter: drop-shadow(0 0 3px rgba(0, 90, 130, 0.22));
 }
 
-.app-shell[data-theme='sun'] .race-map-track.ghost-track {
+.app-shell .race-map-track.ghost-track {
   stroke: var(--theme-orange);
 }
 
-.app-shell[data-theme='sun'] .race-map-start-line,
-.app-shell[data-theme='sun'] .race-map-start-line.emphasized {
+.app-shell .race-map-start-line,
+.app-shell .race-map-start-line.emphasized {
   stroke: var(--theme-border-strong);
   filter: none;
 }
 
-.app-shell[data-theme='sun'] .race-map-mark circle,
-.app-shell[data-theme='sun'] .race-map-boat circle:first-child,
-.app-shell[data-theme='sun'] .race-map-crossing-point circle {
+.app-shell .race-map-mark circle,
+.app-shell .race-map-boat circle:first-child,
+.app-shell .race-map-crossing-point circle {
   stroke: var(--theme-border-strong);
 }
 
-.app-shell[data-theme='sun'] .race-map-mark text,
-.app-shell[data-theme='sun'] .race-map-wind-arrow text {
+.app-shell .race-map-mark text,
+.app-shell .race-map-wind-arrow text {
   fill: var(--theme-text);
 }
 
-.app-shell[data-theme='sun'] .race-map-boat circle:last-child,
-.app-shell[data-theme='sun'] .race-map-crossing-point path {
+.app-shell .race-map-boat circle:last-child,
+.app-shell .race-map-crossing-point path {
   fill: var(--theme-text);
   stroke: var(--theme-text);
 }

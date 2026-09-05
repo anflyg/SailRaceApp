@@ -1,4 +1,5 @@
 import type { Race, SailingDay } from '../types'
+import { useTranslation } from '../i18n/LanguageContext'
 
 type RaceLibraryGroup = {
   day: SailingDay
@@ -26,27 +27,25 @@ export function RaceLibrary({
   onExportRace,
   exportingRaceId = null,
 }: RaceLibraryProps) {
+  const { language, t } = useTranslation()
   const raceCount = groups.reduce((count, group) => count + group.races.length, 0)
 
   if (raceCount === 0) {
     return (
       <div className="race-library-empty">
-        <h3>Inga race sparade ännu</h3>
-        <p>
-          När race recording kopplas till startklockan kommer avslutade race att sparas automatiskt
-          och dyka upp här för analys.
-        </p>
+        <h3>{t('library.emptyTitle')}</h3>
+        <p>{t('library.emptyText')}</p>
       </div>
     )
   }
 
   return (
-    <div className="race-library" aria-label="Racebibliotek">
+    <div className="race-library" aria-label={t('analysis.library')}>
       {groups.map((group) => (
         <section key={group.day.id} className="race-day-group" aria-labelledby={`race-day-${group.day.id}`}>
           <div className="race-day-heading">
-            <h3 id={`race-day-${group.day.id}`}>{formatDateHeading(group.day.date)}</h3>
-            <span>{group.races.length} race</span>
+            <h3 id={`race-day-${group.day.id}`}>{formatDateHeading(group.day.date, language)}</h3>
+            <span>{group.races.length} {t('library.races')}</span>
           </div>
 
           <div className="race-card-list">
@@ -63,46 +62,46 @@ export function RaceLibrary({
                 >
                   <span className="race-card-title-row">
                     <span className="race-card-name">{race.name}</span>
-                    {race.isFavorite ? <span className="favorite-badge" aria-label="Favorit">Favorit</span> : null}
+                    {race.isFavorite ? <span className="favorite-badge" aria-label={t('library.favorite')}>{t('library.favorite')}</span> : null}
                   </span>
-                  <span className="race-card-time">{formatRaceDateTime(race.createdAt)}</span>
+                  <span className="race-card-time">{formatRaceDateTime(race.createdAt, language)}</span>
 
-                  <span className="race-card-stats" aria-label="Racevärden">
+                  <span className="race-card-stats" aria-label={t('library.values')}>
                     <span>
                       <strong>{formatDuration(race.summary?.durationSeconds)}</strong>
-                      <small>Tid</small>
+                      <small>{t('common.time')}</small>
                     </span>
                     <span>
                       <strong>{formatDistance(race.summary?.distanceMeters)}</strong>
-                      <small>Distans</small>
+                      <small>{t('common.distance')}</small>
                     </span>
                     <span>
                       <strong>{formatSpeed(race.summary?.maxSpeedKnots)}</strong>
-                      <small>Max</small>
+                      <small>{t('library.max')}</small>
                     </span>
                     <span>
                       <strong>{race.summary?.sampleCount ?? race.samples.length}</strong>
-                      <small>Samples</small>
+                      <small>{t('common.samples')}</small>
                     </span>
                   </span>
                 </button>
 
-                <div className="race-card-actions" aria-label={`Åtgärder för ${race.name}`}>
+                <div className="race-card-actions" aria-label={t('library.actionsFor', { name: race.name })}>
                   <button type="button" onClick={() => onToggleFavorite(race)}>
-                    {race.isFavorite ? 'Avfavorit' : 'Favorit'}
+                    {race.isFavorite ? t('library.unfavorite') : t('library.favorite')}
                   </button>
                   <button type="button" onClick={() => onRenameRace(race)}>
-                    Döp om
+                    {t('library.rename')}
                   </button>
                   <button
                     type="button"
                     onClick={() => onExportRace(race)}
                     disabled={exportingRaceId !== null}
                   >
-                    {exportingRaceId === race.id ? 'Exporterar...' : 'Exportera'}
+                    {exportingRaceId === race.id ? t('library.exporting') : t('library.export')}
                   </button>
                   <button type="button" className="danger-action" onClick={() => onDeleteRace(race)}>
-                    Radera
+                    {t('library.delete')}
                   </button>
                 </div>
               </article>
@@ -114,8 +113,8 @@ export function RaceLibrary({
   )
 }
 
-function formatDateHeading(date: string): string {
-  return new Intl.DateTimeFormat('sv-SE', {
+function formatDateHeading(date: string, language: 'sv' | 'en'): string {
+  return new Intl.DateTimeFormat(language === 'sv' ? 'sv-SE' : 'en-GB', {
     weekday: 'short',
     day: 'numeric',
     month: 'short',
@@ -123,14 +122,14 @@ function formatDateHeading(date: string): string {
   }).format(new Date(`${date}T12:00:00`))
 }
 
-function formatRaceDateTime(value: string): string {
+function formatRaceDateTime(value: string, language: 'sv' | 'en'): string {
   const date = new Date(value)
 
   if (!Number.isFinite(date.getTime())) {
-    return 'Okänd tid'
+    return '--'
   }
 
-  return new Intl.DateTimeFormat('sv-SE', {
+  return new Intl.DateTimeFormat(language === 'sv' ? 'sv-SE' : 'en-GB', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',

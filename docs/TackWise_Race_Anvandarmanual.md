@@ -1,4 +1,4 @@
-# Aster Race - Användarmanual
+# TackWise Race - Användarmanual
 
 _Start, bana, segling och analys för kappsegling_
 

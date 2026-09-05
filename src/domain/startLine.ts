@@ -4,13 +4,13 @@ import type { CoursePoint, GeoPoint } from '../types'
 export const MIN_TTL_SPEED_KNOTS = 1
 export const KNOTS_TO_METERS_PER_SECOND = 0.514444
 
-export type StartStatusText =
-  | 'GPS SAKNAS'
-  | 'SAKNAR LINJE'
-  | 'GPS OSÄKER'
-  | 'FÖR LÅG FART'
-  | 'UTANFÖR LINJEN'
-  | 'LINJE OSÄKER'
+export type StartMetricStatus =
+  | 'gps_missing'
+  | 'line_missing'
+  | 'gps_unreliable'
+  | 'speed_too_low'
+  | 'outside_line'
+  | 'line_unreliable'
 
 interface LocalPoint {
   x: number
@@ -38,7 +38,7 @@ export interface StartMetricsInput {
 export interface StartMetrics {
   ttlSeconds: number | null
   burnSeconds: number | null
-  statusText: StartStatusText | null
+  status: StartMetricStatus | null
 }
 
 function toRadians(degrees: number): number {
@@ -116,7 +116,7 @@ export function calculateStartMetrics({
     return {
       ttlSeconds: null,
       burnSeconds: null,
-      statusText: 'GPS SAKNAS',
+      status: 'gps_missing',
     }
   }
 
@@ -124,7 +124,7 @@ export function calculateStartMetrics({
     return {
       ttlSeconds: null,
       burnSeconds: null,
-      statusText: 'SAKNAR LINJE',
+      status: 'line_missing',
     }
   }
 
@@ -132,7 +132,7 @@ export function calculateStartMetrics({
     return {
       ttlSeconds: null,
       burnSeconds: null,
-      statusText: 'GPS OSÄKER',
+      status: 'gps_unreliable',
     }
   }
 
@@ -140,7 +140,7 @@ export function calculateStartMetrics({
     return {
       ttlSeconds: null,
       burnSeconds: null,
-      statusText: 'FÖR LÅG FART',
+      status: 'speed_too_low',
     }
   }
 
@@ -148,7 +148,7 @@ export function calculateStartMetrics({
     return {
       ttlSeconds: null,
       burnSeconds: null,
-      statusText: 'UTANFÖR LINJEN',
+      status: 'outside_line',
     }
   }
 
@@ -164,13 +164,13 @@ export function calculateStartMetrics({
     return {
       ttlSeconds: null,
       burnSeconds: null,
-      statusText: 'UTANFÖR LINJEN',
+      status: 'outside_line',
     }
   }
 
   return {
     ttlSeconds,
     burnSeconds: calculateBurn(countdownSeconds, ttlSeconds),
-    statusText: getStartLineQuality(startA, startB) === 'poor' ? 'LINJE OSÄKER' : null,
+    status: getStartLineQuality(startA, startB) === 'poor' ? 'line_unreliable' : null,
   }
 }

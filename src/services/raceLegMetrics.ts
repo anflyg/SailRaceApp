@@ -2,7 +2,7 @@ import { analyzeRaceLegs, type RaceLeg, type RaceLegType } from './raceLegAnalys
 import type { Race, RaceSample } from '../types'
 
 export type RaceLegMetric = RaceLeg & {
-  label: string
+  label: { kind: 'upwind' | 'downwind'; number: number }
   averageSpeedKnots: number | null
   maxSpeedKnots: number | null
   averageVmgWindKnots: number | null
@@ -39,11 +39,11 @@ export function calculateRaceLegMetrics(race: Race): RaceLegMetricsResult {
   }
 }
 
-export function getRaceLegLabel(type: RaceLegType, sequenceIndex: number): string {
+export function getRaceLegLabel(type: RaceLegType, sequenceIndex: number): RaceLegMetric['label'] {
   const isUpwind = type === 'start-to-k1' || type === 'l1-to-k1'
   const upwindNumber = type === 'start-to-k1' ? 1 : Math.floor(sequenceIndex / 2) + 1
   const downwindNumber = Math.floor(sequenceIndex / 2) + 1
-  return `${isUpwind ? 'Kryss' : 'Läns'} ${isUpwind ? upwindNumber : downwindNumber}`
+  return { kind: isUpwind ? 'upwind' : 'downwind', number: isUpwind ? upwindNumber : downwindNumber }
 }
 
 function calculateMetric(leg: RaceLeg, samples: RaceSample[], sequenceIndex: number): RaceLegMetric {

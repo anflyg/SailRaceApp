@@ -31,6 +31,8 @@ import {
   stopActiveRace,
 } from '../services/raceLogger'
 import { loadAppSettings, saveAppSettings } from '../services/appSettingsStorage'
+import { LanguageProvider } from '../i18n/LanguageContext'
+import type { AppLanguage } from '../i18n/translations'
 import type {
   AppView,
   CountdownDuration,
@@ -147,7 +149,7 @@ export function AppShell() {
   const [rollPitchCalibration, setRollPitchCalibration] = useState<RollPitchCalibration | null>(null)
   const [laylineEnabled, setLaylineEnabled] = useState(() => simulationLaylineSettings?.enabled ?? loadAppSettings().layline.enabled)
   const [laylineAlphaDegrees, setLaylineAlphaDegrees] = useState(() => simulationLaylineSettings?.alphaDegrees ?? loadAppSettings().layline.alphaDegrees)
-  const [displayMode, setDisplayMode] = useState(() => loadAppSettings().displayMode)
+  const [language, setLanguage] = useState<AppLanguage>(() => loadAppSettings().language)
   const liveGpsDevice = useLiveGps(
     !manualMode.enabled && activeView !== 'analysis',
     simulationGpsSource ?? undefined,
@@ -238,10 +240,6 @@ export function AppShell() {
   }, [filteredGps, simulationMode.scenario])
 
   useEffect(() => {
-    document.documentElement.dataset.theme = displayMode
-  }, [displayMode])
-
-  useEffect(() => {
     if (manualMode.enabled || simulationLaylineSettings !== null) {
       return
     }
@@ -251,9 +249,9 @@ export function AppShell() {
         enabled: laylineEnabled,
         alphaDegrees: laylineAlphaDegrees,
       },
-      displayMode,
+      language,
     })
-  }, [displayMode, laylineAlphaDegrees, laylineEnabled, manualMode.enabled, simulationLaylineSettings])
+  }, [language, laylineAlphaDegrees, laylineEnabled, manualMode.enabled, simulationLaylineSettings])
 
   const handleManualViewChange = useCallback((nextView: AppView) => {
     if (isNavigationLocked && nextView !== activeView) {
@@ -329,7 +327,7 @@ export function AppShell() {
     const gpsPosition = getLiveGpsPosition()
 
     if (!gpsPosition) {
-      setCourseGpsStatus('GPS-position saknas')
+      setCourseGpsStatus('gps-position-unavailable')
       return
     }
 
@@ -374,7 +372,6 @@ export function AppShell() {
     setup: (
       <SetupView
         gps={liveGps}
-        filteredGps={filteredGps}
         attitude={deviceAttitude}
         rollPitch={rollPitch}
         isCalibrated={rollPitchCalibration !== null}
@@ -383,8 +380,6 @@ export function AppShell() {
         laylineAlphaDegrees={laylineAlphaDegrees}
         onLaylineEnabledChange={setLaylineEnabled}
         onLaylineAlphaDegreesChange={setLaylineAlphaDegrees}
-        displayMode={displayMode}
-        onDisplayModeChange={setDisplayMode}
       />
     ),
     course: (
@@ -426,7 +421,8 @@ export function AppShell() {
   }[activeView]
 
   return (
-    <div className={`app-shell ${activeView}`} data-theme={displayMode}>
+    <LanguageProvider language={language} setLanguage={setLanguage}>
+    <div className={`app-shell ${activeView}`}>
       <NavigationBar
         currentView={activeView}
         isLocked={isNavigationLocked}
@@ -437,5 +433,6 @@ export function AppShell() {
         {activeViewContent}
       </main>
     </div>
+    </LanguageProvider>
   )
 }

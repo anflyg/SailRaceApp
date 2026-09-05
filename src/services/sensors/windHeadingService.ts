@@ -162,7 +162,7 @@ async function measureMockHeading(): Promise<WindHeadingMeasurementResult> {
   if (result.quality === 'unstable') {
     throw new WindHeadingMeasurementError(
       'unstable',
-      'Vindmätning ostabil. Håll båten i vindögat och försök igen.',
+      'wind_measurement_unstable',
       result,
     )
   }
@@ -233,7 +233,7 @@ export async function measureWindHeading(): Promise<WindHeadingMeasurementResult
       await wait(WIND_HEADING_SAMPLE_INTERVAL_MS)
     }
   } catch {
-    throw new WindHeadingMeasurementError('failed', 'Kunde inte mäta vind')
+    throw new WindHeadingMeasurementError('failed', 'wind_measurement_failed')
   } finally {
     await WindHeadingNative.stopBackVectorHeading().catch(() => undefined)
   }
@@ -241,20 +241,20 @@ export async function measureWindHeading(): Promise<WindHeadingMeasurementResult
   if (samples.length < MIN_WIND_HEADING_SAMPLES || referenceFrame === null) {
     throw new WindHeadingMeasurementError(
       'insufficient-samples',
-      'För få kompassvärden. Försök igen.',
+      'wind_measurement_insufficient_samples',
     )
   }
 
   const headingDegrees = averageAnglesDegrees(samples)
 
   if (headingDegrees === null) {
-    throw new WindHeadingMeasurementError('failed', 'Kunde inte mäta vind')
+    throw new WindHeadingMeasurementError('failed', 'wind_measurement_failed')
   }
 
   const spreadDegrees = getCircularSpreadDegrees(samples, headingDegrees)
 
   if (spreadDegrees === null) {
-    throw new WindHeadingMeasurementError('failed', 'Kunde inte mäta vind')
+    throw new WindHeadingMeasurementError('failed', 'wind_measurement_failed')
   }
 
   const result = createMeasurementResult({
@@ -271,7 +271,7 @@ export async function measureWindHeading(): Promise<WindHeadingMeasurementResult
   if (result.quality === 'unstable') {
     throw new WindHeadingMeasurementError(
       'unstable',
-      'Vindmätning ostabil. Håll båten i vindögat och försök igen.',
+      'wind_measurement_unstable',
       result,
     )
   }

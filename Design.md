@@ -1,10 +1,10 @@
-# Aster Race Design Document
+# TackWise Race Design Document
 
 Det här dokumentet beskriver nuvarande implementation i repo:t. När dokumentation och kod skiljer sig åt gäller koden.
 
 ## 1. Syfte
 
-Aster Race är en iPhone-app för kappsegling. Appen ska hjälpa seglaren att:
+TackWise Race är en iPhone-app för kappsegling. Appen ska hjälpa seglaren att:
 
 - kontrollera GPS/sensorer och kalibrera rullning/stampning
 - sätta upp en enkel kappseglingsbana
@@ -645,12 +645,12 @@ Appen paketeras med Capacitor.
 `capacitor.config.ts` använder:
 
 - `appId`: `com.anflyg.sailraceapp`
-- `appName`: `SailRaceApp` (teknisk konfiguration)
+- `appName`: `TackWise Race`
 - `webDir`: `dist`
 
 Appnamn i iOS (visningsnamn):
 
-- `CFBundleDisplayName`: `Aster Race`
+- `CFBundleDisplayName`: `TackWise Race`
 
 iOS-projektet finns under `ios/App`.
 
@@ -668,13 +668,13 @@ Viktiga iOS-beslut:
 
 Splashscreen:
 
-- React-splash använder `AsterRaceSplash` med officiell primary logo (`src/assets/branding/aster-race-primary-logo.png`).
-- Splashens timing är fade in + diskret leave-state (ingen layoutförändring av övriga vyer).
-- Launch screen i iOS hålls mörk navy för att minimera vit blinkning vid uppstart.
+- React-splash använder den kanoniska TackWise-logotypen från `brand/source/tackwise-logo-stacked.svg`.
+- Splashens timing är en återhållsam fade (ingen layoutförändring av övriga vyer).
+- Launch screen i iOS använder TackWise off-white för en naturlig övergång till den permanenta ljusa paletten.
 
 Appikon:
 
-- iOS appicon byggs från `aster-race-appicon-master.png` och ligger i `ios/App/App/Assets.xcassets/AppIcon.appiconset`.
+- iOS appicon byggs från `brand/source/tackwise-native-icon.svg` och ligger i `ios/App/App/Assets.xcassets/AppIcon.appiconset`.
 - `Contents.json` innehåller iPhone-, iPad- och iOS-marketing-storlekar.
 
 Standardflöde efter webbändringar:

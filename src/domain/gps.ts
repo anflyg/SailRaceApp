@@ -3,11 +3,11 @@ import { formatMeters } from './format'
 
 export const GOOD_GPS_ACCURACY_METERS = 5
 
-export type GpsStatusText = 'GPS SAKNAS' | 'GPS OSÄKER'
+export type GpsDisplayStatus = 'missing' | 'unreliable'
 
 export interface GpsStatusDisplay {
   label: string
-  statusText: GpsStatusText | null
+  status: GpsDisplayStatus | null
   hasPosition: boolean
   isGood: boolean
 }
@@ -25,7 +25,7 @@ export function getGpsStatusDisplay(gps: Pick<
   if (!hasPosition) {
     return {
       label: 'GPS —',
-      statusText: 'GPS SAKNAS',
+      status: 'missing',
       hasPosition: false,
       isGood: false,
     }
@@ -34,7 +34,7 @@ export function getGpsStatusDisplay(gps: Pick<
   if (gps.accuracyMeters === null) {
     return {
       label: 'GPS —',
-      statusText: 'GPS OSÄKER',
+      status: 'unreliable',
       hasPosition: true,
       isGood: false,
     }
@@ -44,7 +44,7 @@ export function getGpsStatusDisplay(gps: Pick<
 
   return {
     label: `GPS ±${formatMeters(gps.accuracyMeters)} m`,
-    statusText: isGood ? null : 'GPS OSÄKER',
+    status: isGood ? null : 'unreliable',
     hasPosition: true,
     isGood,
   }

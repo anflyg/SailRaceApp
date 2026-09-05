@@ -1,6 +1,7 @@
 import { useMemo, useRef, type KeyboardEvent, type PointerEvent } from 'react'
 import { createRaceMapProjection, type MapGeoPoint, type ProjectedMapPoint } from '../services/raceMapProjection'
 import type { CourseDefinition, Race, RaceSample } from '../types'
+import { useTranslation } from '../i18n/LanguageContext'
 import {
   buildRaceMapTransform,
   clampRaceMapPanOffset,
@@ -64,9 +65,10 @@ export function RaceTrackMap({
   onPanOffsetChange,
   panEnabled = false,
   onActivate,
-  activationLabel = 'Racekarta',
+  activationLabel,
   className = '',
 }: RaceTrackMapProps) {
+  const { t } = useTranslation()
   const dragStateRef = useRef<{
     pointerId: number
     startClientX: number
@@ -98,7 +100,7 @@ export function RaceTrackMap({
   if (race.samples.length === 0 || !projection || !screenProjector) {
     return (
       <div className="race-track-map empty">
-        <span>Inga datapunkter finns för karta ännu</span>
+        <span>{t('map.noData')}</span>
       </div>
     )
   }
@@ -145,7 +147,7 @@ export function RaceTrackMap({
       className={className}
       viewBox={`0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}`}
       role="img"
-      aria-label="Racebana och spår"
+      aria-label={t('map.track')}
     >
       <rect className="race-map-water" x="0" y="0" width={VIEWBOX_SIZE} height={VIEWBOX_SIZE} rx="10" />
       <g transform={mapTransform}>
@@ -191,7 +193,7 @@ export function RaceTrackMap({
         {windArrow ? (
           <g className="race-map-wind-arrow" transform={`translate(${windArrow.x} ${windArrow.y}) rotate(${windArrow.rotation})`}>
             <path d="M 0 -18 L 8 4 L 2 2 L 2 18 L -2 18 L -2 2 L -8 4 Z" />
-            <text x="0" y="31">Vind</text>
+            <text x="0" y="31">{t('course.wind')}</text>
           </g>
         ) : null}
 
@@ -284,12 +286,12 @@ export function RaceTrackMap({
       className="race-track-map race-track-map-interactive"
       role="button"
       tabIndex={0}
-      aria-label={activationLabel}
+      aria-label={activationLabel ?? t('map.label')}
       onClick={onActivate}
       onKeyDown={handleMapKeyDown}
     >
       {svg}
-      <span className="race-map-open-button">Tryck för att förstora</span>
+      <span className="race-map-open-button">{t('map.enlarge')}</span>
     </div>
   )
 }

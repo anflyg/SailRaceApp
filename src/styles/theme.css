@@ -1,37 +1,8 @@
 :root {
-  color-scheme: dark;
+  color-scheme: light;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: 16px;
   line-height: 1.4;
-  color: #FFFFFF;
-  background: #031426;
-  --surface: #071F3D;
-  --surface-strong: #0A2A4D;
-  --surface-muted: #082346;
-  --primary: #0098F7;
-  --primary-strong: #35C2FF;
-  --accent: #FF8500;
-  --text-high: #FFFFFF;
-  --text-muted: #B9C6D3;
-  --border: rgba(185, 198, 211, 0.22);
-  --border-active: rgba(53, 194, 255, 0.55);
-  --theme-page-background: #031426;
-  --theme-panel-background: #071F3D;
-  --theme-panel-muted: #082346;
-  --theme-panel-subtle: #061A33;
-  --theme-text: #FFFFFF;
-  --theme-text-muted: #B9C6D3;
-  --theme-border: rgba(185, 198, 211, 0.22);
-  --theme-border-strong: rgba(185, 198, 211, 0.44);
-  --theme-blue: #35C2FF;
-  --theme-orange: #FF8500;
-  --theme-green: #3EC285;
-  --theme-red: #FF7676;
-  --theme-magenta: #FF76DC;
-}
-
-:root[data-theme='sun'] {
-  color-scheme: light;
   color: #080808;
   background: #F3F2ED;
   --surface: #FFFFFF;
@@ -69,8 +40,7 @@ html, body, #root {
 
 body {
   margin: 0;
-  background: radial-gradient(circle at top, rgba(53, 194, 255, 0.16), transparent 40%),
-    linear-gradient(180deg, #0A2A4D 0%, #061A33 52%, #031426 100%);
+  background: #F3F2ED;
 }
 
 button {

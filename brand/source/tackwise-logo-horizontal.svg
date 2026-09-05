@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2000" height="800" viewBox="0 0 2000 800" fill="none">
+  <rect width="2000" height="800" fill="#F3F2ED"/>
+  <g transform="translate(160 185) scale(1.35)">
+    <path fill="#006F94" d="M42 294 209 73c10 52 5 145-34 221H42Z"/>
+    <path fill="#A84F00" d="M231 106c45 45 62 121 45 188-24-18-49-27-73-29 25-64 31-119 28-159Z"/>
+  </g>
+  <text x="710" y="364" fill="#080808" font-family="Inter, Arial, sans-serif" font-size="138" font-weight="800" letter-spacing="9">TACKWISE</text>
+  <text x="716" y="474" fill="#42484D" font-family="Inter, Arial, sans-serif" font-size="72" font-weight="500">Race smarter.</text>
+</svg>

@@ -2,9 +2,9 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.anflyg.sailraceapp',
-  appName: 'SailRaceApp',
+  appName: 'TackWise Race',
   webDir: 'dist',
-  backgroundColor: '#061A33',
+  backgroundColor: '#F3F2ED',
 };
 
 export default config;

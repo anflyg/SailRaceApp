@@ -9,8 +9,8 @@ from docx.shared import Inches, Pt, RGBColor
 
 ROOT = Path(__file__).resolve().parents[1]
 SCREENSHOT_DIR = ROOT / "docs" / "manual" / "screenshots"
-OUTPUT_DOCX = ROOT / "docs" / "Aster_Race_Anvandarmanual.docx"
-OUTPUT_MD = ROOT / "docs" / "Aster_Race_Anvandarmanual.md"
+OUTPUT_DOCX = ROOT / "docs" / "TackWise_Race_Anvandarmanual.docx"
+OUTPUT_MD = ROOT / "docs" / "TackWise_Race_Anvandarmanual.md"
 
 NAVY = RGBColor(7, 31, 61)
 CYAN = RGBColor(53, 194, 255)
@@ -69,7 +69,7 @@ def build_docx() -> None:
     style.font.name = "Aptos"
     style.font.size = Pt(11)
 
-    add_title(document, "Aster Race", 34, NAVY)
+    add_title(document, "TackWise Race", 34, NAVY)
     add_title(document, "Användarmanual", 24, CYAN)
     document.add_paragraph()
     subtitle = document.add_paragraph("Start, bana, segling och analys för kappsegling")
@@ -168,7 +168,7 @@ def build_docx() -> None:
 
 
 def build_markdown() -> None:
-    markdown = f"""# Aster Race - Användarmanual
+    markdown = f"""# TackWise Race - Användarmanual
 
 _Start, bana, segling och analys för kappsegling_
 
