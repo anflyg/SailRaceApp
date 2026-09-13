@@ -51,3 +51,7 @@ Before production use, document:
 ## Review triggers
 
 Reassess retention before introducing public sharing, coaching/team access, billing providers, marketing analytics or new categories of personal data.
+
+## Planned analytics and entitlement retention
+
+If product analytics is approved, retain only aggregated or minimized events for the shortest documented period needed to improve reliability and product use; exact periods, deletion, provider backup behavior and privacy-notice disclosure require approval first. Keep current entitlement state only while needed to provide or secure access. Transaction-verification, beta authorization and security-audit evidence need separate documented necessity and periods; do not retain raw Apple/TestFlight data for convenience.

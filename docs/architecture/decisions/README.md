@@ -11,5 +11,8 @@ Accepted decisions currently include:
 - Cloudflare for DNS/Pages/Workers,
 - security-by-design and privacy-by-design/default,
 - early cloud cost target of approximately USD 0-10/month.
+- privacy-minimized product analytics separated from private race data,
+- Apple StoreKit/App Store In-App Purchase as the preferred initial consumer billing path,
+- server-controlled beta entitlement rather than client-reported TestFlight status.
 
 When a decision changes, document why and what migration/consequences are required rather than silently changing implementation.

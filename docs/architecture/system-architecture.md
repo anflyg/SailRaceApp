@@ -10,7 +10,7 @@ Initial target architecture. Update this document when accepted design decisions
 - **TackWise Analysis (web)** - post-race user interface.
 - **`anflyg/tackwise-api` (Cloudflare Worker)** - shared backend/API for Race and Analysis, including future session validation, entitlement checks, synchronization, privileged Supabase operations, private R2 access and analysis orchestration.
 - **`anflyg/tackwise-contracts`** - shared versioned schemas and API contracts between clients, API and Analysis.
-- **Apple** - end-user identity provider through Sign in with Apple.
+- **Apple** - end-user identity provider through Sign in with Apple and preferred initial StoreKit/App Store billing surface.
 - **Supabase Auth** - session/auth integration and internal TackWise user UUID.
 - **Supabase PostgreSQL** - structured metadata such as users, races, licences and analysis metadata/results.
 - **Cloudflare DNS** - DNS for TackWise domains.
@@ -25,6 +25,8 @@ Initial target architecture. Update this document when accepted design decisions
 - No permanently running application server required in the initial architecture.
 - Raw telemetry separated from relational metadata.
 - Opaque IDs rather than personal data in object names/keys.
+- Server-authoritative entitlement state; clients do not authorize paid or beta access.
+- Product analytics is separate from private race-analysis data and is privacy-minimized by design.
 - Early-stage infrastructure target: USD 0-10/month where practical.
 
 ## Repository boundaries

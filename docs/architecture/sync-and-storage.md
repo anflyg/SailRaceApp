@@ -14,6 +14,7 @@ Use for structured data such as:
 - timestamps/duration,
 - boat/course metadata,
 - licence state,
+- server-controlled product plan, access source, status/expiry and the free-race counter,
 - analysis version and derived summaries/results,
 - references to raw objects.
 
@@ -33,3 +34,7 @@ The architecture must allow:
 ## Versioning
 
 Raw race formats and analysis algorithms should be explicitly versioned so historic recordings can be re-analysed with improved algorithms.
+
+## Entitlement gate
+
+The server must atomically authorize a cloud-race acceptance before upload/analysis work. Free access consumes one counter only after successful acceptance; valid Pro access through App Store or time-bounded beta authorization bypasses the counter. A local recording must never be blocked by entitlement or cloud availability.

@@ -18,6 +18,14 @@ Sign in with Apple is the only planned end-user authentication method. TackWise 
 
 Apple Hide My Email must work without loss of product functionality.
 
+## Product analytics
+
+Product analytics may be introduced only as a separate, minimized non-location dataset: app version, feature-use event, operational outcome, safe error category, and bounded performance/duration measurement. Do not repurpose telemetry or race-analysis data. No SDK, provider or collection is approved yet; legal basis/consent, processor/transfers, event schema, retention/deletion, access controls, inventory/processing-record and privacy-notice updates must be approved first.
+
+## Entitlement minimization
+
+Use the opaque Supabase UUID and server-maintained product plan, access source, status/expiry and counter only. Beta access requires a non-null future expiry and remains revocable before then. Do not store Apple transaction details, TestFlight tester data or client device/build claims unless a reviewed implementation proves necessity. Client-reported TestFlight status cannot authorize beta access.
+
 ## Data access
 
 Authentication proves identity; authorization must independently prove that the authenticated user may access a specific race/object.

@@ -12,8 +12,9 @@
 | Race metadata | History, synchronization and analysis | Supabase/PostgreSQL | Linked only through opaque UUID ownership |
 | Course/start/mark/wind snapshots recorded for a race | Reproduce and analyse race context | Private R2 and/or structured race metadata | May indirectly reveal location; treat as personal data with race |
 | Analysis results | Performance analysis | Supabase/PostgreSQL and/or private R2 | User-owned data; deletable with race |
-| Licence/entitlement state | Enforce first-three-free and paid access | Supabase/PostgreSQL | Server controlled; minimize direct billing data |
+| Licence/entitlement state | Enforce free, App Store and beta access | Supabase/PostgreSQL | Server-controlled product plan, access source, status/expiry and counter; minimize billing/beta data |
 | Operational logs | Reliability, security and incident investigation | Cloudflare/Supabase/application logs | Avoid GPS payloads, tokens, email and secrets; short justified retention |
+| Minimized product analytics (if approved) | Improve reliability and usability | Separate, provider undecided | App version, feature use, operation outcome, safe error category and bounded duration/performance only; never raw race/GPS data |
 
 ## Data not required by default
 
@@ -32,3 +33,7 @@ Any new category requires an update to this inventory and a privacy/security ass
 ## Data ownership keys
 
 Names and email addresses must never be used as object keys or authorization identifiers. User/race ownership is based on opaque Supabase/UUID identifiers.
+
+## Analytics boundary and prerequisites
+
+Product analytics is a separate processing activity, not a secondary use of the private race-analysis dataset. It must not include raw GPS coordinates, raw race payloads, race tracks, Apple identifiers, email, auth tokens, secrets, or a persistent advertising identifier. Before collection, document the exact event schema, provider/processor and transfers, lawful basis and any consent requirement, retention/deletion, access controls, and public privacy-notice update. Analytics involving profiling, marketing, cross-service/device tracking, advertising identifiers, or race/location reuse requires separate approval.
