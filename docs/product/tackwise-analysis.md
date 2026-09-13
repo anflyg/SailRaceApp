@@ -30,11 +30,17 @@ The analysis platform may progressively provide:
 
 Analysis algorithms should evolve independently of the raw recording format so older races can benefit from improved algorithms.
 
-## Free and licensed use
+## Access and billing direction
 
-**TackWise Analysis Free** allows the first three races on an account to be synchronized and analysed using the normal analysis experience.
+**TackWise Analysis Free** allows the first three successfully accepted cloud races on an account to be synchronized and analysed using the normal analysis experience.
 
-After the third analysed race, additional cloud analysis requires an active licence. Race recording in the phone may continue locally. When a licence is later activated, eligible locally retained races may be synchronized.
+After the third accepted cloud race, additional cloud analysis requires server-authorized access. Race recording in the phone may continue locally. When access is later activated, eligible locally retained races may be synchronized.
+
+The preferred initial consumer billing path is Apple StoreKit / App Store In-App Purchase, because paid access unlocks digital/cloud functionality associated with the iPhone app. Product definitions and prices remain open, App Store commercial terms can vary by region, and a future alternative or web-billing path is not ruled out; either requires a separate architecture and App Store-compliance review.
+
+The TackWise server, not a client, is authoritative for paid access. A later implementation must verify App Store transactions/subscription state server-side before granting or retaining `plan = pro` with `access_source = app_store`.
+
+Authorized beta/TestFlight participants may receive a server-controlled `plan = pro`, `access_source = beta` entitlement for unlimited cloud sync and analysis during a defined beta period. It requires a non-null future expiry, does not consume the free allowance, and may be revoked server-side before expiry. A client-supplied TestFlight/build flag is not authorization.
 
 ## Data principles
 

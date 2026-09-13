@@ -38,7 +38,7 @@ TackWise follows security-by-design and privacy-by-design/default. GPS and race 
 
 ## Commercial model for Analysis
 
-TackWise Analysis Free provides normal analysis for the **first three races** for an account. Additional cloud analysis requires an active licence. Races may continue to be recorded locally in TackWise Race without a licence and may be synchronized later after licensing.
+TackWise Analysis Free provides normal analysis for the **first three successfully accepted cloud races** for an account. Additional cloud analysis requires server-authorized access. Apple StoreKit/App Store In-App Purchase is the preferred initial consumer billing path; exact products and pricing remain open. Races may continue to be recorded locally in TackWise Race without access and may be synchronized later after access is granted. Authorized beta users can receive a revocable server-controlled beta entitlement that does not consume the free allowance.
 
 ## Product relationship
 

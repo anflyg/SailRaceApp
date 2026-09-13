@@ -11,6 +11,8 @@
 - R2 objects and object access mechanisms,
 - Supabase/Cloudflare/Apple credentials and server secrets,
 - integrity of sync and analysis results.
+- minimized product analytics data and any analytics credentials,
+- App Store and beta entitlement state.
 
 ## Trust boundaries
 
@@ -21,6 +23,8 @@
 - TackWise API/Workers/analysis jobs to private R2,
 - client-local race data to cloud synchronization,
 - future billing provider to entitlement state.
+- client/API to analytics collection, if approved,
+- App Store verification and privileged beta-entitlement administration to entitlement state.
 
 ## Key threats and baseline mitigations
 
@@ -91,6 +95,27 @@
 - atomic first-three-races accounting,
 - no client writes to entitlement/counter fields,
 - rate/abuse controls at API boundary.
+
+### Paid/beta entitlement forgery
+
+**Risk:** A client claims paid or TestFlight access, or obtains indefinite beta access.
+
+**Mitigations:**
+- server-controlled `plan`, `access_source`, status and expiry,
+- no trust in client `isTestFlight`/build flags,
+- UUID-scoped, expiry-bounded beta allowlisting and server revocation,
+- server-side App Store verification before `access_source = app_store`,
+- beta and paid access never consume the atomic free counter.
+
+### Analytics over-collection
+
+**Risk:** An SDK, event schema or provider leaks location/race data or creates unapproved profiling.
+
+**Mitigations:**
+- provider/SDK is deferred,
+- separate minimized non-location event flow,
+- prohibit GPS, race payloads, tokens, secrets, Apple identifiers and email,
+- privacy/security, retention and legal-basis review before collection.
 
 ### Dependency compromise
 

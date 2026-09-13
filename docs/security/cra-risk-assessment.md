@@ -36,6 +36,8 @@ Race-critical operation remains offline-first; cloud availability is not require
 | Free-tier/cost abuse | Server-authoritative entitlement, atomic counter, rate/resource controls |
 | Inability to patch | Maintain supported dependencies and release/update process |
 | Cloud outage | Offline-first race functionality limits operational impact |
+| Entitlement forgery or billing/beta authorization error | Server-authoritative plan/access source, atomic counter, mandatory beta expiry and revocation |
+| Analytics compromise/over-collection | Provider deferred; minimized separate non-location events and security/privacy review before use |
 
 ## Design mitigations already selected
 
