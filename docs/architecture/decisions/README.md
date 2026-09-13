@@ -14,5 +14,6 @@ Accepted decisions currently include:
 - privacy-minimized product analytics separated from private race data,
 - Apple StoreKit/App Store In-App Purchase as the preferred initial consumer billing path,
 - server-controlled beta entitlement rather than client-reported TestFlight status.
+- operator-only, audited and narrowly scoped beta entitlement administration.
 
 When a decision changes, document why and what migration/consequences are required rather than silently changing implementation.

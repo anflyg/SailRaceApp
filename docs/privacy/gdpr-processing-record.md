@@ -25,8 +25,8 @@ Providers: undecided; no provider/SDK is approved.
 Conditions before collection: document lawful basis and any consent requirement, processor/transfer assessment, retention, event schema, security controls, and public privacy notice. Raw race/GPS telemetry, raw race payloads, Apple identifiers, email, tokens, secrets, advertising identifiers, marketing and profiling are outside this activity.
 
 ### Entitlement and beta access
-Purpose: enforce the three-free-race allowance and authorized App Store/beta access.
-Data: opaque user UUID, commercial/product plan, access source, status, expiry and free-race counter. Later App Store verification must minimize transaction data; beta administration should use UUID-scoped, mandatory-expiry authorization.
+Purpose: enforce the three-free-race allowance and authorized App Store/beta access, and provide security traceability for operator beta grants/revocations when implemented.
+Data: opaque user UUID, commercial/product plan, access source, status, expiry and free-race counter. Beta-administration audit evidence is limited to opaque event/user UUIDs, action, timestamp, applicable grant expiry and an approved authority/operator identifier. Later App Store verification must minimize transaction data; beta administration uses UUID-scoped, mandatory-expiry authorization. Do not retain email, Apple/TestFlight identity, tokens, secrets or race data for this activity.
 Providers: Supabase; Apple when StoreKit/App Store verification is implemented.
 
 ## Principles
