@@ -13,6 +13,7 @@
 | Course/start/mark/wind snapshots recorded for a race | Reproduce and analyse race context | Private R2 and/or structured race metadata | May indirectly reveal location; treat as personal data with race |
 | Analysis results | Performance analysis | Supabase/PostgreSQL and/or private R2 | User-owned data; deletable with race |
 | Licence/entitlement state | Enforce free, App Store and beta access | Supabase/PostgreSQL | Server-controlled product plan, access source, status/expiry and counter; minimize billing/beta data |
+| Beta-entitlement administration audit evidence (when implemented) | Security traceability for operator beta grants/revocations | Server-only Supabase/PostgreSQL | Opaque event/user UUIDs, action, timestamp, relevant grant expiry and approved authority identifier only; no email, Apple/TestFlight identity, tokens, secrets or race data; retention requires review before wider launch |
 | Operational logs | Reliability, security and incident investigation | Cloudflare/Supabase/application logs | Avoid GPS payloads, tokens, email and secrets; short justified retention |
 | Minimized product analytics (if approved) | Improve reliability and usability | Separate, provider undecided | App version, feature use, operation outcome, safe error category and bounded duration/performance only; never raw race/GPS data |
 

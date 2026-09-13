@@ -86,7 +86,7 @@ The client must never be authoritative for licence state or free-race counters.
 
 ## Proposed minimal entitlement evolution
 
-Keep the single entitlement row and existing counter. No separate billing, tester, event-history or client-device table is required initially. The conceptual model separates commercial/product tier (`plan`) from why that tier is authorized (`access_source`):
+Keep the single entitlement row and existing counter. No separate billing, tester, event-history or client-device table is required initially, except for the server-only beta-administration audit evidence required by [ADR-002](decisions/adr-002-beta-entitlement-administration.md) when that operation is implemented. The conceptual model separates commercial/product tier (`plan`) from why that tier is authorized (`access_source`):
 
 | Field | Conceptual values / rule |
 | --- | --- |
@@ -172,7 +172,7 @@ Deleting an account must enumerate and delete all user-owned cloud races/objects
 ## Open decisions before implementation
 
 - Exact paid billing products/pricing and entitlement source.
-- Atomic race-acceptance operation, server-side App Store verification, controlled beta-entitlement administration, and API/contract versioning.
+- Atomic race-acceptance operation, server-side App Store verification, implementation of the controlled beta-entitlement administration design in [ADR-002](decisions/adr-002-beta-entitlement-administration.md), and API/contract versioning.
 - Analytics event model, legal basis, provider and retention.
 - Whether boats/courses are normalized tables or immutable snapshots embedded in race metadata.
 - Exact metadata that belongs in PostgreSQL versus derived analysis output.

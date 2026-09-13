@@ -104,6 +104,7 @@
 - server-controlled `plan`, `access_source`, status and expiry,
 - no trust in client `isTestFlight`/build flags,
 - UUID-scoped, expiry-bounded beta allowlisting and server revocation,
+- operator-only, narrowly scoped beta mutation with durable, minimized server-only audit evidence; no public admin HTTP endpoint,
 - server-side App Store verification before `access_source = app_store`,
 - beta and paid access never consume the atomic free counter.
 
