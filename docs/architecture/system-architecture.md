@@ -27,6 +27,7 @@ Initial target architecture. Update this document when accepted design decisions
 - Opaque IDs rather than personal data in object names/keys.
 - Server-authoritative entitlement state; clients do not authorize paid or beta access.
 - Product analytics is separate from private race-analysis data and is privacy-minimized by design.
+- Race sync uses authenticated Worker-mediated prepare/upload/finalize; PostgreSQL remains authoritative for acceptance and free-counter consumption.
 - Early-stage infrastructure target: USD 0-10/month where practical.
 
 ## Repository boundaries
@@ -45,5 +46,5 @@ Supabase Auth ---- Supabase PostgreSQL
      |
 iPhone Race ---- tackwise-api Worker ---- Analysis Web
      |                    |
-     +------------------> R2 private race objects
+     +-- authenticated -->+-- private binding --> R2 race objects
 ```

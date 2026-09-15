@@ -36,6 +36,8 @@ Race telemetry is recorded locally and must not depend on cloud availability. Re
 
 Raw recordings remain local until synchronization succeeds.
 
+The first cloud flow follows [ADR-003](../architecture/decisions/adr-003-first-race-upload-and-sync.md): completed races remain locally available while authenticated prepare/upload/finalize runs opportunistically. Interrupted sync returns to a persistent queue; entitlement rejection blocks only cloud acceptance; permanent validation failure never deletes the local recording.
+
 ## After race
 
 The iPhone app should provide a lightweight summary and sync status. Detailed analysis belongs primarily in TackWise Analysis.

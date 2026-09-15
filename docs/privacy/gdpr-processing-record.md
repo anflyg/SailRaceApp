@@ -11,8 +11,9 @@ Processors/providers: Apple, Supabase.
 
 ### Race synchronization and storage
 Purpose: sync, backup, history and analysis requested by the user.
-Data: race metadata and GPS/location telemetry.
+Data: versioned GPS/location telemetry and necessary race/course/sensor context in private compressed objects; opaque owner/race UUIDs, timestamps, duration/distance, raw version, compressed digest/size, object reference and short-lived upload-reservation metadata in PostgreSQL. The initial format excludes local display names and unrelated identity/device data.
 Providers: Supabase, Cloudflare.
+Retention/controls: accepted data follows user race/account deletion; prepared but unaccepted reservations expire after 24 hours and unreferenced private objects are targeted for cleanup within a further 24 hours. Every upload phase is authenticated and UUID-scoped; no client receives R2 credentials. Exact lawful basis, controller notice, processor/transfer configuration and backup deletion behavior require confirmation before end-user production use.
 
 ### Analysis
 Purpose: calculate and present race-performance insights.

@@ -1,6 +1,6 @@
 # TackWise Infrastructure Status
 
-**Status:** Current setup baseline, 2026-09-05.
+**Status:** Partial current baseline. DNS details retain their 2026-09-05 status; cloud/backend notes were updated 2026-09-15.
 
 ## Domain and DNS
 
@@ -14,11 +14,13 @@
 
 ## Cloudflare
 
-Planned responsibilities:
+Responsibilities:
 - authoritative DNS,
 - `analysis.tackwise.se` web delivery,
 - `api.tackwise.se` API/Workers,
 - private R2 object storage for raw race telemetry.
+
+The TackWise API Worker is deployed with `GET /health`, authenticated `GET /v1/me`, and a private R2 binding. Race upload/download endpoints do not yet exist.
 
 Early-stage cost target remains USD 0-10/month where practical without weakening security or maintainability.
 
@@ -29,6 +31,7 @@ Early-stage cost target remains USD 0-10/month where practical without weakening
 - Region: West EU (Ireland).
 - Compute: Nano.
 - Intended responsibilities: Sign in with Apple integration, Supabase Auth sessions, PostgreSQL metadata, licence/entitlement state and analysis metadata/results.
+- The versioned production schema and migration history are deployed through `20260913000002`, including the entitlement access-source model and operator-only beta administration.
 
 ## Apple
 
@@ -40,8 +43,6 @@ Early-stage cost target remains USD 0-10/month where practical without weakening
 ## Not yet configured
 
 - `analysis.tackwise.se` deployment.
-- `api.tackwise.se` Worker/API.
-- R2 production bucket.
-- Supabase database schema/RLS policies.
+- ADR-003 race upload/sync endpoints, upload lifecycle schema, and R2 write flow.
 - Apple Services ID and web callback configuration.
 - Cloudflare DNSSEC after zone activation.

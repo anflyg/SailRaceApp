@@ -1,6 +1,6 @@
 # TackWise Cloud Data Model
 
-**Status:** Deployed baseline plus proposed entitlement evolution. The baseline Supabase schema has been deployed. The additions described as *proposed* below require reviewed migrations and are not implemented here.
+**Status:** Deployed schema through entitlement and beta-administration migrations, plus the proposed race-upload additions defined by ADR-003.
 
 ## Goals
 
@@ -76,7 +76,8 @@ Server-controlled entitlement state.
 | Column | Type | Notes |
 | --- | --- | --- |
 | `user_id` | uuid PK/FK -> `auth.users.id` | User |
-| `plan` | text | Current commercial/product tier, initially `free` |
+| `plan` | text | Commercial/product tier: `free` or `pro` |
+| `access_source` | text | Authorization source: `free`, `app_store`, or `beta` |
 | `status` | text | active/expired/revoked |
 | `valid_until` | timestamptz nullable | Paid entitlement expiry if applicable |
 | `free_races_used` | integer | Server-maintained counter, max free allowance = 3 |
@@ -84,9 +85,9 @@ Server-controlled entitlement state.
 
 The client must never be authoritative for licence state or free-race counters.
 
-## Proposed minimal entitlement evolution
+## Deployed entitlement model
 
-Keep the single entitlement row and existing counter. No separate billing, tester, event-history or client-device table is required initially, except for the server-only beta-administration audit evidence required by [ADR-002](decisions/adr-002-beta-entitlement-administration.md) when that operation is implemented. The conceptual model separates commercial/product tier (`plan`) from why that tier is authorized (`access_source`):
+The deployed schema keeps one entitlement row and the existing counter. No separate billing, tester, event-history or client-device table is required initially. The server-only beta-administration audit table required by [ADR-002](decisions/adr-002-beta-entitlement-administration.md) is separate from product analytics and normal client access. The entitlement model separates commercial/product tier (`plan`) from why that tier is authorized (`access_source`):
 
 | Field | Conceptual values / rule |
 | --- | --- |
@@ -97,7 +98,7 @@ Keep the single entitlement row and existing counter. No separate billing, teste
 | `free_races_used` | Server-maintained free-race counter |
 | timestamps | Server-generated `created_at` and `updated_at` timestamps |
 
-The deployed schema does **not** contain `access_source`. Adding it, constraining `plan` to `free`/`pro`, and adding any required timestamp must be a reviewed schema migration; no migration is created by this document. This permits future monthly/yearly Pro products or alternative billing without coupling the product tier to a provider.
+This permits future monthly/yearly Pro products or alternative billing without coupling the product tier to a provider.
 
 | Plan | Access source | Required state | Cloud sync and analysis | Counter treatment |
 | --- | --- | --- | --- | --- |
@@ -107,7 +108,7 @@ The deployed schema does **not** contain `access_source`. Adding it, constrainin
 
 `valid_until` is evaluated by the server. Beta access is always time-bounded: it expires when its required expiry passes and may be revoked before then. `access_source = app_store` is not granted from a client claim: later server-side App Store transaction/subscription verification must establish and refresh it.
 
-The current API contract returns the existing four entitlement fields only. Adding `access_source` to an API/client contract is a future versioned contract change and must not expose billing transactions, beta evidence or other operational details.
+The current `/v1/me` API contract returns `plan`, `access_source`, `status`, `valid_until`, and `free_races_used`; it does not expose billing transactions, beta evidence, or other operational details.
 
 ## Free analysis rule
 
@@ -119,6 +120,16 @@ After free entitlement is exhausted:
 - the iPhone may continue recording locally,
 - additional cloud upload/analysis is rejected unless a valid `plan = pro` entitlement has an authorized `access_source`,
 - once entitlement becomes active, locally retained races may be synchronized.
+
+Expired or revoked Pro does not authorize a new race acceptance. Previously accepted races and stored results remain readable, exportable, and deletable by their authenticated owner, and the normal initial analysis for an already accepted race may complete. Entitlement gates new cloud acceptance, not ownership of existing data; optional re-analysis policy is separate.
+
+## Proposed race-upload lifecycle
+
+[ADR-003](decisions/adr-003-first-race-upload-and-sync.md) keeps `races` as accepted-race state. A new server-only `race_uploads` reservation table represents prepared but unaccepted uploads using the race UUID, owner UUID, raw version, compressed SHA-256 and size, server-derived object key, accepted structured metadata, and expiry timestamps. It receives no direct normal-client access.
+
+`races.sync_state = uploaded` means the private raw object was validated and the PostgreSQL acceptance transaction committed. This is the only state that may consume one free race. `processing`, `ready`, and `error` describe analysis after acceptance; no `pending` or `uploading` race state is added. Add `raw_size_bytes` to accepted races for integrity and operational controls.
+
+The service-role-only acceptance operation locks the reservation and entitlement, returns matching accepted retries idempotently, inserts the unique accepted race, increments the free counter only when required, and completes the reservation in one transaction. R2 is populated before this transaction; unreferenced private objects remain invisible and are retried or removed by bounded cleanup.
 
 ## RLS baseline
 
@@ -143,6 +154,11 @@ RLS must be enabled on all user-owned tables.
 - `SELECT`: `auth.uid() = user_id`
 - no direct client writes; trusted server/billing flow only
 
+### Proposed `race_uploads`
+- no direct normal-client select/insert/update/delete
+- RLS enabled with no `anon` or `authenticated` privileges/policies
+- trusted server access only, always scoped to the validated Supabase UUID
+
 ## Service-role boundary
 
 The Supabase service-role key must never be present in the iPhone app, browser bundle, GitHub repository or client-visible configuration. Only trusted server-side code may use it.
@@ -165,14 +181,16 @@ At minimum plan indexes for:
 Deleting a race must remove:
 1. analysis results/objects,
 2. raw R2 race object,
-3. related PostgreSQL rows.
+3. any pending upload reservation/object for that race,
+4. related PostgreSQL rows.
 
-Deleting an account must enumerate and delete all user-owned cloud races/objects before or as part of account removal, subject only to documented legal retention.
+Deleting an account must enumerate and delete all accepted and pending user-owned cloud races/objects before or as part of account removal, subject only to documented legal retention.
 
 ## Open decisions before implementation
 
 - Exact paid billing products/pricing and entitlement source.
-- Atomic race-acceptance operation, server-side App Store verification, implementation of the controlled beta-entitlement administration design in [ADR-002](decisions/adr-002-beta-entitlement-administration.md), and API/contract versioning.
+- Server-side App Store verification and exact paid product behavior.
+- Raw-race/API schemas and initial upload limits, following [ADR-003](decisions/adr-003-first-race-upload-and-sync.md).
 - Analytics event model, legal basis, provider and retention.
 - Whether boats/courses are normalized tables or immutable snapshots embedded in race metadata.
 - Exact metadata that belongs in PostgreSQL versus derived analysis output.

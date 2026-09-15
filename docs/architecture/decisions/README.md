@@ -15,5 +15,6 @@ Accepted decisions currently include:
 - Apple StoreKit/App Store In-App Purchase as the preferred initial consumer billing path,
 - server-controlled beta entitlement rather than client-reported TestFlight status.
 - operator-only, audited and narrowly scoped beta entitlement administration.
+- authenticated Worker-mediated prepare/upload/finalize race sync with PostgreSQL-authoritative acceptance and exactly-once free-race accounting.
 
 When a decision changes, document why and what migration/consequences are required rather than silently changing implementation.

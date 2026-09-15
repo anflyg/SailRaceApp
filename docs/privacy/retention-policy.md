@@ -18,19 +18,24 @@
 - Race metadata, raw telemetry and analysis results: retained until the user deletes the race/account or another documented product rule applies.
 - Entitlement data: retained as required to operate the account/licence.
 
+### Prepared but unaccepted race uploads
+
+An upload reservation expires 24 hours after prepare. A scheduled cleanup must remove the expired reservation and any unreferenced private R2 object within a further 24 hours after rechecking that no accepted race references it. Interrupted clients may prepare/upload again from their retained local recording. Upload failure or entitlement rejection never deletes the local race and never consumes the free allowance.
+
 ### Individual race deletion
 
 A deletion request should make the race unavailable promptly and trigger deletion of:
 - PostgreSQL race metadata,
 - analysis rows/results,
 - raw R2 object,
+- pending upload reservation and any unaccepted R2 object,
 - derived R2 analysis objects.
 
 Cross-service deletion failures must be retried and observable.
 
 ### Account deletion
 
-Target operational completion: within 30 days, subject to any data that must legally be retained. This 30-day target is a current design choice and must be reviewed before public launch.
+Target operational completion: within 30 days, subject to any data that must legally be retained. Account deletion must enumerate accepted and pending race objects/reservations before identity removal. This 30-day target is a current design choice and must be reviewed before public launch.
 
 ### Local unsynchronized races
 
