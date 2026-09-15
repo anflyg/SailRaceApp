@@ -34,6 +34,12 @@ Supabase RLS and server-side ownership checks are required for user-owned data.
 
 R2 objects are private and must only be served through an authorized, short-lived mechanism after ownership validation.
 
+## Race upload minimization
+
+The first sync protocol is initiated only for a completed local race and never affects recording availability. The phone sends a versioned, gzip-compressed raw object through an authenticated Worker; the client never receives R2 credentials or supplies an object key. The Worker derives ownership from the validated Supabase UUID, applies compressed/expanded/schema limits, verifies the compressed SHA-256, and makes the object eligible for use only after server-authoritative database acceptance.
+
+Pre-acceptance reservation data is limited to opaque UUIDs, raw version, compressed digest/size, server-derived key, necessary structured race metadata, and expiry. The first raw format excludes local display names, email, Apple/TestFlight identity, advertising identifiers, and unrelated device/sensor data. Unaccepted objects remain private and follow bounded cleanup. Product analytics must not be embedded in upload payloads or operational upload logs.
+
 ## Free/paid entitlement privacy
 
 The first-three-races free rule should be enforced using account entitlement/counter state. Do not introduce fingerprinting, advertising identifiers or cross-device tracking beyond the authenticated TackWise account merely to prevent free-tier abuse.
@@ -43,6 +49,7 @@ The first-three-races free rule should be enforced using account entitlement/cou
 The architecture must support:
 - export of user-owned structured metadata and raw race recordings in a portable form,
 - deletion of one race across PostgreSQL and R2,
+- deletion of pending upload reservations and unaccepted R2 objects for that race/account,
 - deletion of the whole TackWise account and associated cloud data subject to documented legal retention.
 
 ## Diagnostics

@@ -31,9 +31,10 @@ Race-critical operation remains offline-first; cloud availability is not require
 | GPS/location disclosure | Private R2, opaque keys, no normal-log telemetry |
 | Leaked service credentials | Server-side only, never client/source control, rotate on compromise |
 | Vulnerable dependencies | Minimize, pin/update, vulnerability review |
-| Malicious/oversized race upload | Auth, size/schema limits, bounded processing, integrity checks |
-| Sync/data tampering | Immutable race UUID, SHA-256 metadata, idempotency/version validation |
-| Free-tier/cost abuse | Server-authoritative entitlement, atomic counter, rate/resource controls |
+| Malicious/oversized race upload | Auth, compressed/expanded/sample limits, bounded gzip/JSON/schema validation, integrity checks |
+| Sync/data tampering | Immutable client race UUID and gzip artifact, server-derived R2 key, independently verified SHA-256, idempotent prepare/content/finalize |
+| Cross-store partial failure/replay | Accepted-row authority, atomic database acceptance, idempotent retry, private orphan cleanup and reconciliation |
+| Free-tier/cost abuse | Server-authoritative finalize, locked entitlement, unique race insert plus atomic counter, rate/resource controls |
 | Inability to patch | Maintain supported dependencies and release/update process |
 | Cloud outage | Offline-first race functionality limits operational impact |
 | Entitlement forgery or billing/beta authorization error | Server-authoritative plan/access source, atomic counter, mandatory beta expiry and revocation |
@@ -50,6 +51,8 @@ Race-critical operation remains offline-first; cloud availability is not require
 - service-role credentials restricted to trusted server-side code,
 - offline-first race execution,
 - versioned raw race format and analysis versions,
+- Worker-mediated upload with no client R2 credentials or signed URL in the first flow,
+- PostgreSQL-authoritative exactly-once race acceptance,
 - incremental security/privacy documentation.
 
 ## Security evidence to build incrementally
@@ -61,6 +64,9 @@ For material releases maintain evidence for:
 - secret/client-bundle review,
 - dependency vulnerability review,
 - malformed/oversized upload tests,
+- gzip-bomb, expanded-byte, sample/event-count and parser-bound tests,
+- duplicate/concurrent/replayed finalize and exact free-counter tests,
+- R2-success/database-failure, lost-response, cleanup/reconciliation and token-expiry tests,
 - deletion/export behavior,
 - incident/vulnerability handling procedure,
 - supported-version/update assumptions.

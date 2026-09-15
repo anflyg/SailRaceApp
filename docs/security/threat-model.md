@@ -13,6 +13,7 @@
 - integrity of sync and analysis results.
 - minimized product analytics data and any analytics credentials,
 - App Store and beta entitlement state.
+- pending race-upload reservations and unaccepted private R2 objects.
 
 ## Trust boundaries
 
@@ -25,6 +26,7 @@
 - future billing provider to entitlement state.
 - client/API to analytics collection, if approved,
 - App Store verification and privileged beta-entitlement administration to entitlement state.
+- authenticated iPhone prepare/content/finalize requests through the Worker to private R2 and the PostgreSQL acceptance transaction.
 
 ## Key threats and baseline mitigations
 
@@ -38,6 +40,8 @@
 - server-side ownership checks for service-role operations,
 - object access issued only after authenticated ownership validation,
 - no trust in client-supplied `user_id`.
+- globally reserved race UUIDs scoped to the validated user at every upload phase,
+- server-derived R2 keys; race UUID or object-key knowledge never grants access.
 
 ### Exposure of GPS/location data
 
@@ -50,6 +54,7 @@
 - no names/emails in object keys,
 - no raw GPS payloads in ordinary logs,
 - explicit deletion/export design.
+- unaccepted objects are not application-readable and are removed by bounded, idempotent cleanup.
 
 ### Session/account theft
 
@@ -79,12 +84,14 @@
 
 **Mitigations:**
 - authenticated upload,
-- entitlement check before expensive processing,
-- maximum upload size,
-- schema/format version validation,
+- preliminary entitlement check before transfer and authoritative recheck at finalize,
+- separate hard limits for declared/actual compressed bytes, expanded bytes, samples/events and processing time,
+- bounded gzip decompression that aborts before the expanded limit to resist gzip bombs,
+- UTF-8, JSON, schema/format version, numeric/range and timestamp validation,
 - SHA-256 integrity metadata,
 - safe parser behavior and bounded analysis resources,
-- reject conflicting content for an existing immutable race UUID.
+- reject conflicting content for an existing immutable race UUID,
+- no accepted database row and no free-counter consumption until the validated object exists.
 
 ### Free-tier/licence abuse
 
@@ -92,9 +99,23 @@
 
 **Mitigations:**
 - server-authoritative entitlement state,
-- atomic first-three-races accounting,
+- service-role-only PostgreSQL acceptance operation that locks the entitlement and reservation,
+- unique race UUID plus atomic race insert/free-counter update for exactly-once first-three-races accounting,
 - no client writes to entitlement/counter fields,
 - rate/abuse controls at API boundary.
+
+### Replayed requests and cross-store inconsistency
+
+**Risk:** Retries, concurrent finalize calls, lost responses, or an R2/database partial failure create duplicate races, double-consume free allowance, expose orphaned objects, or lose an accepted recording.
+
+**Mitigations:**
+- race UUID as the idempotency identity and immutable prepared version/digest/size,
+- identical prepare/content/finalize retries return or converge on the same result,
+- row locking and unique constraints in the authoritative acceptance transaction,
+- R2 object validated and stored before database acceptance,
+- unreferenced private objects remain inaccessible and recoverable by retry,
+- scheduled cleanup rechecks accepted references before deleting expired objects,
+- analysis begins only from an accepted `races.sync_state = uploaded` row.
 
 ### Paid/beta entitlement forgery
 
@@ -138,6 +159,7 @@
 - file size and processing limits,
 - rate limiting/abuse detection where required,
 - cache/store reusable analysis results rather than recompute on every view,
+- bounded staged-object retention and orphan cleanup,
 - monitor usage/cost before scaling paid tiers.
 
 ## Race safety boundary

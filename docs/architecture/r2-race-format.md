@@ -1,6 +1,6 @@
 # R2 Race Object Format and Access Model
 
-**Status:** Proposed baseline for implementation.
+**Status:** Accepted first-upload baseline under [ADR-003](decisions/adr-003-first-race-upload-and-sync.md); implementation deferred.
 
 ## Purpose
 
@@ -22,10 +22,10 @@ The exact bucket name is not a security boundary. Authorization must be enforced
 
 Use only opaque identifiers. Do not include names, email addresses, boat names, club names or other personal data in keys.
 
-Suggested structure:
+The first-upload Worker derives the raw key from the validated user, prepared race, version, and compressed-byte digest:
 
 ```text
-races/<user_uuid>/<race_uuid>/raw-v<format_version>.json.gz
+races/<user_uuid>/<race_uuid>/raw-v<format_version>-sha256-<compressed_sha256>.json.gz
 analysis/<user_uuid>/<race_uuid>/<analysis_version>/result.json.gz
 ```
 
@@ -68,11 +68,13 @@ Reasons:
 - good compression for repetitive telemetry,
 - low implementation complexity during early development.
 
-A later binary format may be introduced with a new `formatVersion`; historic formats must remain parseable or migratable.
+A later binary format may be introduced with a new `formatVersion`; historic formats must remain parseable or migratable. The first cloud raw schema is distinct from the app's current user-export ZIP/JSON version.
+
+Initial upload limits are 5 MiB compressed, 20 MiB after decompression, and 50,000 samples, subject to confirmation with representative fixtures before endpoint implementation. The Worker must enforce compressed and expanded bounds independently and stop decompression when the expanded limit is crossed.
 
 ## Integrity and idempotency
 
-The uploader/API should calculate and store a SHA-256 digest for the raw object. PostgreSQL stores the expected digest in `races.raw_sha256`.
+The phone computes SHA-256 over the exact gzip bytes and persists those immutable retry bytes. The Worker independently computes and verifies the same digest before storage. PostgreSQL stores the verified digest in `races.raw_sha256` and the compressed length in the proposed `races.raw_size_bytes`.
 
 Upload/sync must be idempotent:
 - retrying the same race must not create duplicate race records,
@@ -85,19 +87,15 @@ R2 is private.
 
 Clients must not receive permanent R2 credentials.
 
-Preferred flow:
-1. authenticated client calls TackWise API,
-2. API validates Supabase session/user and entitlement,
-3. API validates race ownership/ID and upload metadata,
-4. API either streams the object or issues a short-lived constrained upload/download mechanism,
-5. metadata is committed only when the upload is validated,
-6. analysis reads R2 through trusted server-side access.
+The first flow is the authenticated Worker-mediated prepare/content/finalize protocol in ADR-003:
+1. prepare reserves the client race UUID and expected immutable object description,
+2. the bounded gzip body is authenticated, hashed, decompressed with a hard ceiling, schema-validated, and written through the private Worker R2 binding,
+3. finalize verifies object presence and invokes the atomic PostgreSQL acceptance operation,
+4. analysis may read the object only after an accepted race row exists.
 
-Any signed URL must be:
-- short lived,
-- object-specific,
-- issued only after authorization,
-- unsuitable for listing the bucket.
+No signed/direct R2 upload URL is issued in the first flow. Introducing one later requires a reviewed architecture and threat-model change and must remain short-lived, object-specific, authorized, and unsuitable for bucket listing.
+
+The object is logically staged until database acceptance even though it already uses its canonical immutable key. An R2 object without an accepted race row is not readable or analyzable through application flows. Prepared sessions expire after 24 hours; scheduled cleanup removes expired unreferenced objects and reservations within a further 24 hours after rechecking acceptance.
 
 ## Logging
 
@@ -113,11 +111,9 @@ Race deletion must delete both raw and derived R2 objects. Failed cross-store de
 - avoid repeatedly downloading raw telemetry for normal page loads,
 - store reusable derived summaries/results after analysis,
 - protect upload/analysis endpoints from abuse and oversized files,
-- define reasonable per-race size limits before production.
+- monitor the initial compressed/expanded/sample limits before raising them.
 
 ## Open decisions before implementation
 
-- Exact maximum raw upload size.
-- Direct signed upload versus Worker-streamed upload.
 - Whether large analysis outputs stay in R2 or remain compact enough for PostgreSQL JSONB.
-- Formal schema location/versioning shared between Race and Analysis repositories.
+- Exact raw-race v1 fields within the ADR-003 minimization boundary; the formal schema belongs in `anflyg/tackwise-contracts`.

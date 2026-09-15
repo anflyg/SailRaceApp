@@ -36,6 +36,8 @@ Analysis algorithms should evolve independently of the raw recording format so o
 
 After the third accepted cloud race, additional cloud analysis requires server-authorized access. Race recording in the phone may continue locally. When access is later activated, eligible locally retained races may be synchronized.
 
+Expired or revoked Pro access blocks acceptance of new cloud races but does not remove ownership access to previously accepted races or stored results. The normal initial analysis for a race that was successfully accepted may complete. Any later policy for optional re-analysis is separate.
+
 The preferred initial consumer billing path is Apple StoreKit / App Store In-App Purchase, because paid access unlocks digital/cloud functionality associated with the iPhone app. Product definitions and prices remain open, App Store commercial terms can vary by region, and a future alternative or web-billing path is not ruled out; either requires a separate architecture and App Store-compliance review.
 
 The TackWise server, not a client, is authoritative for paid access. A later implementation must verify App Store transactions/subscription state server-side before granting or retaining `plan = pro` with `access_source = app_store`.
