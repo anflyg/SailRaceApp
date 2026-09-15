@@ -99,7 +99,7 @@
 
 **Mitigations:**
 - server-authoritative entitlement state,
-- service-role-only PostgreSQL acceptance operation that locks the entitlement and reservation,
+- service-role-only PostgreSQL acceptance operation that returns a matching accepted retry first, then locks the entitlement and reservation only for a new acceptance,
 - unique race UUID plus atomic race insert/free-counter update for exactly-once first-three-races accounting,
 - no client writes to entitlement/counter fields,
 - rate/abuse controls at API boundary.

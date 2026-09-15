@@ -49,7 +49,7 @@ Cloud failure never changes or deletes the local race. Synchronization begins on
 
 Prepare reserves a race UUID globally for the authenticated owner. Repeating prepare with the same owner, version, digest, size, and immutable metadata returns the existing state. A different owner receives a non-enumerating not-found/conflict response. Changed immutable input for an existing reservation or accepted race returns `409 race_conflict`.
 
-An identical content PUT is safe to repeat. After acceptance, content PUT is disabled. Finalize is idempotent: if the same owner/race/version/digest is already accepted, it returns the accepted result and never increments the counter again.
+An identical content PUT is safe to repeat. After acceptance, content PUT is disabled. Finalize is idempotent: it checks for a matching accepted race for the authenticated owner before requiring a reservation. A matching owner/race/version/digest returns the accepted result and never touches entitlement state or increments the counter again.
 
 ### Minimal v1 API contract
 
@@ -102,16 +102,15 @@ Use `201` for a new reservation and `200` for a matching existing reservation or
 ```http
 PUT /v1/races/{raceId}/upload/content
 Authorization: Bearer <supabase-access-token>
-Content-Type: application/json
-Content-Encoding: gzip
+Content-Type: application/gzip
 Content-Length: <bytes>
 
 <exact prepared gzip bytes>
 ```
 
-The first implementation starts with hard upper bounds of 5 MiB compressed, 20 MiB after decompression, and 50,000 samples. The contracts PR must validate these limits against representative long-race fixtures and may reduce them before release. Raising a limit requires runtime/cost testing and a documented contract/configuration change.
+The request body is the exact immutable gzip artifact, not an HTTP representation that a transport layer may decode. There is no `Content-Encoding` header in the first-version contract. `Content-Length` is the compressed artifact length. The first implementation starts with hard upper bounds of 5 MiB compressed, 20 MiB after decompression, and 50,000 samples. The contracts PR must validate these limits against representative long-race fixtures and may reduce them before release. Raising a limit requires runtime/cost testing and a documented contract/configuration change.
 
-The Worker rejects a missing or oversized declared length before reading the body, also enforces the compressed limit while reading, hashes the compressed bytes, and requires the size and hash to match prepare. It performs bounded gzip decompression, UTF-8/JSON parsing, schema validation, race-ID/version matching, sample/event count limits, finite numeric/range checks, and timestamp sanity checks before writing the original gzip bytes to R2. Validation must stop when the expanded-byte limit is crossed to prevent gzip bombs.
+The Worker rejects a missing or oversized declared length before reading the body, also enforces the compressed limit while reading, hashes those exact body bytes, and requires the size and hash to match prepare. It performs bounded gzip decompression, UTF-8/JSON parsing, schema validation, race-ID/version matching, sample/event count limits, finite numeric/range checks, and timestamp sanity checks before writing the original exact gzip bytes to R2. Validation must stop when the expanded-byte limit is crossed to prevent gzip bombs.
 
 A successful write returns `204`. A lost response is not proof of failure: the client may retry the identical PUT or proceed to idempotent finalize. An incomplete R2 PUT produces no partial visible object.
 
@@ -122,7 +121,10 @@ POST /v1/races/{raceId}/upload/finalize
 Authorization: Bearer <supabase-access-token>
 Content-Type: application/json
 
-{}
+{
+  "rawFormatVersion": 1,
+  "rawSha256": "64-lowercase-hex-characters"
+}
 ```
 
 Conceptual response:
@@ -136,7 +138,7 @@ Conceptual response:
 }
 ```
 
-The server confirms the expected private R2 object exists with the prepared size/hash metadata, then calls the service-role-only acceptance transaction. A lost response is an unknown outcome; retrying finalize with the same race UUID is the recovery path. The client must never start a second race identity to resolve an ambiguous finalize response.
+Finalize derives the owner only from the validated token. It first checks for an accepted `races` row for that owner and race UUID. If its immutable accepted identity, raw version, and compressed digest match the finalize request, it returns the existing accepted result without rechecking entitlement or requiring a `race_uploads` row. A conflicting accepted row returns `race_conflict` (or a non-enumerating equivalent for another owner). Only when no accepted race exists does the Worker confirm the expected private R2 object and call the service-role-only acceptance transaction that requires the reservation. A lost response is an unknown outcome; retrying finalize with the same race UUID and immutable finalize fields is the recovery path. The client must never start a second race identity to resolve an ambiguous finalize response.
 
 #### Status and errors
 
@@ -153,7 +155,7 @@ Important status codes and sanitized categories are:
 | `409` | `race_conflict` | Immutable race UUID is already bound to different content/metadata |
 | `410` | `upload_expired` | Prepared upload expired and must be prepared again |
 | `413` | `payload_too_large` | Compressed, expanded, sample, or event limit exceeded |
-| `415` | `unsupported_media_type` | Content type/encoding is not versioned JSON plus gzip |
+| `415` | `unsupported_media_type` | Content PUT is not the required `application/gzip` artifact |
 | `422` | `invalid_race_payload` | Hash mismatch, malformed gzip/JSON, unsupported schema, or invalid telemetry |
 | `429` | `rate_limited` | Bounded abuse/cost control |
 | `502`/`503` | `upstream_unavailable` | Sanitized dependency failure; mutation outcome may be unknown |
@@ -172,7 +174,7 @@ Only opaque UUIDs and technical version/digest data appear in the key. Names, em
 
 The validated object is written to its canonical key before database acceptance but remains logically staged: it is private and neither readable nor analyzable through application flows until an accepted `races` row references it. Including the compressed-byte digest in the key makes identical retry content converge and prevents changed content from overwriting the accepted object. Once accepted, the API exposes no operation that modifies that key.
 
-The stored object keeps `Content-Type: application/json`, `Content-Encoding: gzip`, the verified compressed size, raw format version, and SHA-256 as trusted R2 metadata. SHA-256 is calculated over the exact stored compressed bytes. Payload schema validation occurs against the decompressed JSON.
+The stored object preserves the exact request-body gzip bytes and records `Content-Type: application/gzip`, the verified compressed size, raw format version, SHA-256, and gzip compression as trusted R2 metadata. It does not rely on HTTP `Content-Encoding` transport decoding to preserve the hash invariant. SHA-256 is calculated over the exact stored compressed bytes. Payload schema validation occurs against the decompressed JSON.
 
 Prepared sessions expire 24 hours after creation. A scheduled server-side cleanup runs at least daily and removes expired reservation rows and their unreferenced R2 objects within a further 24 hours, after rechecking that no accepted race references the key. Thus abandoned personal telemetry should normally be removed within 48 hours of prepare. Cleanup must be idempotent and safe against concurrent finalize.
 
@@ -205,15 +207,19 @@ Expired or revoked Pro does not authorize a new acceptance. The upload API does 
 
 Previously accepted races and stored results remain readable, exportable, and deletable by their authenticated owner after Pro expiry/revocation. Successful acceptance authorizes the normal initial analysis for that race to complete; a future policy for optional re-analysis is separate. Entitlement gates new cloud acceptance, not ownership of existing data. Account suspension or incident containment is a separate authorization control.
 
-The authoritative `accept_race_upload` database operation is service-role-only and narrowly scoped. In one PostgreSQL transaction it:
+The authoritative `accept_race_upload` database operation is service-role-only and narrowly scoped. The Worker passes the owner derived from the validated token; it never accepts a client-supplied owner. In one PostgreSQL transaction it:
 
-1. locks the UUID reservation and checks its owner/version/digest/metadata;
-2. returns the existing accepted result immediately when the same owner/race/version/digest is already present;
-3. locks the user's entitlement row with `SELECT ... FOR UPDATE`;
-4. re-evaluates the source-specific entitlement rules;
-5. inserts the unique `races` row with `sync_state = uploaded`;
-6. increments `free_races_used` by one only for an eligible Free entitlement; and
-7. removes/completes the reservation in the same transaction.
+1. first checks for an accepted `races` row for that owner and race UUID;
+2. returns that result immediately, without entitlement locking or counter mutation, when its immutable raw version/digest expectations match;
+3. returns `race_conflict` (or a non-enumerating equivalent when ownership must not be disclosed) when an accepted row conflicts;
+4. only when no accepted row exists, requires and locks the UUID reservation and checks its owner/version/digest/metadata;
+5. locks the user's entitlement row with `SELECT ... FOR UPDATE`;
+6. re-evaluates the source-specific entitlement rules;
+7. inserts the unique `races` row with `sync_state = uploaded`;
+8. increments `free_races_used` by one only for an eligible Free entitlement; and
+9. removes/completes the reservation in the same transaction.
+
+If concurrent finalizers wait on, or no longer find, a reservation, the operation rechecks the accepted race before returning an error. This makes a completed acceptance recoverable after its reservation is removed: a retry using the same race UUID returns the accepted result and cannot increment `free_races_used` twice.
 
 The unique race primary key plus the locked entitlement row serializes concurrent finalize requests. The race insert and free-counter update commit or roll back together. Concurrent Free uploads cannot take the counter above three, retries cannot double-increment, and abandoned uploads never enter this transaction. Deleting an accepted race does not decrement or refund `free_races_used`, because the rule is the first three races ever successfully accepted, not three concurrently stored races.
 

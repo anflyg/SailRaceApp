@@ -60,7 +60,7 @@ Do not add new categories of personal or device data merely because they are ava
 
 ## Compression and encoding
 
-Initial preferred transport/storage format: versioned JSON compressed with gzip, unless profiling demonstrates a compelling reason for another format.
+Initial preferred upload artifact and storage format: versioned JSON compressed with gzip, unless profiling demonstrates a compelling reason for another format. The first content PUT sends that artifact as `Content-Type: application/gzip`, without an HTTP `Content-Encoding` header.
 
 Reasons:
 - easy debugging and migration,
@@ -74,7 +74,7 @@ Initial upload limits are 5 MiB compressed, 20 MiB after decompression, and 50,0
 
 ## Integrity and idempotency
 
-The phone computes SHA-256 over the exact gzip bytes and persists those immutable retry bytes. The Worker independently computes and verifies the same digest before storage. PostgreSQL stores the verified digest in `races.raw_sha256` and the compressed length in the proposed `races.raw_size_bytes`.
+The phone computes SHA-256 over the exact gzip artifact bytes and persists those immutable retry bytes. The Worker independently computes and verifies the same request-body bytes before storage, then stores the original bytes unchanged. PostgreSQL stores the verified digest in `races.raw_sha256` and the compressed length in the proposed `races.raw_size_bytes`. R2 records `application/gzip` and compression metadata, but no HTTP transport decoding participates in the digest invariant.
 
 Upload/sync must be idempotent:
 - retrying the same race must not create duplicate race records,
@@ -90,7 +90,7 @@ Clients must not receive permanent R2 credentials.
 The first flow is the authenticated Worker-mediated prepare/content/finalize protocol in ADR-003:
 1. prepare reserves the client race UUID and expected immutable object description,
 2. the bounded gzip body is authenticated, hashed, decompressed with a hard ceiling, schema-validated, and written through the private Worker R2 binding,
-3. finalize verifies object presence and invokes the atomic PostgreSQL acceptance operation,
+3. finalize first returns a matching accepted race idempotently; otherwise it verifies object presence and invokes the atomic PostgreSQL acceptance operation,
 4. analysis may read the object only after an accepted race row exists.
 
 No signed/direct R2 upload URL is issued in the first flow. Introducing one later requires a reviewed architecture and threat-model change and must remain short-lived, object-specific, authorized, and unsuitable for bucket listing.
