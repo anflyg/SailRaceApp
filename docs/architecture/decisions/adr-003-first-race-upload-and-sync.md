@@ -271,6 +271,8 @@ Do not persist separate `prepared`, `uploading`, `finalizing`, or `interrupted` 
 
 ### Analysis handoff
 
+[ADR-004](adr-004-analysis-dispatch-lifecycle-and-cleanup.md) records the accepted queue technology, version targeting, leases/retries, Worker-only Analysis access and concrete cleanup configuration. It extends this handoff without changing race acceptance or Free accounting.
+
 Analysis may be queued only after the acceptance transaction commits `races.sync_state = uploaded`. At that point the raw R2 object and its version/digest are immutable. An analysis worker receives only the accepted race UUID and analysis version, loads ownership/object metadata from PostgreSQL, and reads the private object through trusted server bindings.
 
 Queue delivery must be retryable. Create or enforce uniqueness for `(race_id, analysis_version)` so retries cannot create duplicate analysis work. A missed queue notification is recovered by a reconciler that scans accepted `uploaded` races without the required analysis run. Analysis changes `sync_state` to `processing`, then `ready` or `error`; it never mutates the raw object. Analysis algorithms are outside this ADR.
@@ -300,4 +302,4 @@ The sequenced work is recorded in the [first race upload implementation roadmap]
 - Validate the proposed 5 MiB compressed, 20 MiB expanded, and 50,000-sample limits against representative current-device recordings and Cloudflare Worker memory/CPU limits; the contracts PR must freeze the initial values before endpoint implementation.
 - Define the exact raw-race v1 JSON Schema and decide which current app/build and sensor-source fields are strictly necessary for reproducible analysis.
 - Confirm the production privacy notice/lawful basis, processor/transfer configuration, and operational log retention before enabling upload for end users.
-- Choose the concrete Cloudflare scheduled-cleanup and analysis-queue/reconciler configuration during the relevant implementation PRs without weakening the lifecycle and retention guarantees above.
+- Implement the queue, scheduled-cleanup and reconciler decisions now recorded in [ADR-004](adr-004-analysis-dispatch-lifecycle-and-cleanup.md), preserving this ADR's lifecycle and retention guarantees. Runtime, migrations and production enablement remain separately reviewed work.
