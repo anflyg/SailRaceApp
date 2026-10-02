@@ -22,6 +22,12 @@
 
 An upload reservation expires 24 hours after prepare. A scheduled cleanup must remove the expired reservation and any unreferenced private R2 object within a further 24 hours after rechecking that no accepted race references it. Interrupted clients may prepare/upload again from their retained local recording. Upload failure or entitlement rejection never deletes the local race and never consumes the free allowance.
 
+[ADR-004](../architecture/decisions/adr-004-analysis-dispatch-lifecycle-and-cleanup.md) fixes initial beta cleanup at no earlier than `expires_at + 1 hour`, within bounded 15-minute maintenance, at most 25 reservations per invocation and 6 automatic attempts. Normal abandoned-data removal remains targeted within approximately 48 hours of prepare. Verify accepted state, exact identity and cleanup ownership before any object deletion; grace alone does not protect against concurrent finalize/late uploads. Preserve recovery state on provider uncertainty. Exhaustion or a missed target requires a safe operational alert and manual intervention, not unlimited retries or silent permanent retention.
+
+### Analysis delivery state
+
+Cloudflare Queues/DLQ holds only the minimal pseudonymous race/version envelope for transient delivery; PostgreSQL retains durable work and safe outcomes. Configure and document queue/DLQ and operational-log retention before enablement. Queue expiry must not lose work, and dead-letter contents must not be kept indefinitely as a substitute for durable job state. Analysis runs/results remain user-owned and deletable with the race, including historical versions.
+
 ### Individual race deletion
 
 A deletion request should make the race unavailable promptly and trigger deletion of:
@@ -31,7 +37,7 @@ A deletion request should make the race unavailable promptly and trigger deletio
 - pending upload reservation and any unaccepted R2 object,
 - derived R2 analysis objects.
 
-Cross-service deletion failures must be retried and observable.
+Cross-service deletion failures must use finite automatic retries, remain observable, and escalate for manual completion after exhaustion. Preserve durable object references before deleting database rows; `ON DELETE CASCADE` must not destroy the only R2 references as the first cross-store step. A separate detailed deletion design and demonstrated path covering accepted rows, analysis runs, raw/derived R2 and reservations/orphans are required before beta rollout.
 
 ### Account deletion
 
@@ -44,6 +50,8 @@ Local-only iPhone races are under the app/device lifecycle and are not cloud-ret
 ### Logs
 
 Operational/security logs should use the shortest practical retention. Logs must not contain raw race tracks, auth tokens or secrets. Opaque user/race IDs may be used where needed for diagnostics and incident investigation.
+
+ADR-004 analysis/maintenance logs use safe operation correlation/phase/category data only and exclude user UUIDs, queue envelopes, R2 keys, digests and provider bodies as well as telemetry and credentials. The older optional identifier allowance does not apply to these workflows.
 
 ## Backups
 

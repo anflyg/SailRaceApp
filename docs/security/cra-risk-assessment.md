@@ -34,6 +34,7 @@ Race-critical operation remains offline-first; cloud availability is not require
 | Malicious/oversized race upload | Auth, compressed/expanded/sample limits, bounded gzip/JSON/schema validation, integrity checks |
 | Sync/data tampering | Immutable client race UUID and gzip artifact, server-derived R2 key, independently verified SHA-256, idempotent prepare/content/finalize |
 | Cross-store partial failure/replay | Accepted-row authority, atomic database acceptance, idempotent retry, private orphan cleanup and reconciliation |
+| Analysis duplication, stale completion or destructive cleanup | ADR-004: database race/version uniqueness, owner consistency, guarded leases, finite attempts, authoritative accepted-object protection and retained deletion references; implementation/evidence pending |
 | Free-tier/cost abuse | Server-authoritative finalize, locked entitlement, unique race insert plus atomic counter, rate/resource controls |
 | Inability to patch | Maintain supported dependencies and release/update process |
 | Cloud outage | Offline-first race functionality limits operational impact |
@@ -70,6 +71,8 @@ For material releases maintain evidence for:
 - deletion/export behavior,
 - incident/vulnerability handling procedure,
 - supported-version/update assumptions.
+
+[ADR-004](../architecture/decisions/adr-004-analysis-dispatch-lifecycle-and-cleanup.md) extends this evidence with minimal queue-envelope validation, duplicate/unknown/missed dispatch, stale lease rejection, current-version-only race transitions, finite retry/DLQ recovery, result-write/database uncertainty and cleanup/finalize/late-PUT concurrency tests. Verify Worker-only owner APIs, absence of internal browser fields, safe logs and measured consumer CPU/memory/R2 behavior. Separate cross-store deletion design and drills are prerequisites for beta, not satisfied by accepting the ADR.
 
 ## CRA reporting readiness
 

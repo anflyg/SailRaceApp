@@ -1,6 +1,6 @@
 # TackWise Cloud Data Model
 
-**Status:** Deployed schema through entitlement and beta-administration migrations, plus the proposed race-upload additions defined by ADR-003.
+**Status:** Baseline table descriptions with ADR-003 upload additions implemented in API migration 00003. The ADR-004 analysis lifecycle and client-access changes below are accepted architecture, not yet migrated.
 
 ## Goals
 
@@ -47,6 +47,7 @@ One row per synchronized race.
 | `raw_object_key` | text | Private R2 object key using opaque IDs only |
 | `raw_format_version` | integer | Version of uploaded race format |
 | `raw_sha256` | text | Integrity/idempotency support |
+| `raw_size_bytes` | integer nullable | Added by migration 00003; positive for new accepted uploads, nullable for historic rows |
 | `sync_state` | text | uploaded/processing/ready/error |
 | `created_at` | timestamptz | Server generated |
 | `updated_at` | timestamptz | Server generated |
@@ -123,17 +124,19 @@ After free entitlement is exhausted:
 
 Expired or revoked Pro does not authorize a new race acceptance. Previously accepted races and stored results remain readable, exportable, and deletable by their authenticated owner, and the normal initial analysis for an already accepted race may complete. Entitlement gates new cloud acceptance, not ownership of existing data; optional re-analysis policy is separate.
 
-## Proposed race-upload lifecycle
+## Race-upload lifecycle
 
-[ADR-003](decisions/adr-003-first-race-upload-and-sync.md) keeps `races` as accepted-race state. A new server-only `race_uploads` reservation table represents prepared but unaccepted uploads using the race UUID, owner UUID, raw version, compressed SHA-256 and size, server-derived object key, accepted structured metadata, and expiry timestamps. It receives no direct normal-client access.
+[ADR-003](decisions/adr-003-first-race-upload-and-sync.md) keeps `races` as accepted-race state. Migration 00003 implements the server-only `race_uploads` reservation table for prepared but unaccepted uploads using the race UUID, owner UUID, raw version, compressed SHA-256 and size, server-derived object key, accepted structured metadata, and expiry timestamps. It receives no direct normal-client access.
 
-`races.sync_state = uploaded` means the private raw object was validated and the PostgreSQL acceptance transaction committed. This is the only state that may consume one free race. `processing`, `ready`, and `error` describe analysis after acceptance; no `pending` or `uploading` race state is added. Add `raw_size_bytes` to accepted races for integrity and operational controls.
+`races.sync_state = uploaded` means the private raw object was validated and the PostgreSQL acceptance transaction committed. This is the only state that may consume one free race. `processing`, `ready`, and `error` describe analysis after acceptance; no `pending` or `uploading` race state is added. Migration 00003 adds `raw_size_bytes` for integrity and operational controls.
 
 The service-role-only acceptance operation locks the reservation and entitlement, returns matching accepted retries idempotently, inserts the unique accepted race, increments the free counter only when required, and completes the reservation in one transaction. R2 is populated before this transaction; unreferenced private objects remain invisible and are retried or removed by bounded cleanup.
 
 ## RLS baseline
 
 RLS must be enabled on all user-owned tables.
+
+The baseline owner-select policies below are database defense in depth, not the future Analysis browser contract. [ADR-004](decisions/adr-004-analysis-dispatch-lifecycle-and-cleanup.md) requires Worker-only authenticated owner-scoped APIs. Current table-level visibility includes `raw_object_key` and `result_object_key`; remove/restrict internal-field access in a reviewed forward migration before Analysis client rollout. No privilege change is performed by these documents.
 
 ### `profiles`
 - `SELECT`: `auth.uid() = user_id`
@@ -154,7 +157,7 @@ RLS must be enabled on all user-owned tables.
 - `SELECT`: `auth.uid() = user_id`
 - no direct client writes; trusted server/billing flow only
 
-### Proposed `race_uploads`
+### `race_uploads`
 - no direct normal-client select/insert/update/delete
 - RLS enabled with no `anon` or `authenticated` privileges/policies
 - trusted server access only, always scoped to the validated Supabase UUID
@@ -176,6 +179,18 @@ At minimum plan indexes for:
 - `analysis_runs(race_id, analysis_version)`
 - `analysis_runs(user_id, created_at desc)`
 
+The baseline `analysis_runs(race_id, analysis_version)` index is non-unique. ADR-004 requires a forward migration enforcing `UNIQUE (race_id, analysis_version)`; an application check is insufficient.
+
+## Planned analysis lifecycle under ADR-004
+
+- Retain `analysis_runs` and its `queued | running | complete | error` statuses. Enforce that its denormalized `user_id` agrees with `races.user_id`; the baseline's independent foreign keys do not establish that agreement.
+- Add `races.required_analysis_version`. Only its matching run can drive `sync_state`; multiple historic versions coexist without altering current race state.
+- Start with `analysis-v1`, independent of raw/API/result format versions. Persist consumed raw identity, separate dispatch/processing lease ownership, finite attempt budgets, retry times, processing timestamps and safe terminal outcomes through reviewed RPCs.
+- Store a bounded schema-validated summary without raw tracks/GPS streams. A larger private immutable result requires result format version, digest, byte size and server-only reference. Exact fields/metrics remain later contract work.
+- Keep object references, leases and provider diagnostics outside the client DTO. Future public-schema Data API objects need explicit least-privilege grants/revokes in the same migration.
+
+See [ADR-004](decisions/adr-004-analysis-dispatch-lifecycle-and-cleanup.md) for accepted values, cleanup concurrency and gates. Exact SQL/RPC definitions remain step 6C; do not edit historical migrations.
+
 ## Deletion
 
 Deleting a race must remove:
@@ -185,6 +200,8 @@ Deleting a race must remove:
 4. related PostgreSQL rows.
 
 Deleting an account must enumerate and delete all accepted and pending user-owned cloud races/objects before or as part of account removal, subject only to documented legal retention.
+
+Before beta, separately design and demonstrate retryable, observable cross-store deletion with finite automatic attempts and manual escalation. Preserve durable object references; do not start with `ON DELETE CASCADE` when it would destroy the only R2 references. Delayed analysis work must honor deletion state.
 
 ## Open decisions before implementation
 

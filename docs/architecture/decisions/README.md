@@ -16,5 +16,6 @@ Accepted decisions currently include:
 - server-controlled beta entitlement rather than client-reported TestFlight status.
 - operator-only, audited and narrowly scoped beta entitlement administration.
 - authenticated Worker-mediated prepare/upload/finalize race sync with PostgreSQL-authoritative acceptance and exactly-once free-race accounting.
+- [ADR-004: Analysis dispatch, lifecycle, reconciliation and abandoned-upload cleanup](adr-004-analysis-dispatch-lifecycle-and-cleanup.md): Cloudflare Queues with PostgreSQL-authoritative work, versioned analysis, Worker-only owner APIs, bounded retries and safe cleanup; implementation deferred.
 
 When a decision changes, document why and what migration/consequences are required rather than silently changing implementation.

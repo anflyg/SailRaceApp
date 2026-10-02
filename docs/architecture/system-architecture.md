@@ -17,6 +17,7 @@ Initial target architecture. Update this document when accepted design decisions
 - **Cloudflare Pages** - intended web hosting for Analysis.
 - **Cloudflare Workers** - intended API/server-side processing where required.
 - **Cloudflare R2** - private raw race telemetry/object storage.
+- **Cloudflare Queues** - accepted ADR-004 choice for transient analysis delivery to a separate route-less trusted consumer owned by `tackwise-api`; implementation deferred, with PostgreSQL as durable work/outcome authority.
 - **Strato** - registrar for `tackwise.se`; not intended as application hosting.
 
 ## Principles
@@ -28,6 +29,7 @@ Initial target architecture. Update this document when accepted design decisions
 - Server-authoritative entitlement state; clients do not authorize paid or beta access.
 - Product analytics is separate from private race-analysis data and is privacy-minimized by design.
 - Race sync uses authenticated Worker-mediated prepare/upload/finalize; PostgreSQL remains authoritative for acceptance and free-counter consumption.
+- [ADR-004](decisions/adr-004-analysis-dispatch-lifecycle-and-cleanup.md) defines durable analysis runs, safe duplicate delivery, bounded reconciliation/cleanup and finite retries. Analysis uses Worker-only owner-scoped APIs; internal storage references and credentials never form the browser contract.
 - Early-stage infrastructure target: USD 0-10/month where practical.
 
 ## Repository boundaries

@@ -27,6 +27,7 @@
 - client/API to analytics collection, if approved,
 - App Store verification and privileged beta-entitlement administration to entitlement state.
 - authenticated iPhone prepare/content/finalize requests through the Worker to private R2 and the PostgreSQL acceptance transaction.
+- trusted backend producer to Cloudflare Queues/DLQ and route-less analysis consumer; PostgreSQL remains authoritative under [ADR-004](../architecture/decisions/adr-004-analysis-dispatch-lifecycle-and-cleanup.md).
 
 ## Key threats and baseline mitigations
 
@@ -116,6 +117,16 @@
 - unreferenced private objects remain inaccessible and recoverable by retry,
 - scheduled cleanup rechecks accepted references before deleting expired objects,
 - analysis begins only from an accepted `races.sync_state = uploaded` row.
+
+### Analysis delivery, stale workers and cleanup races
+
+**Risk:** Duplicate/missed delivery, stale leases or uncertain provider outcomes duplicate work, publish a stale result, delete accepted telemetry or leave permanent personal-data orphans.
+
+**Accepted mitigations (implementation deferred):** [ADR-004](../architecture/decisions/adr-004-analysis-dispatch-lifecycle-and-cleanup.md) makes PostgreSQL authoritative, requires database uniqueness for race/version and consistent ownership, and fences completion against lease loss. Queue messages contain only race UUID and analysis version; the trusted route-less consumer resolves all storage metadata server-side. Historical runs cannot change current race state. Dispatch, processing and cleanup have finite persisted attempt budgets, safe terminal errors and manual escalation.
+
+Cleanup must verify accepted PostgreSQL state, exact object identity and current claim before deletion, and coordinate with finalize, renewed reservations and in-flight content writes. Grace time alone is not concurrency protection. Provider uncertainty preserves durable references for idempotent recovery. Before beta, a separate cross-store deletion workflow must prevent cascades or late workers from orphaning/recreating personal data.
+
+Analysis browsers use authenticated owner-scoped Worker APIs only. A reviewed forward migration must restrict current direct visibility of object keys/internal fields before client rollout. Analysis/maintenance logs contain safe correlation/phase/category information, not GPS payloads, user UUIDs, object keys, digests, tokens or provider bodies. Production enablement requires operational and CPU/memory/R2 evidence with separate fail-closed gates.
 
 ### Paid/beta entitlement forgery
 

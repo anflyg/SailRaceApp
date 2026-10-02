@@ -34,6 +34,14 @@ Supabase RLS and server-side ownership checks are required for user-owned data.
 
 R2 objects are private and must only be served through an authorized, short-lived mechanism after ownership validation.
 
+[ADR-004](../architecture/decisions/adr-004-analysis-dispatch-lifecycle-and-cleanup.md) selects Worker-only authenticated owner-scoped APIs for TackWiseAnalysis; the browser never accesses R2 directly. Object keys, lease state, provider diagnostics and credentials remain internal. Restrict current direct Supabase table visibility through a reviewed forward migration before Analysis client rollout; retain RLS and explicit service-role authorization.
+
+## Analysis and maintenance minimization
+
+The approved transient Cloudflare Queue envelope contains exactly `raceId` and `analysisVersion`, initially `analysis-v1`. It is pseudonymous personal data, with no user UUID, telemetry, object key, identity/entitlement data or credential. The route-less trusted consumer resolves accepted race ownership and object metadata from PostgreSQL. Queue/DLQ contents are not the durable record and receive no raw telemetry.
+
+Store only a bounded schema-validated client-safe summary in PostgreSQL; exclude raw tracks/GPS sample streams, internal keys and unbounded JSON. Larger detailed results may be private immutable R2 artifacts served through owner-authorized Worker APIs. Exact metrics and schemas remain separate decisions. Raw telemetry and historical analysis versions are never overwritten.
+
 ## Race upload minimization
 
 The first sync protocol is initiated only for a completed local race and never affects recording availability. The phone sends a versioned, gzip-compressed raw object through an authenticated Worker; the client never receives R2 credentials or supplies an object key. The Worker derives ownership from the validated Supabase UUID, applies compressed/expanded/schema limits, verifies the compressed SHA-256, and makes the object eligible for use only after server-authoritative database acceptance.
@@ -52,9 +60,13 @@ The architecture must support:
 - deletion of pending upload reservations and unaccepted R2 objects for that race/account,
 - deletion of the whole TackWise account and associated cloud data subject to documented legal retention.
 
+Before beta, separately design and demonstrate finite, retryable and observable deletion across accepted metadata, analysis runs/results, private raw/derived R2, reservations/orphans and the account. Preserve durable R2 references before database cascades, retain recovery state through provider uncertainty, and prevent delayed analysis work from recreating deleted data.
+
 ## Diagnostics
 
 Prefer diagnostic events such as opaque race ID, operation, error category, byte count and format version. Raw telemetry, exact GPS samples, auth tokens and secrets must not be written to normal logs.
+
+For the ADR-004 analysis/dispatch/reconciliation/cleanup workflows, apply the stricter minimum: safe operation correlation IDs, phase/category and bounded counts/timings/status only. Do not log queue envelopes, GPS payloads, user UUIDs, R2 keys, digests, tokens, credentials or provider bodies. Correlation IDs must not embed user/race identity. Existing unrelated log behavior is not changed by this documentation.
 
 ## New-feature review triggers
 
