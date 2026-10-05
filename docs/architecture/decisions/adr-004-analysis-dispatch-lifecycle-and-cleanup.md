@@ -143,10 +143,13 @@ Before deleting any raw R2 object, authoritatively verify PostgreSQL accepted-ra
 | Accepted race plus stale matching reservation | Remove the reservation only; retain the accepted raw object. |
 | Accepted race/reservation identity mismatch | Preserve objects and durable evidence; raise a safe integrity error for manual investigation. |
 | R2 delete outcome or database completion uncertain | Retain durable database cleanup state, recheck later and finish idempotently. Do not discard the only recovery/object reference. |
+| Expired content-write lease (`cleanup_content_write_uncertain`) | Durable terminal recovery state for automatic abandoned-upload cleanup. Do not clear the lease, delete the R2 object, remove the reservation, or reactivate the row. Preserve the reservation, exact object reference, and lease evidence for operator/recovery handling in step 6G. |
 
 Claims and accepted-state checks must be concurrency-safe with finalize. A stale read followed by an uncoordinated R2 delete is insufficient. The implementation must prevent acceptance from winning after cleanup has authorized deletion and prevent a stale cleanup worker from deleting an object accepted by a renewed reservation. It must also account for an in-flight content PUT finishing after expiry/cleanup, so late writes cannot leave permanent orphans. A one-hour grace or a database lease alone is not proof of cross-store exclusion. Exact SQL/RPC, lease and upload coordination belong to the implementation PR and require concurrency/failure tests before enablement.
 
-On cleanup exhaustion, retain minimal actionable recovery state and alert for manual intervention. The finite automatic budget must not turn unresolved personal data into permanent untracked storage. Safety takes precedence over deleting an accepted object to meet a retention target; report any missed target.
+Automatic timing, grace periods, and lease expiry are not proof that an external R2 PUT can no longer complete. Therefore `cleanup_content_write_uncertain` is terminal for automatic abandoned-upload cleanup; only an operator/recovery workflow may resolve it. Step 6G owns the operational evidence and recovery tooling needed to observe unresolved cases and require manual intervention rather than leave storage untracked. Safety takes precedence over meeting the normal cleanup retention target for this exceptional state; report any missed target.
+
+On other cleanup exhaustion, retain minimal actionable recovery state and alert for manual intervention. The finite automatic budget must not turn unresolved personal data into permanent untracked storage. Safety also takes precedence over deleting an accepted object to meet a retention target; report any missed target.
 
 ### Operational gates
 
