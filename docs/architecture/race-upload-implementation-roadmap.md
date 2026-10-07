@@ -19,7 +19,7 @@ Each PR must include proportionate positive, negative, idempotency, security, an
 | 6F | `anflyg/tackwise-api` | Separate route-less consumer lifecycle, processing leases, duplicate/stale-worker protection and gated processor boundary; no invented algorithms/results | 6B, 6C, 6E |
 | 6G | `anflyg/tackwise-api` with suite evidence in `anflyg/SailRaceApp` | Isolated operational evidence and recovery tooling: delivery uncertainty, lease recovery, observable unresolved cleanup states, operator/manual intervention, safe logs and measured CPU/memory/R2 behavior | 6D–6F; separately authorized non-production resources |
 | 7 | `anflyg/SailRaceApp` | Add stable cloud UUID migration, raw-v1 serializer/gzip/hash artifact, persistent local sync state, token refresh, retry/backoff, and UI status without changing race-critical recording | Contracts and deployed non-production API |
-| 8 | `anflyg/TackWiseAnalysis` | Consume stable Worker-only owner-scoped race/status/summary/result APIs; never direct R2 or internal Supabase table access | Strict output contracts, implemented result APIs and reviewed internal-column privilege restriction |
+| 8 | `anflyg/TackWiseAnalysis` | Consume stable Worker-only owner-scoped race/status/summary/result APIs; never direct R2 or internal Supabase table access | Accepted strict output contracts, implemented result APIs and reviewed internal-column privilege restriction |
 | 9 | `anflyg/tackwise-api` and infrastructure | Run non-production integration/security/load/deletion/cleanup tests, apply reviewed migration, deploy endpoints, verify private R2 and observability, then enable a bounded beta rollout | All implementation PRs |
 
 Do not combine the production migration application, public rollout, and client enablement into an ordinary implementation PR. Each operational step requires explicit target/environment confirmation and rollback/recovery checks.
@@ -30,11 +30,10 @@ The API at merged PR #13 implements upload preparation/content/finalize behind `
 
 The ADR is the source for initial beta values: 5-minute dispatch lease, 20-minute processing lease, 6 dispatch attempts, 5 processing attempts, 24-hour reservation lifetime, cleanup at `expires_at + 1 hour`, maximum 25 reservations per invocation and 6 cleanup attempts. Finite retry exhaustion requires durable safe errors and manual intervention; normal abandoned-data cleanup remains targeted within approximately 48 hours of prepare. `cleanup_content_write_uncertain` is a terminal state for automatic cleanup: retain the reservation, exact object reference and lease evidence, and route resolution through the observable operator/recovery workflow in 6G. Neither lease expiry nor a timing/grace period proves an external R2 PUT has stopped; safety takes precedence over the normal retention target in this exceptional case.
 
-After 6G, complete the following before step 8 integration:
+The analysis summary and detailed result v1 contracts are now accepted in [ADR-005](decisions/adr-005-analysis-result-v1-identity-and-storage.md) and anflyg/tackwise-contracts. After 6G, complete the following before step 8 integration:
 
-1. `anflyg/tackwise-contracts`: define strict, bounded analysis summary/result and client DTO contracts; exact sailing metrics remain a contract/product decision.
-2. `anflyg/tackwise-api`: implement analysis processing and authenticated owner-scoped race list, metadata, status and result APIs; review the forward migration restricting internal object/lease/provider fields from direct client table reads.
-3. `anflyg/TackWiseAnalysis`: consume those stable APIs only, without object keys, R2 access or service credentials.
+1. `anflyg/tackwise-api`: implement analysis processing and authenticated owner-scoped race list, metadata, status and result APIs; review the forward migration restricting internal object/lease/provider fields from direct client table reads.
+2. `anflyg/TackWiseAnalysis`: consume those stable APIs only, without object keys, R2 access or service credentials.
 
 The detailed cross-store race/account deletion design and demonstrated deletion path are separate work required before beta rollout. Operational evidence for the consumer lifecycle does not replace measurements of the eventual algorithms/results or authorize enabling an unfinished processor.
 
