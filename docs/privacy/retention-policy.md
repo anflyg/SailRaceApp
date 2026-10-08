@@ -24,6 +24,8 @@ An upload reservation expires 24 hours after prepare. A scheduled cleanup must r
 
 [ADR-004](../architecture/decisions/adr-004-analysis-dispatch-lifecycle-and-cleanup.md) fixes initial beta cleanup at no earlier than `expires_at + 1 hour`, within bounded 15-minute maintenance, at most 25 reservations per invocation and 6 automatic attempts. Normal abandoned-data removal remains targeted within approximately 48 hours of prepare. Verify accepted state, exact identity and cleanup ownership before any object deletion; grace alone does not protect against concurrent finalize/late uploads. Preserve recovery state on provider uncertainty. Exhaustion or a missed target requires a safe operational alert and manual intervention, not unlimited retries or silent permanent retention.
 
+Confirmed orphan recovery leaves a minimal server-only tombstone keyed by the race UUID after removing the upload reservation. This UUID is pseudonymous personal data. The tombstone prevents a delayed or concurrent privileged insert from accepting a race whose object was proven absent or deleted. Retain only the integrity outcome and minimal audit fields; exclude object keys, hashes, telemetry/GPS, email, credentials, tokens and provider bodies. Retention must be justified by this integrity need, and indefinite retention is not approved. The cross-store race/account deletion design must specify when and how tombstones can be safely removed without permitting delayed inserts or stale/in-flight writes to resurrect the race. No UUID reuse is allowed while its tombstone exists; a reuse policy requires separate review.
+
 ### Analysis delivery state
 
 Cloudflare Queues/DLQ holds only the minimal pseudonymous race/version envelope for transient delivery; PostgreSQL retains durable work and safe outcomes. Configure and document queue/DLQ and operational-log retention before enablement. Queue expiry must not lose work, and dead-letter contents must not be kept indefinitely as a substitute for durable job state. Analysis runs/results remain user-owned and deletable with the race, including historical versions.
@@ -35,9 +37,10 @@ A deletion request should make the race unavailable promptly and trigger deletio
 - analysis rows/results,
 - raw R2 object,
 - pending upload reservation and any unaccepted R2 object,
+- orphan-recovery tombstone, once the cross-store deletion design establishes safe removal conditions,
 - derived R2 analysis objects.
 
-Cross-service deletion failures must use finite automatic retries, remain observable, and escalate for manual completion after exhaustion. Preserve durable object references before deleting database rows; `ON DELETE CASCADE` must not destroy the only R2 references as the first cross-store step. A separate detailed deletion design and demonstrated path covering accepted rows, analysis runs, raw/derived R2 and reservations/orphans are required before beta rollout.
+Cross-service deletion failures must use finite automatic retries, remain observable, and escalate for manual completion after exhaustion. Preserve durable object references before deleting database rows; `ON DELETE CASCADE` must not destroy the only R2 references as the first cross-store step. A separate detailed deletion design and demonstrated path covering accepted rows, analysis runs, raw/derived R2, reservations/orphans and tombstones are required before beta rollout. It must define the tombstone removal point so delayed race inserts and stale/in-flight writes cannot recreate deleted state.
 
 ### Account deletion
 
