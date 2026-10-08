@@ -26,14 +26,14 @@ The first-upload Worker derives the raw key from the validated user, prepared ra
 
 ```text
 races/<user_uuid>/<race_uuid>/raw-v<format_version>-sha256-<compressed_sha256>.json.gz
-analysis/<user_uuid>/<race_uuid>/<analysis_version>/result.json.gz
+analysis/<analysis_run_uuid>/result-v1.json
 ```
 
-The UUID segments are opaque identifiers, not user-visible identity.
+The UUID segments are opaque identifiers, not user-visible identity. The derived-result key is the accepted initial convention in [ADR-005](decisions/adr-005-analysis-result-v1-identity-and-storage.md): its run UUID is server-internal and is not returned to clients.
 
-[ADR-004](decisions/adr-004-analysis-dispatch-lifecycle-and-cleanup.md) makes raw/result references server-internal and requires immutable historical analysis results. The analysis path above remains illustrative; the detailed-result contract must settle key/publication mechanics and exact digest/size semantics before implementation. It must not overwrite a prior artifact during retries or expose keys to TackWiseAnalysis.
+[ADR-004](decisions/adr-004-analysis-dispatch-lifecycle-and-cleanup.md) makes raw/result references server-internal and requires immutable historical analysis results. [ADR-005](decisions/adr-005-analysis-result-v1-identity-and-storage.md) fixes the initial result key and its create-only, digest/size-verified retry behavior.
 
-Alternative flat hashed keys are acceptable if they improve implementation, provided ownership remains stored in PostgreSQL and no personal data appears in object names.
+Raw-object key conventions are unchanged by ADR-005. Changing the accepted result key requires a reviewed architecture decision; ownership and object references remain server-side in PostgreSQL.
 
 ## Raw race payload
 
