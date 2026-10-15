@@ -6,7 +6,7 @@
 
 ### Account/authentication
 Purpose: identify the user across TackWise services.
-Data: Apple/Supabase identity data and opaque UUID.
+Data: Apple/Supabase identity data, opaque user UUID, `profiles`, `entitlements`, `entitlement_admin_audit` and related account state. Account deletion covers these records; personal profile/entitlement/Auth data is deleted after deletion no longer depends on its references. Any separately retained operational audit record is minimized and has a reviewed purpose, access restriction and retention period. A lawful-retention exception must be separately documented and scoped.
 Processors/providers: Apple, Supabase.
 
 ### Race synchronization and storage
@@ -23,7 +23,7 @@ Data: race telemetry, course metadata and derived results.
 
 Providers: Supabase for durable metadata; Cloudflare for Worker execution, transient delivery and private raw/derived R2. Browser access is through authenticated owner-scoped Worker APIs only. A bounded summary excludes GPS streams/raw tracks/internal fields; exact result metrics/schema remain later decisions. Operational logs exclude payloads, user UUIDs, keys, digests, tokens and provider bodies.
 
-Retention/controls: preserve immutable raw and historical analysis versions until authorized deletion; define queue/DLQ/log retention and confirm processor/transfer/public-notice coverage before enablement. Abandoned-upload cleanup retains the approximately 48-hour target with the ADR's one-hour post-expiry grace and finite attempts. Before beta, a separate retryable cross-store race/account deletion design and demonstrated path must preserve object references across database deletion and provider uncertainty, with operational alerts/manual escalation after exhaustion.
+Retention/controls: preserve immutable raw and historical analysis versions until authorized deletion; define queue/DLQ/log retention and confirm processor/transfer/public-notice coverage before enablement. Abandoned-upload cleanup retains the approximately 48-hour target with the ADR's one-hour post-expiry grace and finite attempts. [ADR-006](../architecture/decisions/adr-006-cross-store-race-and-account-deletion.md) now records the retryable cross-store race/account deletion architecture. Before beta, its implementation and demonstrated deletion path must preserve object references across database deletion and provider uncertainty, with operational alerts/manual escalation after exhaustion.
 
 ### Product analytics (not yet collecting)
 Purpose: improve product reliability and usability.

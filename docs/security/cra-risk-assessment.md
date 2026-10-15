@@ -72,7 +72,7 @@ For material releases maintain evidence for:
 - incident/vulnerability handling procedure,
 - supported-version/update assumptions.
 
-[ADR-004](../architecture/decisions/adr-004-analysis-dispatch-lifecycle-and-cleanup.md) extends this evidence with minimal queue-envelope validation, duplicate/unknown/missed dispatch, stale lease rejection, current-version-only race transitions, finite retry/DLQ recovery, result-write/database uncertainty and cleanup/finalize/late-PUT concurrency tests. Verify Worker-only owner APIs, absence of internal browser fields, safe logs and measured consumer CPU/memory/R2 behavior. Separate cross-store deletion design and drills are prerequisites for beta, not satisfied by accepting the ADR.
+[ADR-004](../architecture/decisions/adr-004-analysis-dispatch-lifecycle-and-cleanup.md) extends this evidence with minimal queue-envelope validation, duplicate/unknown/missed dispatch, stale lease rejection, current-version-only race transitions, finite retry/DLQ recovery, result-write/database uncertainty and cleanup/finalize/late-PUT concurrency tests. Verify Worker-only owner APIs, absence of internal browser fields, safe logs and measured consumer CPU/memory/R2 behavior. [ADR-006](../architecture/decisions/adr-006-cross-store-race-and-account-deletion.md) now records the cross-store deletion design; implementation and a demonstrated deletion drill remain prerequisites for beta and are not satisfied by accepting the ADR.
 
 ## CRA reporting readiness
 
