@@ -37,10 +37,12 @@ A deletion request should make the race unavailable promptly and trigger deletio
 - analysis rows/results,
 - raw R2 object,
 - pending upload reservation and any unaccepted R2 object,
-- orphan-recovery tombstone, once the cross-store deletion design establishes safe removal conditions,
+- orphan-recovery tombstone, once the ADR-006 safe-removal conditions are implemented and proven,
 - derived R2 analysis objects.
 
-Cross-service deletion failures must use finite automatic retries, remain observable, and escalate for manual completion after exhaustion. Preserve durable object references before deleting database rows; `ON DELETE CASCADE` must not destroy the only R2 references as the first cross-store step. A separate detailed deletion design and demonstrated path covering accepted rows, analysis runs, raw/derived R2, reservations/orphans and tombstones are required before beta rollout. It must define the tombstone removal point so delayed race inserts and stale/in-flight writes cannot recreate deleted state.
+Cross-service deletion failures must use finite automatic retries, remain observable, and escalate for manual completion after exhaustion. Preserve durable object references before deleting database rows; `ON DELETE CASCADE` must not destroy the only R2 references as the first cross-store step. [ADR-006](../architecture/decisions/adr-006-cross-store-race-and-account-deletion.md) records the detailed deletion design covering accepted rows, analysis runs, raw/derived R2, reservations/orphans and tombstones. Implementation and a demonstrated path covering these stores are required before beta rollout, including proof that tombstone removal cannot permit delayed inserts or stale/in-flight writes to recreate deleted state.
+
+[ADR-006](../architecture/decisions/adr-006-cross-store-race-and-account-deletion.md) now defines the architecture for this workflow; implementation and the demonstrated deletion drill remain open. Keep deletion lifecycle/recovery state and exact object references only as long as required to complete or safely reconcile deletion. Remove an orphan-recovery tombstone only after all ADR-006 safety conditions are proven; otherwise retain it and do not reuse the UUID. This integrity need does not approve indefinite retention: exact periods, legal exceptions, backup behavior and safe-removal evidence require review before public production use.
 
 ### Account deletion
 

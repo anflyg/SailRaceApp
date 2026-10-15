@@ -1,6 +1,6 @@
 # First race upload implementation roadmap
 
-**Status:** Sequenced work following [ADR-003](decisions/adr-003-first-race-upload-and-sync.md) and [ADR-004](decisions/adr-004-analysis-dispatch-lifecycle-and-cleanup.md). Step 6A records accepted architecture; steps 6B–6G remain implementation/evidence work. No implementation is included in this document.
+**Status:** Sequenced work following [ADR-003](decisions/adr-003-first-race-upload-and-sync.md), [ADR-004](decisions/adr-004-analysis-dispatch-lifecycle-and-cleanup.md) and [ADR-006](decisions/adr-006-cross-store-race-and-account-deletion.md). Step 6A records accepted analysis architecture; steps 6B–6G are implementation/evidence work. ADR-006 records deletion architecture; D2–D6 remain implementation/evidence work. No implementation is included in this document.
 
 Each PR must include proportionate positive, negative, idempotency, security, and privacy tests. Production migration/deployment remains separately authorized from merging code.
 
@@ -37,7 +37,22 @@ The analysis summary and detailed result v1 contracts are now accepted in [ADR-0
 1. `anflyg/tackwise-api`: implement analysis processing and authenticated owner-scoped race list, metadata, status and result APIs; review the forward migration restricting internal object/lease/provider fields from direct client table reads.
 2. `anflyg/TackWiseAnalysis`: consume those stable APIs only, without object keys, R2 access or service credentials.
 
-The detailed cross-store race/account deletion design and demonstrated deletion path are separate work required before beta rollout. Operational evidence for the consumer lifecycle does not replace measurements of the eventual algorithms/results or authorize enabling an unfinished processor.
+ADR-006 defines the cross-store race/account deletion design. Its implementation and demonstrated deletion path are tracked separately as D2–D6 below and are required before beta rollout. Operational evidence for the consumer lifecycle does not replace measurements of the eventual algorithms/results or authorize enabling an unfinished processor.
+
+## Cross-store race/account deletion sequence (ADR-006)
+
+ADR-006 is an accepted architecture decision only; it does not implement deletion. No deletion implementation exists from this ADR yet, and accepting it does not imply beta or production readiness. Beta remains blocked until D2–D5 are implemented and the D6 deletion drill is demonstrated.
+
+| Step | Repository | Purpose | Dependency |
+| --- | --- | --- | --- |
+| D1 | `anflyg/SailRaceApp` | Accept ADR-006 cross-store race/account deletion architecture | ADR-003 and ADR-004 |
+| D2 | `anflyg/tackwise-api` | Deletion lifecycle database foundation and narrowly scoped service-role RPCs | D1 |
+| D3 | `anflyg/tackwise-api` | Race deletion worker and raw/derived R2 reconciliation | D2 |
+| D4 | `anflyg/tackwise-api` | Account deletion orchestration over bounded race-deletion batches | D3 |
+| D5 | `anflyg/tackwise-api` | Resurrection protection across upload and analysis lifecycle | May proceed alongside D3/D4; must complete before D6 |
+| D6 | `anflyg/tackwise-api` with suite evidence in `anflyg/SailRaceApp` | Isolated non-production deletion drill and operational evidence | D2–D5 |
+
+Every deletion implementation step must preserve required object references across partial failure, use bounded retries, retain safe recovery state on uncertainty, and prove stale/in-flight writes cannot restore deleted state. D6 must exercise the cross-store failure/recovery path and tombstone removal conditions without production data or resources unless separately authorized.
 
 ## Required release evidence
 
