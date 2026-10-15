@@ -6,7 +6,7 @@
 
 ### Account/authentication
 Purpose: identify the user across TackWise services.
-Data: Apple/Supabase identity data and opaque UUID.
+Data: Apple/Supabase identity data, opaque user UUID, `profiles`, `entitlements`, `entitlement_admin_audit` and related account state. Account deletion covers these records; personal profile/entitlement/Auth data is deleted after deletion no longer depends on its references. Any separately retained operational audit record is minimized and has a reviewed purpose, access restriction and retention period. A lawful-retention exception must be separately documented and scoped.
 Processors/providers: Apple, Supabase.
 
 ### Race synchronization and storage

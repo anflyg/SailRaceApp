@@ -8,7 +8,7 @@
 
 Race and analysis data spans PostgreSQL and private Cloudflare R2. PostgreSQL transactions cannot atomically delete R2 objects, and a database cascade can erase the only durable object reference before external deletion is known to have succeeded. Race GPS, position, telemetry and associated race data are personal data. ADR-003 requires race and account deletion; ADR-004 additionally requires safe cleanup of uploads and tombstones that prevent orphan recovery from being undone by delayed inserts.
 
-This ADR defines deletion of accepted race rows, `analysis_runs`, raw race objects, derived analysis-result objects, upload reservations, abandoned/orphan upload state and orphan-recovery tombstones. It covers individual race deletion and account deletion. It adds architecture only: it does not implement a worker, RPC, migration, public/admin deletion control plane, or production operation. Exact state names and signatures remain implementation details.
+This ADR defines deletion of accepted race rows, `analysis_runs`, raw race objects, derived analysis-result objects, upload reservations, abandoned/orphan upload state and orphan-recovery tombstones. Account deletion also covers existing `profiles`, `entitlements`, `entitlement_admin_audit`, Supabase Auth identity and related account state. It covers individual race deletion and account deletion. It adds architecture only: it does not implement a worker, RPC, migration, public/admin deletion control plane, or production operation. Exact state names and signatures remain implementation details.
 
 ## Decision
 
@@ -41,20 +41,22 @@ For a race UUID, the intended idempotent sequence is:
 9. Delete accepted race metadata.
 10. Remove reservations and abandoned/orphan state when safe.
 11. Handle any orphan-recovery tombstone under the tombstone rule below.
-12. Mark deletion complete only after required data is deleted or has an explicitly reviewed terminal recovery disposition.
+12. Mark deletion complete only after all covered personal data is deleted, except where a separately documented and applicable lawful-retention exception explicitly permits retaining specified data.
 
-Each step must be safe to repeat or resume after interruption. An automatic retry exhaustion or unresolved provider uncertainty is an error/recovery state, not proof of deletion.
+Each step must be safe to repeat or resume after interruption. Automatic retry exhaustion, unresolved provider uncertainty, or operator review alone is not deletion success. If personal data remains because a provider outcome is uncertain and no separately documented lawful-retention exception applies, deletion remains unresolved and must not be marked complete.
 
 ### Account deletion sequence
 
-Account deletion orchestrates deletion of all user-owned race data covered by this ADR:
+Account deletion orchestrates deletion of all user-owned race data and related account state covered by this ADR:
 
 1. Mark the account/user deletion state first and prevent new uploads and analysis work.
-2. Enumerate owned deletion units server-side, including accepted races and pending reservations/orphans.
+2. Enumerate owned deletion units server-side, including accepted races, pending reservations/orphans, `profiles`, `entitlements`, `entitlement_admin_audit`, Supabase Auth identity and related account state.
 3. Process race deletions in bounded batches, durably recording progress and retrying partial failures.
 4. Expose safe operator-observable aggregate progress and terminal errors without identifying payloads in normal logs.
-5. Complete account deletion only when all covered race/personal cloud data is deleted or has an explicitly reviewed terminal recovery disposition; exhaustion alone is not completion.
-6. Do not remove canonical identity/auth mapping while required data references or ownership are still needed for deletion. Supabase Auth deletion timing is implementation-specific but occurs only after those dependencies are resolved.
+5. Delete personal profile, entitlement and related account state when their deletion dependencies are resolved, except data covered by a separately documented applicable lawful-retention exception. Prevent cascades from deleting required race/R2 references.
+6. Keep canonical identity/Auth mapping available while required ownership or object references depend on it; remove Supabase Auth identity and related Auth state only after those dependencies are resolved. Auth deletion timing is implementation-specific, but neither `auth.users` deletion nor database cascades may destroy required race/R2 references prematurely.
+7. Handle `entitlement_admin_audit` as minimized operational audit data with a separately justified retention period and access restriction; it is not a basis for retaining broader account/race data. Remove direct account linkage where feasible without defeating a documented audit purpose. Delete or further minimize it when its period expires, and document the scope of any applicable legal-retention exception.
+8. Complete account deletion only when all covered personal data is deleted, except data explicitly covered by a separately documented applicable lawful-retention exception. Provider uncertainty or operator review alone does not permit completion; unresolved personal data keeps deletion unresolved and must be escalated for operator/privacy review.
 
 The current proposed account-deletion target and any legally required exceptions remain governed by [the retention policy](../../privacy/retention-policy.md) and must be confirmed before public production use.
 
@@ -66,20 +68,22 @@ While deletion is pending or complete, prepare/finalize must not recreate delete
 
 ADR-004 requires server-only tombstones after `orphan_object_absent` and `orphan_object_present_matching` recovery, preventing a delayed insert from accepting the recovered race UUID after its reservation is removed. Tombstone removal is allowed only after the deletion workflow proves all of the following:
 
-- account/race deletion has reached its defined terminal deletion boundary;
+Migration 00012 stores these recovery records keyed by `race_id` without durable user ownership. Because account deletion must enumerate tombstones after reservation removal, a minimized server-only ownership association must be established and retained until safe deletion. D2 must implement that association before the deletion workflow is enabled. Existing unlinked tombstones fail closed and require reviewed reconciliation; ownership must never be inferred without authoritative evidence.
+
+- all other account/race deletion steps have reached their defined terminal boundary, with tombstone removal itself as the remaining integrity step;
 - no accepted race or reservation exists;
-- no active cleanup/recovery lease or content-write lease exists;
+- no active cleanup/recovery lease or content-write lease exists; lease absence alone is not sufficient proof of safety;
 - no analysis work remains capable of restoring state;
 - no referenced raw or derived object remains; and
-- stale/in-flight writes can no longer create accepted state.
+- an enforceable fencing/non-resurrection mechanism covers every relevant insert and object-write path, including delayed writers that may outlive a lease, and D2–D6 implementation/tests demonstrate it prevents stale/in-flight writes from creating accepted state.
 
-If any condition cannot be proven, keep the tombstone and do not silently reuse the UUID. Indefinite tombstone retention is not approved as the intended steady state; implementation must provide a reviewed safe-removal path. This ADR does not approve a general UUID reuse policy. Any future intentional reuse requires a reviewed recovery mechanism that cannot resurrect stale or late writes.
+Absence of currently active leases, a grace period, or operator review alone is not an enforceable fence. If the mechanism and its non-resurrection behavior cannot be implemented and demonstrated, retain the required integrity protection, keep deletion/recovery unresolved as appropriate, escalate for operator/privacy review, and do not silently permit UUID reuse. Indefinite tombstone retention is not approved as the intended steady state; D2–D6 must implement and prove a reviewed safe-removal path before deletion can complete for affected state. This ADR does not approve a general UUID reuse policy. Any future intentional reuse requires a reviewed recovery mechanism that cannot resurrect stale or late writes.
 
 An `accepted_match` recovery does not create an orphan tombstone because the accepted race already exists and its object must not be deleted; normal race deletion still follows this ADR's lifecycle and safe-resurrection rules.
 
 ### Provider uncertainty, retries and recovery
 
-Use finite automatic retries with bounded exponential backoff and jitter. Persist each retry transition and preserve object references necessary for another attempt. After exhaustion, persist a terminal error/recovery state, retain required references and require operator recovery. Do not claim deletion complete while covered personal data remains unresolved. Any terminal recovery disposition must be reviewed and observable; it is not inferred from elapsed time or exhausted attempts.
+Use finite automatic retries with bounded exponential backoff and jitter. Persist each retry transition and preserve object references necessary for another attempt. After exhaustion, persist a terminal error/recovery state, retain required references and require operator recovery. Do not claim deletion complete while covered personal data remains unresolved, unless a separately documented applicable lawful-retention exception explicitly applies. Operator review alone is not deletion success. Unresolved state must remain observable and be escalated for operator/privacy review.
 
 ### Privacy, security, GDPR and CRA
 
@@ -94,13 +98,22 @@ Required safe operational evidence includes deletion requested/completed counts,
 The implementation sequence is tracked in the [race-upload implementation roadmap](../race-upload-implementation-roadmap.md):
 
 - **D1 — ADR-006 cross-store deletion design.** This accepted architecture decision.
-- **D2 — Deletion lifecycle database foundation and service-role RPCs.** Depends on D1.
+- **D2 — Deletion lifecycle database foundation and service-role RPCs, including durable minimized ownership association for orphan-recovery tombstones.** Depends on D1; fail closed on unlinked legacy tombstones and require reviewed reconciliation. Complete D2 before enabling the deletion workflow.
 - **D3 — Race deletion worker and R2 reconciliation.** Depends on D2.
 - **D4 — Account deletion orchestration.** Depends on D3.
-- **D5 — Resurrection protection across upload/analysis lifecycle.** May be developed alongside D3/D4, but must be complete before D6.
-- **D6 — Isolated non-production deletion drill and evidence.** Depends on D2–D5.
+- **D5 — Enforceable fencing/resurrection protection across upload/analysis lifecycle.** May be developed alongside D3/D4, but must be complete before D6.
+- **D6 — Isolated non-production deletion drill and evidence.** Depends on D2–D5 and must demonstrate tombstone ownership enumeration, safe-removal fencing, non-resurrection, unresolved-provider behavior, and account-scope deletion/retention handling.
 
 ADR-006 is architecture only; no deletion implementation exists from this ADR yet. Acceptance does not imply beta or production readiness. Beta remains blocked until implementation and a demonstrated deletion drill are complete, together with the required privacy/security and operational review.
+
+### Open implementation and retention questions
+
+The following details remain open for D2–D6 and cannot weaken the invariants above:
+
+- The exact schema/RPC design for the server-only tombstone ownership association and the authoritative evidence/workflow for reconciling existing unlinked migration-00012 records.
+- The concrete enforceable fencing mechanism across database insert and external object-write paths, including how it fences a delayed writer that outlives its lease; it must be implemented and demonstrated before tombstone removal.
+- The exact lawful basis, scope and retention period for any retained personal data, minimized operational audit records, and provider backups.
+- The implementation-specific ordering for deleting Supabase Auth identity after all required ownership and object references have been resolved.
 
 ## Consequences
 

@@ -30,7 +30,7 @@ The API at merged PR #13 implements upload preparation/content/finalize behind `
 
 The ADR is the source for initial beta values: 5-minute dispatch lease, 20-minute processing lease, 6 dispatch attempts, 5 processing attempts, 24-hour reservation lifetime, cleanup at `expires_at + 1 hour`, maximum 25 reservations per invocation and 6 cleanup attempts. Finite retry exhaustion requires durable safe errors and manual intervention; normal abandoned-data cleanup remains targeted within approximately 48 hours of prepare. `cleanup_content_write_uncertain` is a terminal state for automatic cleanup: retain the reservation, exact object reference and lease evidence, and route resolution through the observable operator/recovery workflow in 6G. Neither lease expiry nor a timing/grace period proves an external R2 PUT has stopped; safety takes precedence over the normal retention target in this exceptional case.
 
-Completed 6G orphan recovery also requires a durable server-only tombstone keyed by race UUID for `orphan_object_absent` and `orphan_object_present_matching`, so delayed privileged inserts cannot accept a race after the reservation is removed. Such a UUID remains unavailable for acceptance while tombstoned. Tombstone retention and safe removal are not yet approved; the cross-store race/account deletion design must define how removal excludes delayed inserts and stale/in-flight writes. See ADR-004.
+Completed 6G orphan recovery also requires a durable server-only tombstone keyed by race UUID for `orphan_object_absent` and `orphan_object_present_matching`, so delayed privileged inserts cannot accept a race after the reservation is removed. Such a UUID remains unavailable for acceptance while tombstoned. ADR-006 requires D2 to add a minimized durable owner association before deletion can be enabled; unlinked migration-00012 tombstones fail closed and require reviewed reconciliation. D2–D6 must implement and demonstrate enforceable fencing before removal; lease absence alone is insufficient. See ADR-004 and ADR-006.
 
 The analysis summary and detailed result v1 contracts are now accepted in [ADR-005](decisions/adr-005-analysis-result-v1-identity-and-storage.md) and anflyg/tackwise-contracts. After 6G, complete the following before step 8 integration:
 
@@ -46,13 +46,13 @@ ADR-006 is an accepted architecture decision only; it does not implement deletio
 | Step | Repository | Purpose | Dependency |
 | --- | --- | --- | --- |
 | D1 | `anflyg/SailRaceApp` | Accept ADR-006 cross-store race/account deletion architecture | ADR-003 and ADR-004 |
-| D2 | `anflyg/tackwise-api` | Deletion lifecycle database foundation and narrowly scoped service-role RPCs | D1 |
+| D2 | `anflyg/tackwise-api` | Deletion lifecycle database foundation and narrowly scoped service-role RPCs; durable minimized ownership association for migration-00012 orphan tombstones; unlinked rows fail closed for reviewed reconciliation | D1; complete before enabling deletion |
 | D3 | `anflyg/tackwise-api` | Race deletion worker and raw/derived R2 reconciliation | D2 |
-| D4 | `anflyg/tackwise-api` | Account deletion orchestration over bounded race-deletion batches | D3 |
-| D5 | `anflyg/tackwise-api` | Resurrection protection across upload and analysis lifecycle | May proceed alongside D3/D4; must complete before D6 |
-| D6 | `anflyg/tackwise-api` with suite evidence in `anflyg/SailRaceApp` | Isolated non-production deletion drill and operational evidence | D2–D5 |
+| D4 | `anflyg/tackwise-api` | Account deletion orchestration over bounded race-deletion batches, including profiles, entitlements, minimized `entitlement_admin_audit`, and Supabase Auth identity/state after race/R2 references are resolved | D3 |
+| D5 | `anflyg/tackwise-api` | Enforceable fencing/resurrection protection across upload and analysis lifecycle, including proof delayed writes/inserts cannot restore state | May proceed alongside D3/D4; must complete before D6 |
+| D6 | `anflyg/tackwise-api` with suite evidence in `anflyg/SailRaceApp` | Isolated non-production deletion drill and tests for tombstone ownership enumeration/removal, non-resurrection fencing, unresolved provider uncertainty, and account-scope deletion/retention | D2–D5 |
 
-Every deletion implementation step must preserve required object references across partial failure, use bounded retries, retain safe recovery state on uncertainty, and prove stale/in-flight writes cannot restore deleted state. D6 must exercise the cross-store failure/recovery path and tombstone removal conditions without production data or resources unless separately authorized.
+Every D2–D6 implementation/test step must preserve required object references across partial failure, use bounded retries, retain safe recovery state on uncertainty, and prove stale/in-flight writes cannot restore deleted state. D6 must exercise the cross-store failure/recovery path and demonstrate the tombstone-removal fence without production data or resources unless separately authorized.
 
 ## Required release evidence
 
