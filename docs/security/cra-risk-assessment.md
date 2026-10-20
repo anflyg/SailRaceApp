@@ -32,7 +32,7 @@ Race-critical operation remains offline-first; cloud availability is not require
 | Leaked service credentials | Server-side only, never client/source control, rotate on compromise |
 | Vulnerable dependencies | Minimize, pin/update, vulnerability review |
 | Malicious/oversized race upload | Auth, compressed/expanded/sample limits, bounded gzip/JSON/schema validation, integrity checks |
-| Sync/data tampering | Immutable client race UUID and gzip artifact, server-derived R2 key, independently verified SHA-256, idempotent prepare/content/finalize |
+| Sync/data tampering | Authenticated server-issued cloud UUIDv4 distinct from local race ID, immutable gzip artifact, server-derived R2 key, independently verified SHA-256, idempotent cloud-ID creation and prepare/content/finalize |
 | Cross-store partial failure/replay | Accepted-row authority, atomic database acceptance, idempotent retry, private orphan cleanup and reconciliation |
 | Analysis duplication, stale completion or destructive cleanup | ADR-004: database race/version uniqueness, owner consistency, guarded leases, finite attempts, authoritative accepted-object protection and retained deletion references; implementation/evidence pending |
 | Free-tier/cost abuse | Server-authoritative finalize, locked entitlement, unique race insert plus atomic counter, rate/resource controls |

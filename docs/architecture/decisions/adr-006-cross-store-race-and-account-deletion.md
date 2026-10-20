@@ -62,7 +62,7 @@ The current proposed account-deletion target and any legally required exceptions
 
 ### Resurrection protection
 
-While deletion is pending or complete, prepare/finalize must not recreate deleted race state; analysis dispatch must not enqueue new work; a processing consumer must not process deleted/deleting races; stale queue messages become safe no-ops; late database inserts fail closed; and stale/in-flight object writes must not recreate accepted data. Deletion state is checked at all relevant lifecycle boundaries and coordinated with active upload, cleanup and recovery leases. A deleted race UUID does not silently become reusable.
+While deletion is pending or complete, cloud-race creation, prepare/finalize and all other covered operations must not recreate deleted race state; analysis dispatch must not enqueue new work; a processing consumer must not process deleted/deleting races; stale queue messages become safe no-ops; late database inserts fail closed; and stale/in-flight object writes must not recreate accepted data. Cloud race UUIDs are issued only by the authenticated, idempotent server creation flow defined by ADR-003. Missing or closed gates never cause a gate or identity to be recreated from an incoming UUID. The product owner accepts the astronomically small UUIDv4 collision/reissue probability and rejects a central allocator, UUIDv8 scheme and global UUID denylist. This probabilistic identity decision does not weaken ownership checks, deletion fencing or the rule that a deleted identity cannot be reopened through ordinary operations. The creation-intent replay window and safe removal/retention of gate state remain open until D5/D6 design and evidence are complete.
 
 ### Orphan-recovery tombstones
 
@@ -77,7 +77,7 @@ Migration 00012 stores these recovery records keyed by `race_id` without durable
 - no referenced raw or derived object remains; and
 - an enforceable fencing/non-resurrection mechanism covers every relevant insert and object-write path, including delayed writers that may outlive a lease, and D2–D6 implementation/tests demonstrate it prevents stale/in-flight writes from creating accepted state.
 
-Absence of currently active leases, a grace period, or operator review alone is not an enforceable fence. If the mechanism and its non-resurrection behavior cannot be implemented and demonstrated, retain the required integrity protection, keep deletion/recovery unresolved as appropriate, escalate for operator/privacy review, and do not silently permit UUID reuse. Indefinite tombstone retention is not approved as the intended steady state; D2–D6 must implement and prove a reviewed safe-removal path before deletion can complete for affected state. This ADR does not approve a general UUID reuse policy. Any future intentional reuse requires a reviewed recovery mechanism that cannot resurrect stale or late writes.
+Absence of currently active leases, a grace period, or operator review alone is not an enforceable fence. If the mechanism and its non-resurrection behavior cannot be implemented and demonstrated, retain the required integrity protection, keep deletion/recovery unresolved as appropriate, and escalate for operator/privacy review. Do not let a stale operation deliberately reissue or reopen a deleted identity. The astronomically small UUIDv4 collision/reissue probability is explicitly accepted as stated above; it does not grant authorization or bypass a live uniqueness constraint. Indefinite tombstone retention is not approved as the intended steady state; D2–D6 must implement and prove a reviewed safe-removal path before deletion can complete for affected state. Intentional reuse of an existing cloud UUID is not approved.
 
 An `accepted_match` recovery does not create an orphan tombstone because the accepted race already exists and its object must not be deleted; normal race deletion still follows this ADR's lifecycle and safe-resurrection rules.
 
@@ -112,6 +112,7 @@ The following details remain open for D2–D6 and cannot weaken the invariants a
 
 - The exact schema/RPC design for the server-only tombstone ownership association and the authoritative evidence/workflow for reconciling existing unlinked migration-00012 records.
 - The concrete enforceable fencing mechanism across database insert and external object-write paths, including how it fences a delayed writer that outlives its lease; it must be implemented and demonstrated before tombstone removal.
+- The creation-intent idempotency scope/expiry, old-client transition, restore/replay behavior, account-gate provisioning/reactivation rules, and safe removal/retention of gate, tombstone and creation-intent data. The accepted UUIDv4 collision probability does not resolve those lifecycle questions.
 - The exact lawful basis, scope and retention period for any retained personal data, minimized operational audit records, and provider backups.
 - The implementation-specific ordering for deleting Supabase Auth identity after all required ownership and object references have been resolved.
 

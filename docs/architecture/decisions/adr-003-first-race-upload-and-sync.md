@@ -14,14 +14,16 @@ The deployed API currently has no race upload endpoint. The deployed `races` tab
 
 ### Use authenticated prepare, upload, and finalize requests through the Worker
 
-The first production flow is a three-step, authenticated Worker-mediated protocol:
+The first production flow is an authenticated cloud-ID creation step followed by the three-step Worker-mediated upload protocol:
 
-1. **Prepare:** reserve the client-generated race UUID and immutable upload description without consuming entitlement.
-2. **Upload content:** send one bounded gzip object through the Worker. The Worker authenticates the user, validates ownership and the prepared description, validates the compressed and expanded payload, computes SHA-256, and writes the verified bytes through its private R2 binding.
-3. **Finalize:** verify the stored object and execute one authoritative PostgreSQL acceptance transaction. Only this step creates an accepted `races` row, consumes a free race where applicable, and makes the race eligible for analysis.
+1. **Create cloud race:** in a dedicated authenticated, idempotent request, the server creates and returns a cloud race UUID. The phone retains its existing local race ID and stores the returned cloud ID separately. This request creates the only cloud identity eligible for synchronization.
+2. **Prepare:** reserve that server-issued cloud race UUID and immutable upload description without consuming entitlement.
+3. **Upload content:** send one bounded gzip object through the Worker. The Worker authenticates the user, validates ownership and the prepared description, validates the compressed and expanded payload, computes SHA-256, and writes the verified bytes through its private R2 binding.
+4. **Finalize:** verify the stored object and execute one authoritative PostgreSQL acceptance transaction. Only this step accepts the `races` row, consumes a free race where applicable, and makes the race eligible for analysis.
 
 ```text
 iPhone completed race
+  |-- POST create -------> Worker -- cloud identity ---> PostgreSQL
   |-- POST prepare ------> Worker -- reservation ------> PostgreSQL
   |-- PUT gzip content --> Worker -- validated bytes --> private R2
   `-- POST finalize -----> Worker -- verify R2
@@ -41,17 +43,21 @@ Cloud failure never changes or deletes the local race. Synchronization begins on
 
 ### Race identity and immutable retry material
 
-- TackWise Race generates an RFC 4122 UUID before first sync, preferably when the local race is created, and persists it with the recording.
-- A cloud race UUID is immutable once prepare succeeds. UUID possession is never authorization.
-- Existing local records whose legacy local ID is not a UUID receive a separate `cloudRaceId` exactly once before their first prepare request; their local ID remains unchanged.
+- TackWise Race keeps its existing local race ID unchanged and independent of cloud identity. Recording and all race-critical behavior remain available offline.
+- A dedicated authenticated cloud-race creation operation generates the cloud race UUID on the server using a cryptographically secure random generator conforming to UUIDv4. The client cannot choose or submit this UUID. Only this operation may create cloud race identity; prepare, finalize, imports, recovery and generic service-role code must never create an identity from an incoming UUID.
+- The creation operation is idempotent for a given local race creation intent: retries return the same cloud ID while that intent remains valid. Its key, scope, expiry, account binding, replay behavior after race deletion, and storage/retention are implementation decisions that must be reviewed before use.
+- A cloud race UUID is immutable once issued. UUID possession is never authorization. UUIDv4 collision/reissue probability is accepted as astronomically small; this decision does not require a central monotonic allocator, UUIDv8 scheme, or global UUID denylist. All access still requires authenticated ownership and open server-side gates. A random collision with an existing live identity must be rejected by database uniqueness and retried only within the creation transaction; collision checking against permanently deleted IDs is not required by this accepted probability decision.
+- Existing local records retain their local IDs. They receive a separate server-issued `cloudRaceId` through the authenticated creation operation before their first prepare request.
 - Before prepare, the phone serializes the versioned raw payload, gzip-compresses it, computes SHA-256 over the exact compressed bytes, and persists that exact blob or reproducible immutable upload artifact until acceptance. Retries must not silently reserialize different bytes under the same prepared upload.
-- `race_id` is the idempotency identity. No separate client-generated idempotency key is required.
+- The issued `race_id` identifies the cloud race for prepare/content/finalize idempotency. The creation-intent idempotency mechanism is separate and must not allow a delayed/replayed request to reopen a closed race or account gate.
 
-Prepare reserves a race UUID globally for the authenticated owner. Repeating prepare with the same owner, version, digest, size, and immutable metadata returns the existing state. A different owner receives a non-enumerating not-found/conflict response. Changed immutable input for an existing reservation or accepted race returns `409 race_conflict`.
+Prepare reserves only a previously issued race UUID globally for its authenticated owner. It rejects a UUID with no existing server-issued identity or open race gate; it never provisions identity or gates from the path value. Repeating prepare with the same owner, version, digest, size, and immutable metadata returns the existing state. A different owner receives a non-enumerating not-found/conflict response. Changed immutable input for an existing reservation or accepted race returns `409 race_conflict`.
 
 An identical content PUT is safe to repeat. After acceptance, content PUT is disabled. Finalize is idempotent: it checks for a matching accepted race for the authenticated owner before requiring a reservation. A matching owner/race/version/digest returns the accepted result and never touches entitlement state or increments the counter again.
 
 ### Minimal v1 API contract
+
+The authenticated cloud-race creation operation is a prerequisite to the upload contract below. It accepts no cloud race UUID and returns the server-issued UUID. Its request/response schema, idempotency key and expiry, same-local-race mapping, account/race gate transaction, and behavior for old clients are not yet specified here and must be reviewed as part of the versioned contract before implementation. No legacy prepare request may mint or lazily adopt a cloud ID.
 
 All responses include an opaque request ID. Error responses contain only a stable category and must not include provider errors, SQL, object keys, tokens, payload fragments, or GPS data.
 
@@ -267,7 +273,7 @@ Recording state and cloud sync state remain separate. An active race is never up
 | `invalid` | Permanent raw-format/schema/content failure; do not loop automatically, retain locally, and present a safe user action/support path |
 | `accepted` | Idempotent finalize confirmed the race exists as `races.sync_state = uploaded` in cloud |
 
-Do not persist separate `prepared`, `uploading`, `finalizing`, or `interrupted` UI states initially. Persist the immutable cloud race UUID, raw version/digest/size, prepared expiry where useful, last safe error category, attempt time, and backoff—not tokens, provider errors, or secrets. After an ambiguous content/finalize outcome, use the same UUID/artifact and reconcile through prepare/finalize rather than creating a duplicate.
+Do not persist separate `prepared`, `uploading`, `finalizing`, or `interrupted` UI states initially. Persist the local-to-cloud ID association, immutable cloud race UUID, raw version/digest/size, prepared expiry where useful, last safe error category, attempt time, and backoff—not tokens, provider errors, or secrets. After an ambiguous content/finalize outcome, use the same issued UUID/artifact and reconcile through prepare/finalize rather than creating a duplicate. Offline recordings remain usable without cloud ID issuance; synchronization waits for authenticated connectivity.
 
 ### Analysis handoff
 
@@ -281,14 +287,14 @@ Queue delivery must be retryable. Create or enforce uniqueness for `(race_id, an
 
 - **`anflyg/tackwise-contracts`:** owns the versioned raw-race JSON Schema, prepare/finalize request/response and error schemas, limits/constants, example fixtures, compatibility rules, and analysis input envelope.
 - **`anflyg/tackwise-api`:** owns authentication/authorization, upload-session persistence, payload validation, R2 operations, the atomic acceptance RPC/migration, cleanup/reconciliation, sanitized logging, and analysis dispatch.
-- **`anflyg/SailRaceApp`:** owns authoritative product/security/privacy decisions, local immutable race/cloud UUID persistence, gzip/hash preparation, offline queue/backoff, and user-facing local sync state.
+- **`anflyg/SailRaceApp`:** owns authoritative product/security/privacy decisions, preservation of the local race ID, persistence of the separate server-issued cloud UUID, authenticated creation-intent retry state, gzip/hash preparation, offline queue/backoff, and user-facing local sync state.
 - **`anflyg/TackWiseAnalysis`:** consumes only authenticated accepted-race metadata/results. It does not upload raw iPhone telemetry or access R2 directly.
 
 Raw format version, `/v1` API version, and analysis version are independent. A raw object is permanently labeled with `rawFormatVersion`; API breaking changes require a new API version; each analysis result records `analysisVersion` and the accepted raw version/digest it consumed. Readers must explicitly support or reject each raw version rather than guessing.
 
 ## Consequences
 
-- The first flow adds three authenticated user endpoints but no direct R2 credentials or database writes to clients.
+- The first flow adds an authenticated idempotent cloud-identity creation operation before the three upload operations, but no direct R2 credentials or database writes to clients.
 - Mobile retries are deterministic, but a content retry restarts the bounded object; resumable multipart upload is deferred.
 - A short-lived private orphan can exist between R2 write and database acceptance. It is never visible as a race and is bounded by idempotent recovery and scheduled cleanup.
 - Free allowance is consumed only by the database acceptance transaction and exactly once per unique accepted race.
@@ -303,3 +309,4 @@ The sequenced work is recorded in the [first race upload implementation roadmap]
 - Define the exact raw-race v1 JSON Schema and decide which current app/build and sensor-source fields are strictly necessary for reproducible analysis.
 - Confirm the production privacy notice/lawful basis, processor/transfer configuration, and operational log retention before enabling upload for end users.
 - Implement the queue, scheduled-cleanup and reconciler decisions now recorded in [ADR-004](adr-004-analysis-dispatch-lifecycle-and-cleanup.md), preserving this ADR's lifecycle and retention guarantees. Runtime, migrations and production enablement remain separately reviewed work.
+- Define and test cloud-identity creation intent storage, retry/idempotency scope and expiry, local-to-cloud mapping retention, account incarnation/recreation behavior, old-client migration/rejection, and restore/replay handling. Deletion gates and R2 fencing remain mandatory; this identity decision does not resolve D5 safety or permit deletion activation.

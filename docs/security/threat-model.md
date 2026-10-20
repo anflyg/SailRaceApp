@@ -41,7 +41,7 @@
 - server-side ownership checks for service-role operations,
 - object access issued only after authenticated ownership validation,
 - no trust in client-supplied `user_id`.
-- globally reserved race UUIDs scoped to the validated user at every upload phase,
+- server-issued cloud race UUIDs (separate from local IDs), scoped to the validated user at every phase; only the authenticated creation flow may issue IDs, and incoming UUIDs never provision or reopen gates,
 - server-derived R2 keys; race UUID or object-key knowledge never grants access.
 
 ### Exposure of GPS/location data
