@@ -66,7 +66,8 @@
 - no custom password database,
 - tokens/secrets never logged,
 - secrets kept out of client bundles and source control,
-- normal session expiry/logout behavior tested.
+- normal session expiry/logout behavior tested,
+- account admission checked transactionally on every protected operation; an older but valid JWT does not bypass account closure or provision a missing gate.
 
 ### Service-role or infrastructure secret leakage
 

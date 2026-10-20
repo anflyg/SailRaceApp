@@ -5,6 +5,7 @@
 | Data | Purpose | Planned location | Retention / notes |
 | --- | --- | --- | --- |
 | Supabase user UUID | Account ownership and authorization | Supabase | Canonical internal identity; retained while account exists |
+| Account admission gate | Prevent new cloud work after account closure and reject stale authenticated requests | Server-only Supabase/PostgreSQL | Account UUID and open/closed state are pseudonymous personal/operational data; no client access; retain only while needed for admission/deletion safety and remove only after safe recovery/retention review |
 | Apple auth identifiers/session data | Authentication | Apple/Supabase | Do not log tokens; avoid duplicating identifiers unnecessarily |
 | Apple relay/email address if supplied | Account communication only if needed | Supabase/Auth | Not a storage key or canonical identity |
 | GPS/location telemetry | Race recording, user-requested synchronization and post-race analysis | Local iPhone + private Cloudflare R2 | Personal data; private by default; accepted data is user deletable; abandoned pre-acceptance objects follow bounded cleanup |

@@ -49,7 +49,7 @@ Each step must be safe to repeat or resume after interruption. Automatic retry e
 
 Account deletion orchestrates deletion of all user-owned race data and related account state covered by this ADR:
 
-1. Mark the account/user deletion state first and prevent new uploads and analysis work.
+1. In the same transaction that records the account-deletion request, lock and close the existing account gate first, before acquiring any other lifecycle-row locks. Follow the global order **account gate → race gate → existing lifecycle locks**. This atomically prevents later admission, including requests carrying previously issued JWTs; JWT validity alone does not override a closed gate. Then record deletion state and prevent new uploads and analysis work.
 2. Enumerate owned deletion units server-side, including accepted races, pending reservations/orphans, `profiles`, `entitlements`, `entitlement_admin_audit`, Supabase Auth identity and related account state.
 3. Process race deletions in bounded batches, durably recording progress and retrying partial failures.
 4. Expose safe operator-observable aggregate progress and terminal errors without identifying payloads in normal logs.
@@ -59,6 +59,8 @@ Account deletion orchestrates deletion of all user-owned race data and related a
 8. Complete account deletion only when all covered personal data is deleted, except data explicitly covered by a separately documented applicable lawful-retention exception. Provider uncertainty or operator review alone does not permit completion; unresolved personal data keeps deletion unresolved and must be escalated for operator/privacy review.
 
 The current proposed account-deletion target and any legally required exceptions remain governed by [the retention policy](../../privacy/retention-policy.md) and must be confirmed before public production use.
+
+After full account deletion, a later registration requires a new Supabase Auth identity. No separate account-incarnation component is introduced. The Auth behavior that ensures re-registration receives a new UUID, and backup restoration that could restore an old identity or open gate, are verification requirements; they are not assumed guarantees. Existing accounts require a controlled gate backfill based on verified ownership and deletion status. Missing or ambiguous gates remain closed and are never automatically opened during login or API use.
 
 ### Resurrection protection
 
@@ -113,6 +115,7 @@ The following details remain open for D2–D6 and cannot weaken the invariants a
 - The exact schema/RPC design for the server-only tombstone ownership association and the authoritative evidence/workflow for reconciling existing unlinked migration-00012 records.
 - The concrete enforceable fencing mechanism across database insert and external object-write paths, including how it fences a delayed writer that outlives its lease; it must be implemented and demonstrated before tombstone removal.
 - The account lifecycle and gate provisioning/reactivation rules; attestation claims, format, key management and revocation/rotation behavior; old-client transition; restore/replay behavior; and safe removal/retention of gate, tombstone and creation-intent data. Attestation expiry is 24 hours from server issuance, but the safe-garbage-collection and restore mechanisms remain open. The accepted UUIDv4 collision probability does not resolve those lifecycle questions.
+- Verify that Supabase Auth re-registration after full deletion creates a distinct user UUID, and that backup recovery cannot restore a deleted identity or reopen its gate. These are required tests and operational evidence, not current provider guarantees.
 - The exact lawful basis, scope and retention period for any retained personal data, minimized operational audit records, and provider backups.
 - The implementation-specific ordering for deleting Supabase Auth identity after all required ownership and object references have been resolved.
 
