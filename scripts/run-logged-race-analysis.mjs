@@ -33,7 +33,8 @@ try {
   const mapVisible = await map.isVisible()
   const stroke = await map.locator('.race-map-track').first().getAttribute('vector-effect')
   await page.getByRole('tab', { name: 'Start' }).click()
-  const startVisible = await page.getByText('Startanalys').first().isVisible()
+  await page.locator('.start-analysis-panel').waitFor({ state: 'visible' })
+  const startVisible = await page.getByText('Linje passerad', { exact: true }).isVisible()
   const report = {
     ...serviceReport,
     browser: { loggedRaceExists: true, overview: mapVisible, trackPresent: Boolean(stroke), startAnalysis: startVisible, nonScalingStroke: stroke === 'non-scaling-stroke' },
@@ -44,6 +45,7 @@ try {
   await fs.mkdir(path.dirname(outputPath), { recursive: true })
   await fs.writeFile(outputPath, `${JSON.stringify(report, null, 2)}\n`)
   console.log(JSON.stringify(report, null, 2))
+  if (!report.pass) throw new Error('Logged race analysis validation did not pass')
 } catch (error) {
   console.error(error instanceof Error ? error.message : error)
   if (page) {

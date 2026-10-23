@@ -89,3 +89,14 @@ Reassess this risk assessment before:
 - major authentication/storage migration,
 - commercial production release,
 - substantial product modification affecting established security assumptions.
+
+## M2 mock-backed client evidence
+
+[The M2 client slice](../architecture/m2-iphone-cloud-sync.md) adds schema/size,
+immutable gzip/hash, session-owner, restart/idempotency, bounded-retry and private
+filesystem regression coverage, plus a browser test proving no external demo
+requests. These do not establish physical iPhone transport/storage, real Auth,
+Worker/R2 or D5/D6 release evidence. Real synchronization stays disabled. The
+pre-existing Capacitor native HTTP-proxy advisory and build-tool dependency
+advisories are documented there as release blockers; an SDK update/rebuild and
+physical regression must precede real session/network activation.

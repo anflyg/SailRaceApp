@@ -1,3 +1,5 @@
+import { SyntheticSyncDemo } from '../../components/SyntheticSyncDemo'
+import type { RaceSyncCoordinator } from '../../services/sync/coordinator'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { RaceLibrary } from '../../components/RaceLibrary'
 import { RaceTrackMap } from '../../components/RaceTrackMap'
@@ -44,7 +46,7 @@ const analysisSections: Array<{ id: AnalysisSection; label: 'analysis.library' |
   { id: 'library', label: 'analysis.library' }, { id: 'overview', label: 'analysis.overview' }, { id: 'start', label: 'navigation.start' }, { id: 'graphs', label: 'analysis.graphs' }, { id: 'data', label: 'analysis.data' },
 ]
 
-export function RaceAnalysisView({ initialRaceId, initialRace }: { initialRaceId?: string; initialRace?: Race } = {}) {
+export function RaceAnalysisView({ initialRaceId, initialRace, syncCoordinator }: { initialRaceId?: string; initialRace?: Race; syncCoordinator?: RaceSyncCoordinator } = {}) {
   const { t } = useTranslation()
   const [groups, setGroups] = useState(() => loadRaceGroups(initialRaceId, initialRace))
   const [exportingRaceId, setExportingRaceId] = useState<string | null>(null)
@@ -134,13 +136,17 @@ export function RaceAnalysisView({ initialRaceId, initialRace }: { initialRaceId
     }))
   }
 
-  const handleDeleteRace = (race: Race) => {
-    const shouldDelete = window.confirm(t('dialog.deleteRace', { name: race.name }))
+  const handleDeleteRace = async (race: Race) => {
+    const shouldDelete = window.confirm(t(syncCoordinator?'sync.deleteLocal':'dialog.deleteRace', { name: race.name }))
 
     if (!shouldDelete) {
       return
     }
 
+    if(syncCoordinator) {
+      try {await syncCoordinator.removeLocalArtifact(race.id)}
+      catch {window.alert(t('sync.localRemovalFailed'));return}
+    }
     deleteStoredRace(race.id)
     refreshRaceGroups()
   }
@@ -204,6 +210,8 @@ export function RaceAnalysisView({ initialRaceId, initialRace }: { initialRaceId
       </div>
 
       {isLibraryActive ? (
+        <>
+        <SyntheticSyncDemo/>
         <RaceLibrary
           groups={groups}
           selectedRaceId={analysisState.selectedRaceId}
@@ -213,7 +221,9 @@ export function RaceAnalysisView({ initialRaceId, initialRace }: { initialRaceId
           onToggleFavorite={handleToggleFavorite}
           onExportRace={handleExportRace}
           exportingRaceId={exportingRaceId}
+          syncCoordinator={syncCoordinator}
         />
+        </>
       ) : isOverviewActive ? (
         <RaceOverview
           race={selectedRace}
