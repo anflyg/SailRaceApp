@@ -99,7 +99,7 @@ startup does not initialize the sync engine. No background sync is installed.
 
 ## Native HTTP and remaining integration gates
 
-The existing Capacitor 8.3.3 iOS implementation was inspected: `dataType: 'file'`
+The security-patched Capacitor 8.4.3 iOS implementation was inspected: `dataType: 'file'`
 base64-decodes into `Data` and assigns `URLRequest.httpBody`; request headers
 include the exact compressed Content-Length and application/gzip, with no
 Content-Encoding. Redirects are disabled; HTTPS origin is explicitly injected.
@@ -119,15 +119,12 @@ Before real/nonproduction integration:
    offline/account change and real prepare/content/finalize behavior. Measure CPU,
    memory and recording responsiveness; verify file protection and backup/restore
    policy and local/cloud removal/export semantics before personal-data rollout.
-4. Resolve the **pre-existing** dependency advisories before native/network release.
-   Runtime audit reports 4 entries: Capacitor iOS 8.3.3 (critical), tar 7.5.15
-   (critical), xmldom 0.9.10 and brace-expansion 5.0.6 (high; tooling dependencies).
-   All four versions are unchanged from main; AJV adds no reported advisory.
-   [GHSA-rvm3-566m-v7fv](https://github.com/advisories/GHSA-rvm3-566m-v7fv)
-   affects the native app-origin HTTP proxy even when CapacitorHttp is disabled.
-   The advisory identifies patched 8.x releases including 8.4.3/8.5.1. A reviewed
-   native SDK update/rebuild and physical regression are required; this mock
-   client PR does not silently update the existing TestFlight native runtime.
+4. Keep the dependency review current and complete physical regression before
+   real session/network activation. The former Capacitor proxy and tooling
+   advisories are now remediated: the full audit reports zero findings, and an
+   unsigned simulator build embeds the resolved patched native SDK. See the
+   [dependency remediation evidence](../security/m2-dependency-remediation.md).
+   An unsigned local build does not patch any already distributed TestFlight app.
 
 ## Validation
 

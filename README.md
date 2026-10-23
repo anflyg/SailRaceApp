@@ -93,3 +93,8 @@ Run `npm test -- --maxWorkers=1`, `npm run build` and `npm run sync:validation`.
 The browser check runs a local Vite server and Playwright Chromium only.
 [Client protocol, storage, recovery and real-integration gates](docs/architecture/m2-iphone-cloud-sync.md)
 include the existing native dependency advisories and physical-device checks.
+
+Dependency security baseline: Capacitor core/CLI/iOS are pinned together at 8.4.3.
+Use `npm ci` and `npx cap sync ios` after building; the tracked SwiftPM resolution
+must agree with npm. See [security and native-build evidence](docs/security/m2-dependency-remediation.md)
+for audit results, reproducible native commands and remaining device checks.

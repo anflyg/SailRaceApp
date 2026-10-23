@@ -97,6 +97,8 @@ immutable gzip/hash, session-owner, restart/idempotency, bounded-retry and priva
 filesystem regression coverage, plus a browser test proving no external demo
 requests. These do not establish physical iPhone transport/storage, real Auth,
 Worker/R2 or D5/D6 release evidence. Real synchronization stays disabled. The
-pre-existing Capacitor native HTTP-proxy advisory and build-tool dependency
-advisories are documented there as release blockers; an SDK update/rebuild and
-physical regression must precede real session/network activation.
+[dependency remediation record](m2-dependency-remediation.md) documents the patched
+Capacitor SDK, clean full npm audit, locked native binary provenance and unsigned
+simulator build. Physical regression and distribution of a rebuilt app must still
+precede real session/network activation; existing installations are not updated
+by a repository dependency change.
