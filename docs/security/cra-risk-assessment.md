@@ -102,3 +102,16 @@ Capacitor SDK, clean full npm audit, locked native binary provenance and unsigne
 simulator build. Physical regression and distribution of a rebuilt app must still
 precede real session/network activation; existing installations are not updated
 by a repository dependency change.
+
+## M2 native authentication implementation evidence
+
+[The native auth design](../architecture/authentication.md) adds nonce/state-bound
+Apple AuthenticationServices, official Supabase ID-token verification, canonical
+UUID-only ownership and device-only Keychain persistence. Generation/revision
+checks prevent delayed sign-in/refresh from restoring a logged-out client session.
+A non-secret logout latch fails closed on protected-storage errors. Bridge/SDK
+debug logging is disabled; tokens never use browser/filesystem persistence. Tests
+cover invalid credentials, refresh/restore/offline/logout races and cross-owner M2
+checkpoint isolation. No Worker upload is wired. Native compilation and injected
+tests are not proof of physical Keychain/backup behavior or real Apple/Supabase
+acceptance; those remain explicit activation evidence. No CRA conformity claim.

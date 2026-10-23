@@ -1,0 +1,8 @@
+.account-panel { margin-top: 1rem; padding: 1rem; border: 1px solid #b9b9b0; border-radius: 12px; background: #f8f8f3; color: #202d32; }
+.account-panel h2 { margin: 0; font-size: 1rem; }
+.account-panel p { margin: .6rem 0; }
+.account-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin: .75rem 0; }
+.account-actions button { min-height: 44px; padding: .6rem 1rem; border: 1px solid #657174; border-radius: 6px; cursor: pointer; }
+.account-actions .apple-sign-in { background: #000; color: #fff; font-size: 1rem; }
+.account-actions button:disabled { opacity: .5; cursor: default; }
+.account-actions button:focus-visible { outline: 3px solid #297ca7; outline-offset: 2px; }

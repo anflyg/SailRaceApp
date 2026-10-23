@@ -61,3 +61,15 @@ artifact removal does not delete cloud data or remove a known accepted receipt.
 Device backup/file protection and the real user-facing retention/deletion/export
 policy must be verified before activation; no new indefinite retention is approved.
 See [M2 boundaries and evidence](../architecture/m2-iphone-cloud-sync.md).
+
+## M2 native authentication implementation
+
+The app adds one device-only, nonsynchronizing Keychain session item: Supabase
+UUID/access token/refresh token/expiry, project origin and opaque Apple credential
+identifier (revocation checks only). Apple ID token/raw nonce/state exist only for
+the active sign-in, not in persistence. No name/email scopes are requested;
+returned profile fields are ignored. UserDefaults stores only non-secret
+installation/logout-pending booleans. Logout replaces tokens with a signed-out
+revision; local races/artifacts/receipts remain owner-bound and unchanged. First
+auth access after reinstall purges orphaned Keychain tokens. No new cloud race
+processing is activated. See [auth design and device prerequisites](../architecture/authentication.md).

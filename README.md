@@ -98,3 +98,14 @@ Dependency security baseline: Capacitor core/CLI/iOS are pinned together at 8.4.
 Use `npm ci` and `npx cap sync ios` after building; the tracked SwiftPM resolution
 must agree with npm. See [security and native-build evidence](docs/security/m2-dependency-remediation.md)
 for audit results, reproducible native commands and remaining device checks.
+
+## M2 native account layer (cloud uploads still disabled)
+
+Setup includes optional Swedish/English account controls. Native Apple sign-in,
+Supabase session refresh and Keychain persistence are implemented; browser sign-in
+and unconfigured builds stay disabled. `.env.auth.example` lists public-only
+configuration names, with no endpoints or secrets. Run the existing test/build/
+validation commands; `npx cap sync ios` includes the local Swift bridge. See
+[auth design and exact external/device prerequisites](docs/architecture/authentication.md)
+before configuring an approved test environment. No live Apple authentication is
+claimed; signing capabilities and external projects were not configured.
