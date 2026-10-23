@@ -43,3 +43,14 @@ Providers: Supabase; Apple when StoreKit/App Store verification is implemented.
 - Maintain appropriate processor agreements/configuration with service providers.
 - Reassess when adding analytics, marketing, sharing or social functionality.
 - Update the public privacy notice and this record before collecting analytics or introducing billing verification.
+
+### M2 native account client boundary
+
+Optional foreground Apple authentication exchanges an ephemeral nonce-bound ID
+token with Supabase. The iPhone persists only minimized session credentials in
+app-private device-only Keychain, with no email/name request, analytics or GPS
+transfer. Local logout clears that session independently of offline race storage;
+server logout is best effort if online. Public configuration, provider/legal-basis
+and processor/transfer/notice review and physical storage/logout evidence are
+prerequisites for an approved live environment. No live processing was enabled or
+verified in this implementation. [Concrete controls](../architecture/authentication.md).
