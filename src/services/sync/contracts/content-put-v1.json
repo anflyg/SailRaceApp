@@ -1,0 +1,10 @@
+{
+  "apiVersion": 1,
+  "method": "PUT",
+  "pathTemplate": "/v1/races/{raceId}/upload/content",
+  "contentType": "application/gzip",
+  "contentEncoding": null,
+  "contentLength": "exact prepared gzip artifact byte length",
+  "body": "exact prepared gzip artifact bytes",
+  "sha256": "lowercase SHA-256 over the exact request body bytes"
+}

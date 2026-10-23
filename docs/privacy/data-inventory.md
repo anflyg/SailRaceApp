@@ -48,3 +48,16 @@ Product analytics is a separate processing activity, not a secondary use of the 
 The first raw cloud format contains only fields required to reproduce and analyze the recorded race. It excludes local display names, email, Apple/TestFlight identity, advertising/device identifiers, contacts, unrelated sensor data, and product analytics. App/build or sensor-source fields require a documented interpretation/compatibility purpose. The API logs only opaque IDs, phase, bounded size/version/timing, status, and safe error category; it never logs the payload or exact locations.
 
 [ADR-004](../architecture/decisions/adr-004-analysis-dispatch-lifecycle-and-cleanup.md) further restricts analysis/maintenance logs to safe operation correlation/phase/category data and bounded operational counts/timings/status, excluding user UUIDs, queue envelopes, R2 keys, digests and provider bodies. Client summaries must be bounded and schema-validated without GPS sample streams, raw tracks or internal references; detailed results remain private and owner-authorized through Worker APIs.
+
+## M2 client implementation boundary
+
+The mock-backed client adds private local sync checkpoints (local/owner/cloud ID,
+intent/expiry until mapped, artifact reference/digest/size, safe phase/retry/error
+and acceptance receipt) and a separate immutable gzip retry artifact. Native files
+use app-private persistent Library; browser synthetic tests use IndexedDB.
+Bearer/refresh tokens are never persisted by this layer. Existing local recordings
+are unchanged, and real GPS/account synchronization remains disabled. Local
+artifact removal does not delete cloud data or remove a known accepted receipt.
+Device backup/file protection and the real user-facing retention/deletion/export
+policy must be verified before activation; no new indefinite retention is approved.
+See [M2 boundaries and evidence](../architecture/m2-iphone-cloud-sync.md).
