@@ -36,7 +36,7 @@ One row per synchronized race.
 
 | Column | Type | Notes |
 | --- | --- | --- |
-| `id` | uuid PK | Opaque race ID generated client or server side |
+| `id` | uuid PK | Opaque cloud race ID issued by the authenticated server creation flow as UUIDv4; distinct from the phone's local race ID |
 | `user_id` | uuid FK -> `auth.users.id` | Owner |
 | `started_at` | timestamptz | Race start |
 | `ended_at` | timestamptz nullable | Race end |
