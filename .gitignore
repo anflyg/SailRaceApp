@@ -23,3 +23,6 @@ simulation-results/
 *.njsproj
 *.sln
 *.sw?
+
+# Dedicated non-distributable synthetic native test assets
+dist-native-test

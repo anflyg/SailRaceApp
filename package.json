@@ -20,7 +20,9 @@
     "cap:sync:simulation": "npm run build:simulation && npx cap sync",
     "cap:open:ios": "npx cap open ios",
     "sync:validation": "node scripts/run-sync-validation.mjs",
-    "sync:compatibility": "vitest run --config scripts/upload-compatibility.config.ts"
+    "sync:compatibility": "vitest run --config scripts/upload-compatibility.config.ts",
+    "build:native-test": "tsc -p tsconfig.native-test.json && vite build --config vite.native-test.config.ts --mode native-test",
+    "cap:copy:native-test": "npm run build:native-test && TACKWISE_NATIVE_TEST_BUILD=1 cap copy ios"
   },
   "dependencies": {
     "@capacitor-community/keep-awake": "^8.0.1",

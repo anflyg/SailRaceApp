@@ -1,0 +1,4 @@
+body { margin: 0; background: white; color: #17202a; }
+button { min-height: 44px; padding: 10px 14px; font: inherit; border: 1px solid #59636d; border-radius: 6px; background: white; color: #17202a; }
+button:disabled { background: #eee; border-color: #bbb; color: #666; }
+button:focus-visible { outline: 3px solid #146bd1; outline-offset: 3px; }
