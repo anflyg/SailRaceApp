@@ -30,6 +30,10 @@ No accounts currently exist, so there is no planned account-gate backfill. Befor
 
 Production migration application, production configuration changes, deployment, deletion activation, beta enrollment and acceptance of proposed architecture require separate explicit approval. A merged implementation PR alone authorizes none of those operational steps.
 
+## Parallel product-design track — not a delivery gate
+
+[Draft PR #18](https://github.com/anflyg/SailRaceApp/pull/18) proposes a separate `docs/product/analysis-comparison-and-coaching.md` for within-race lap/leg comparisons, personal race-to-race trends, reproducible/versioned deterministic coaching insights and optional provider-free/satellite/hybrid/future 3D map backgrounds. Its latest reviewed 243-line document compares dated Google/Mapbox pricing and leaves provider, shoreline data, metric comparability and GPS/location disclosure terms open. Future multi-sailor per-race/per-participant sharing is **unapproved** and requires a separately reviewed security/privacy architecture, consent/access, revocation, deletion and retention design. The proposed map controls must consider geographic disclosure through tile/viewports and automatic camera following even when no raw GPS polyline is submitted to a map provider. This design PR does not alter or unblock M1–M7, nor approve third-party map requests, re-analysis, data sharing or production data.
+
 ## Working model and approvals
 
 ChatGPT and the product owner make architecture decisions. Codex implements explicitly approved tasks, runs relevant tests and documentation checks, and prepares Draft PRs for review. Keep manual effort small through focused changes, repeatable checks and clear acceptance evidence. The product owner reviews decisions and Draft PRs; no automated merge, production deployment or architecture change occurs without approval.
