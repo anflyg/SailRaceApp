@@ -121,6 +121,70 @@ A future implementation may need the following inputs, subject to data minimizat
 
 Do not add a personal-data category or collect more precise location, continuous background location, external weather data, boat/crew identity, or third-party telemetry merely because it might improve a comparison. Establish necessity and review privacy/security implications first.
 
+## Optional geographic map backgrounds and context
+
+### Proposed product behavior
+
+Offer map backgrounds as an optional post-race analysis preference:
+
+- **Simple analysis map (default):** a restrained, provider-independent background suitable for reading GPS tracks. It should render without contacting an external map provider.
+- **Satellite imagery:** optional external imagery.
+- **Hybrid imagery:** optional imagery with provider-supplied labels/features, subject to the provider's terms and required attribution.
+- **3D terrain:** a possible future mode only. No provider, dataset, SDK, license or delivery date is selected.
+
+The background is visual context. It is never a nautical chart, a source of navigational instructions, or a substitute for official charts, notices, instruments or race-course configuration. Show a persistent “Analysis only — not for navigation” notice when a map is shown, including when imagery is selected.
+
+### GPS overlay, replay and lap comparison
+
+- Draw the validated track from the analysis result's original WGS84 coordinates and timestamps. Preserve source points, signed metrics, gaps and uncertainty. Any line simplification is display-only and must not change the source data, replay timing, metric calculation or distance calculations.
+- Keep a shared geographic coordinate reference and map extent for all compared laps. Use clearly distinguishable, accessible line styles and a legend; users can select which laps are visible. Do not shift, warp, time-normalize or snap geographic tracks to make them appear to overlap.
+- Synchronize replay to the recorded timestamps and show the position at the current replay time from the validated source sample. If a display interpolation is later proposed for irregular intervals, identify it as an interpolated display position and leave the underlying sample/metric unchanged.
+- Allow a user to select a geographic section and compare the portions of multiple laps that cross it, using the same section bounds, projection and scale. State the selection rule, segment time range, sample coverage and whether the comparison follows spatial position or lap progress. A map selection does not create a course mark or imply tactical equivalence.
+- Keep basemap requests separate from race-result requests. Do not include account IDs, race IDs, timestamps, raw track samples, replay position or other race payload in provider requests, URL parameters, referrers, analytics or provider logs. Do not send a raw GPS track to a basemap provider.
+- The browser must not load external provider scripts, styles or tiles until the user explicitly selects that provider-backed background and receives a clear notice that the visible map area and ordinary network metadata (such as IP address) may be disclosed to the provider. The choice is opt-in, can be declined, and can be withdrawn. The provider-free simple map remains usable without that choice.
+- Provider choice may be scoped to the current view/session until a reviewed preference-storage decision exists. Do not persist viewed locations as a side effect of remembering the visual preference.
+
+### Optional distance-to-shore and environmental context
+
+Distance-to-shore is a separate derived analysis, not a basemap feature. It may only be considered using an independently licensed shoreline/coastal geographic dataset whose license permits the intended computation, presentation, retention and export. Do not trace, digitize, infer, or calculate shoreline geometry from Google or other basemap imagery. Do not send GPS points to a provider for nearest-shore lookup.
+
+A future specification must identify dataset owner and license, version/date, coordinate reference, resolution, geographic coverage, shoreline definition and uncertainty. A shoreline is time- and scale-dependent; tides, shoreline change, chart datum, generalization and GPS accuracy can dominate small distance differences. Show data vintage and uncertainty, and suppress unsupported precision or coverage gaps. A distance-to-shore value is geographic context, not a safe navigation clearance.
+
+Terrain, shoreline, wind and current layers may help users investigate a coincidence or possible environmental influence. Clearly separate:
+
+1. **Measured observation:** values from the race samples or an identified instrument/source, with time, units and quality.
+2. **Derived estimate:** a calculation from named inputs and a versioned method, marked as derived.
+3. **Possible explanation:** a hypothesis for further investigation, explicitly unproven.
+
+Do not claim that terrain caused a wind change, that current caused a speed difference, or that shore proximity caused a sailing outcome from map imagery or correlation alone. Map appearance is not a measurement of wind/current. Environmental datasets or provider services require independent provenance, licensing, privacy and accuracy review.
+
+### Provider comparison for review — no selection
+
+This is a high-level product/terms screen, not a legal or procurement approval. Public list prices below were checked **25 October 2026**, in USD, and exclude tax, negotiated terms, quota configuration and usage outside the stated map product. Recheck current prices and binding terms before any decision.
+
+| Topic | Google Maps Platform (Maps JavaScript API) | Licensed alternative: Mapbox GL JS |
+| --- | --- | --- |
+| Background options | Roadmap, satellite, hybrid and terrain map types are documented. Hybrid combines imagery and labels. [Map types](https://developers.google.com/maps/documentation/javascript/maptypes) | Mapbox GL JS supports style/layer composition; Mapbox supplies satellite imagery and styles. A hybrid presentation must use a compatible licensed style/layer combination and its full attribution. [Mapbox Raster Tiles API](https://docs.mapbox.com/api/maps/raster-tiles/), [attribution requirements](https://docs.mapbox.com/help/dive-deeper/attribution/) |
+| Indicative web map cost | Dynamic Maps: 10,000 free billable map loads per month, then list price $7 per 1,000 in the first paid tier (up to 100,000); volume tiers follow. Satellite/hybrid map types in Maps JavaScript API are map views, but confirm applicable billing SKUs and current EEA account terms before estimating. [Pricing](https://developers.google.com/maps/billing-and-pricing/pricing), [SKU trigger](https://developers.google.com/maps/billing-and-pricing/sku-details) | Mapbox GL JS: up to 50,000 monthly map loads free; then $5 per 1,000 in the 50,001–100,000 tier. A load begins when the GL JS Map object initializes; interaction is included within that load, up to the documented session limit. Verify whether the selected satellite/data configuration adds separate billable services. [Pricing](https://www.mapbox.com/pricing), [GL JS billing definition](https://docs.mapbox.com/mapbox-gl-js/guides/pricing/) |
+| Attribution and content terms | Required Google Maps and third-party imagery attribution must remain visible. Google content cannot be scraped or cached except where expressly allowed, and terms restrict creating derived content from Maps content, including tracing features from satellite imagery. Do not combine Google Maps content with a non-Google map. EEA billing accounts have separate terms; the applicable current agreement controls. [Policies and attribution](https://developers.google.com/maps/documentation/javascript/policies), [Terms](https://cloud.google.com/maps-platform/terms), [EEA terms directory](https://cloud.google.com/product-terms) | Mapbox logo and text attribution are required for Mapbox styles/data; data-source attribution such as OpenStreetMap or other provider notices must also remain legible. Terms, tileset licenses and data-provider terms must be reviewed for the selected imagery/style. [Attribution](https://docs.mapbox.com/help/dive-deeper/attribution/), [Terms of Service](https://www.mapbox.com/legal/tos) |
+| Compatibility | Managed browser JavaScript API with built-in map types and coordinate-based polylines. Good fit for straightforward track overlays; vendor-specific API and terms tie map content to Google maps. [Shapes and lines](https://developers.google.com/maps/documentation/javascript/shapes) | Browser WebGL renderer with sources and style layers, giving more control over multiple track layers and styles. Current GL JS requires WebGL2, which must be checked against supported browsers/devices. [Add data](https://docs.mapbox.com/mapbox-gl-js/guides/add-your-data/), [browser requirements](https://docs.mapbox.com/mapbox-gl-js/) |
+| Performance considerations | Hosted map rendering avoids maintaining a tile service. Track/replay overlays still need measurement for long tracks, several laps, low-powered devices and repeated redraws. No 50k-sample performance claim is made here. | WebGL style layers are suited to complex geographic overlays; vendor docs warn that loading an entire large GeoJSON source can perform worse than tiled/vector sources. Keep telemetry in the browser and benchmark display-only simplification and replay updates. [Data rendering guidance](https://docs.mapbox.com/mapbox-gl-js/guides/add-your-data/) |
+| GDPR and location disclosure | Browser map requests necessarily contact Google and include ordinary request/network metadata; map view/tile requests reveal the area being viewed. No raw track upload is required by this design, but viewport disclosure is still location-related. Review Google’s EEA terms, controller/data-processing terms, transfers, cookies/storage, consent UX, retention and key exposure before approval. [Google EEA terms directory](https://cloud.google.com/product-terms) | Mapbox's product privacy disclosures describe limited end-user data such as IP address, app/user-agent identifiers and timestamps, and location data tied to user actions for relevant services. Tile requests expose the requested view area. Review the applicable DPA, any controller role, subprocessors, international-transfer mechanism, retention, consent UX and key restrictions. [Product privacy and DPA links](https://www.mapbox.com/legal/privacy), [transfer notice](https://www.mapbox.com/legal/notice-of-certification) |
+
+Both options can draw coordinate-based track overlays. Neither provider should receive the raw track under this design. A provider-neutral rendering/data interface is a design preference, not a promise that imagery, style rules, caches, attribution or terms are interchangeable. Never display one provider's restricted map content on another provider's base map.
+
+### Security, privacy and licensing approval gates
+
+Before any provider integration is separately proposed:
+
+- Choose whether third-party map requests are acceptable, and approve the just-in-time notice and explicit opt-in. The default view must make no external map request. Declining must not block analysis.
+- Document the exact request data (including visible tile/bounds, IP, referrer, user agent, cookies/SDK telemetry), provider role, purpose, lawful basis, applicable ePrivacy/consent requirements, retention/deletion, subprocessor/transfers and privacy notice changes.
+- Review binding provider terms for the actual product, region/billing account, map type, caching, attribution, overlays, derivative analysis, screenshots/exports, offline behavior and provider switching. Obtain legal/licensing review for satellite imagery, labels and every independent shoreline/terrain/wind/current dataset.
+- Define security controls for browser API keys/tokens: public-client key classification, domain/referrer restrictions, least-privilege API enablement, quotas, budget alerts, key rotation and abuse response. Never ship secret server credentials.
+- Decide whether external requests are blocked by CSP until consent, how consent withdrawal prevents subsequent requests, and how browser cache/service-worker behavior is handled. Do not rely on consent withdrawal to retract data already transmitted.
+- Decide whether display preferences or consent state are stored, where and for how long; do not store GPS tracks, viewed map bounds or provider request histories for convenience.
+- Assess supplier availability, outage/fallback behavior, performance, accessibility, attribution layout, usage cost ceilings and CRA/supply-chain implications. No provider choice, 3D feature, dependency or runtime flag is approved here.
+
 ## Proposed architecture and privacy decisions — not approved
 
 These are unresolved decisions, not instructions to implement:
