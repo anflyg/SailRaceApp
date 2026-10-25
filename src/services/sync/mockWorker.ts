@@ -6,11 +6,12 @@ import { LIMITS, record, type PrepareRequest, type WireRequest, type WireRespons
 export const syntheticOwner='10000000-0000-4000-8000-000000000071'
 export const syntheticSession={ownerId:syntheticOwner,accessToken:'synthetic-session-only'}
 export interface MockSnapshot {
-  intents: Array<[string,{expires:number;raceId?:string}]>
-  races: Array<[string,{prepare?:PrepareRequest;bytes?:string;accepted:boolean}]>
+  intents: Array<[string,{expires:number;raceId?:string;ownerId?:string}]>
+  races: Array<[string,{prepare?:PrepareRequest;bytes?:string;accepted:boolean;ownerId?:string}]>
 }
-export function createMockWorker(now:()=>number=Date.now, snapshot?:MockSnapshot) {
-  const intents=new Map<string,{expires:number;raceId?:string}>(),races=new Map<string,{prepare?:PrepareRequest;bytes?:Uint8Array;accepted:boolean}>()
+export function createMockWorker(now:()=>number=Date.now, snapshot?:MockSnapshot,
+  authenticate:(authorization:string)=>Promise<string|null>=async value=>value===`Bearer ${syntheticSession.accessToken}`?syntheticOwner:null) {
+  const intents=new Map<string,{expires:number;raceId?:string;ownerId?:string}>(),races=new Map<string,{prepare?:PrepareRequest;bytes?:Uint8Array;accepted:boolean;ownerId?:string}>()
   if(snapshot) {
     for(const [key,value] of snapshot.intents)intents.set(key,value)
     for(const [key,value] of snapshot.races)races.set(key,{...value,bytes:value.bytes?unbase64(value.bytes):undefined})
@@ -20,29 +21,30 @@ export function createMockWorker(now:()=>number=Date.now, snapshot?:MockSnapshot
   const error=(status:number,code:string)=>answer(status,{code})
   const accepted=(raceId:string)=>answer(200,{raceId,uploadState:'accepted',syncState:'uploaded',consumedFreeRace:true})
   const transport:WorkerTransport={mode:'mock',async request(request) {
-    requests.push({...request,body:request.body instanceof Uint8Array?Uint8Array.from(request.body):request.body})
-    if(request.headers.Authorization!==`Bearer ${syntheticSession.accessToken}`)return error(401,'unauthorized')
+    requests.push({...request,headers:{...request.headers,Authorization:'[redacted]'},body:request.body instanceof Uint8Array?Uint8Array.from(request.body):request.body})
+    const ownerId=await authenticate(request.headers.Authorization)
+    if(!ownerId)return error(401,'unauthorized')
     const value=typeof request.body==='string'?JSON.parse(request.body):null
     if(request.path==='/v1/race-creation-intents'&&request.method==='POST') {
       if(!record(value)||Object.keys(value).length)return error(400,'invalid_request')
       const issuedAt=Math.floor(now()/1000),expiresAt=issuedAt+86400
-      const payload=base64(strToU8(JSON.stringify({version:1,intentId:crypto.randomUUID(),ownerId:syntheticOwner,issuedAt,expiresAt}))).replaceAll('+','-').replaceAll('/','_').replaceAll('=','')
+      const payload=base64(strToU8(JSON.stringify({version:1,intentId:crypto.randomUUID(),ownerId,issuedAt,expiresAt}))).replaceAll('+','-').replaceAll('/','_').replaceAll('=','')
       const creationIntent=`twci1.mock.${payload}.synthetic_signature`
-      intents.set(creationIntent,{expires:expiresAt*1000})
+      intents.set(creationIntent,{expires:expiresAt*1000,ownerId})
       return answer(201,{creationIntent,issuedAt:new Date(issuedAt*1000).toISOString(),expiresAt:new Date(expiresAt*1000).toISOString()})
     }
     if(request.path==='/v1/races'&&request.method==='POST') {
       if(!record(value)||Object.keys(value).join()!=='creationIntent')return error(400,'invalid_request')
       const intent=intents.get(String(value.creationIntent))
-      if(!intent||now()>=intent.expires)return error(400,'invalid_request')
+      if(!intent||(intent.ownerId??syntheticOwner)!==ownerId||now()>=intent.expires)return error(400,'invalid_request')
       if(intent.raceId)return answer(200,{raceId:intent.raceId})
-      intent.raceId=crypto.randomUUID();races.set(intent.raceId,{accepted:false})
+      intent.raceId=crypto.randomUUID();races.set(intent.raceId,{accepted:false,ownerId})
       return answer(201,{raceId:intent.raceId})
     }
     const match=/^\/v1\/races\/([0-9a-f-]{36})\/upload(\/content|\/finalize)?$/.exec(request.path)
     if(!match)return error(400,'invalid_request')
     const [,raceId,suffix]=match,race=races.get(raceId)
-    if(!race)return error(404,'upload_not_found')
+    if(!race||(race.ownerId??syntheticOwner)!==ownerId)return error(404,'upload_not_found')
     if(!suffix&&request.method==='POST') {
       if(!validatePrepare(value))return error(400,'invalid_request')
       if(race.prepare&&JSON.stringify(race.prepare)!==JSON.stringify(value))return error(409,'race_conflict')

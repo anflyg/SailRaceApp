@@ -137,3 +137,81 @@ concurrency and local-only artifact removal. The Playwright sync check confirms
 phone/tablet layout, accepted mock receipt after reload, unchanged synthetic local
 recording and zero external requests. Existing analysis scripts now assert the
 actual start panel and fail the process when their report fails.
+
+## M2c native session / synthetic Worker composition
+
+`createSyntheticAccountSync()` in
+[`accountIntegration.ts`](../../src/services/sync/accountIntegration.ts) connects
+PR #17's `NativeAccountSession` (`SessionProvider.current(refresh?)`) to PR #16's
+existing `WorkerClient`, coordinator and private checkpoint/artifact store.
+It accepts only mock-mode transport/storage and resolves only a cloned, fixed
+synthetic race. Callers explicitly inject lifecycle/recording/online dependencies;
+construction does not restore Auth or initiate sync. No app wiring, real race
+lookup, Worker origin, network configuration or background task is added.
+The independent existing demo and disabled real-library controls are unchanged.
+
+The existing mock Worker now permits an injected **synthetic** token-to-owner
+resolver so refresh and non-default Supabase UUID ownership can be exercised.
+Intents and races retain that owner through mock snapshots and reject other
+owners. Old demo snapshots remain bound to the original synthetic owner.
+Request traces redact Authorization; snapshots/checkpoints contain no bearer or
+refresh token. This models protocol association, not server JWT verification.
+
+[Composition tests](../../src/services/sync/accountIntegration.test.ts) instantiate
+the actual native session service with injected Apple/Supabase/vault adapters,
+using fictional credentials and coordinates only. They exercise completed sync,
+expiry and the Worker's one-401 refresh, invalid refresh, logout/account change
+while content is in flight, lost content responses, bounded retries and restored
+Auth/checkpoint/fake-server state with identical gzip bytes. They also verify no
+fetch, token persistence, automatic start, local-race lookup or real-mode
+composition. Existing native adapter/storage, demo and offline recording tests
+remain separate evidence. A submitted request cannot be recalled on logout;
+its response cannot authorize the next phase or transfer the old checkpoint.
+
+### Remaining prerequisites for isolated iPhone-to-Worker testing
+
+1. Approve/configure the isolated Apple/Supabase environment, native audience,
+   nonce verification, email-optional provider, capability/entitlement and matching
+   signing profile described in [authentication](authentication.md). Supply only
+   its public configuration locally. Demonstrate physical-device UUID stability,
+   refresh/revocation, logout races and protected Keychain lifecycle first.
+2. Review the exact API baseline and complete applicable M1/D5/D6 authorization,
+   upload/deletion and operational gates. Approve an isolated Worker/account and
+   synthetic-only dataset. No current synthetic test proves deployed JWT checks,
+   SQL/R2 behavior or deletion readiness; ADR-007 remains PROPOSED.
+3. Separately review explicit real integration: inject the approved exact HTTPS
+   Worker origin, native transport and **worker**-namespaced private store into
+   the existing coordinator. The M2c factory intentionally rejects these modes;
+   do not relabel a real transport as mock or reuse mock receipts.
+4. On a physical iPhone verify gzip bytes/SHA/Content-Length/no Content-Encoding,
+   redirect rejection, prepare/content/finalize and lost responses, offline/retry,
+   restart and account switching. Verify Library file protection, interrupted
+   persistence, backup/restore, Keychain lifecycle and token-free logs/files.
+   Measure CPU/memory and recording responsiveness. Use synthetic telemetry only
+   until separate personal-data/privacy and release approval.
+
+No credentials, live Auth/Worker/R2 requests, GPS upload, signing configuration,
+SQL migration, activation, deployment or accepted-ADR change is part of M2c.
+
+### M2c validation evidence
+
+- `npm ci`: passed; dependency manifests and lockfile unchanged.
+- Focused account/coordinator/Worker-client tests: 77 passed in four files.
+- Full `npm test -- --maxWorkers=1`: 297 passed in 35 files, no skips.
+- `npm run build`: TypeScript and Vite production build passed.
+- `npm run sync:validation`: passed synthetic flow, persisted receipt after reload,
+  disabled real controls, phone/tablet layout and zero external requests.
+- `npm run analysis:validation`: passed existing start/replay/leg UI checks.
+- `npm run simulation:test`: all 12 existing synthetic offline scenarios passed.
+- `npm audit`: **one high development-only finding**, inherited `zod@4.4.3`
+  through `eslint-plugin-react-hooks@7.1.1` (also used by `zod-validation-error`):
+  [GHSA-mrhx-c7xc-m3w5](https://github.com/advisories/GHSA-mrhx-c7xc-m3w5),
+  oversized constrained-collection validation may exhaust memory, affected
+  `<4.6.6`. The earlier baseline's zero-audit evidence is historical; the current
+  registry reports this advisory. No dependency update is included in M2c.
+- `npm audit --omit=dev`: zero findings. `npm explain zod` / `npm ls zod`
+  confirm the development-only path.
+- Local Markdown link checks and `git diff --check`: passed.
+
+Injected/browser checks are synthetic evidence only; no physical iPhone, live
+Apple/Supabase/Worker or R2 behavior is claimed by this validation.
