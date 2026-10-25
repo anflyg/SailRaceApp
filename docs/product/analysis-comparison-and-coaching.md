@@ -133,9 +133,11 @@ Do not add a personal-data category or collect more precise location, continuous
 
 ## Optional geographic map backgrounds and context
 
-### Proposed product behavior
+### Agreed map outcome and proposed behavior
 
-Offer map backgrounds as an optional post-race analysis preference:
+**Agreed product outcome:** use a simple default analysis map and offer optional satellite/hybrid geographic context. Provider choice, terms, request behavior, consent, storage and implementation remain unapproved.
+
+The following presentation details are proposed:
 
 - **Simple analysis map (default):** a restrained, provider-independent coordinate background suitable for reading GPS tracks, with scale and position cues but no unlicensed geographic feature data. It should render without contacting an external map provider. Any coastline or other geographic basemap feature requires a separately approved data license.
 - **Satellite imagery:** optional external imagery.
