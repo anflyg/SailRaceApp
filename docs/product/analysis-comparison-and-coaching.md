@@ -1,6 +1,6 @@
 # TackWise Analysis comparison and deterministic coaching
 
-**Status:** Product design proposal for review. This document adds no accepted architecture, privacy, security, retention, or legal decision. It authorizes no implementation or data sharing.
+**Status:** Product outcomes below are explicitly agreed by the product owner. The technical, metric, sequencing, provider, sharing, privacy, security, retention and implementation details remain proposals for review. This document changes no accepted architecture or ADR and authorizes no implementation, provider enablement or data sharing.
 
 ## Purpose
 
@@ -8,17 +8,23 @@ TackWise Analysis is the post-race environment for understanding performance and
 
 TackWise Race remains offline-first. Comparisons are post-race functions and must not become dependencies for race-critical use.
 
-## Approved product goals from current documentation
+## Product outcomes explicitly agreed by the owner
 
-The following goals are already present in current product and suite documentation:
+The owner has agreed to these TackWise Analysis product outcomes:
 
-- Help a sailor understand what happened, where performance was gained or lost, and what may be improved.
-- Provide post-race track, replay, speed/VMG, manoeuvre, start, leg, upwind/downwind and mark-approach analysis progressively.
-- Support race-to-race comparison and long-term development.
-- Keep raw race files private, require owner authorization, and provide paths for race deletion, data export and account deletion.
-- Treat race GPS/location data as personal data. Keep the iPhone race experience useful offline.
+- Compare laps and legs within one race.
+- Compare a sailor's own races and development over time.
+- Provide deterministic, reproducible explanations and practice-oriented insights.
+- Offer optional satellite/hybrid geographic context with a simple default background.
+- Support opt-in comparison groups with multiple friends in the future.
 
-These approved directions do not settle the metric definitions, alignment rules, insight rules, or architecture described below.
+These are agreements about product outcomes. They do not approve the metric formulas, comparison fairness, thresholds, sequencing, analytics versions, map provider or terms, storage, consent/grant model, cross-user authorization, GDPR/CRA/security design or implementation. Future comparison groups remain a product direction only; sharing permissions and architecture require separate review.
+
+Existing suite constraints continue to apply: race GPS/location data is personal data, raw race files remain private, each user-owned race requires owner authorization, and race-critical iPhone use remains offline-first. This proposal does not change those decisions.
+
+## Proposed technical, metric and privacy design
+
+All design details below remain proposed for review. In particular, do not describe comparisons as fair or equivalent until the segment boundaries, inclusion windows and metric definitions are reviewed and fixed.
 
 ## Proposed functional priorities
 
@@ -32,6 +38,8 @@ These are proposed sequencing priorities for product review; they do not change 
 
 ## Proposed comparison semantics
 
+Comparison is an agreed product outcome; the following alignment and eligibility rules are proposals. Until segment boundaries and metric definitions are reviewed, no result should imply a fair lap, leg or race comparison.
+
 ### Lap and leg comparisons within one race
 
 - Use recorded or explicitly validated segment boundaries. A lap or leg must not be inferred solely from visual proximity or an undocumented heuristic.
@@ -44,6 +52,8 @@ These are proposed sequencing priorities for product review; they do not change 
 
 ### Historical comparison of one sailor's own races
 
+**Existing analysis-v1 limitation:** current speed/VMG averages are arithmetic means of available samples, so samples are weighted by sample count rather than elapsed time or distance. Race-level duration/distance aggregates may include recorded pre-start samples; their scope is not guaranteed to begin at the start signal. These values therefore do not by themselves support fair per-lap, per-leg, start-to-finish or historical performance comparisons. Review and specify segment boundaries, sample inclusion and metric definitions before making such comparisons. Do not silently recompute existing analysis-v1 values; a changed definition requires an explicitly versioned analysis.
+
 - Default comparisons are between races owned by the authenticated sailor. Display race date/context from approved metadata, not guessed venue, event, boat or course titles.
 - Grouping should require known compatible context. Course/route similarity, race type, boat setup, wind regime and analysis version may be useful filters, but their definitions and availability are open decisions.
 - When context differs or is unknown, label the comparison as a broad historical reference rather than an equivalent-race comparison.
@@ -55,7 +65,7 @@ These are proposed sequencing priorities for product review; they do not change 
 
 Metric names and sign conventions must be visible in the interface and consistent across charts, tables and insights.
 
-- **Windward/leeward VMG:** propose defining ground-velocity VMG as the GPS-derived velocity component along the selected wind axis. For a wind-from bearing, windward progress is the component into the wind and leeward progress is the component downwind. Display signed values and units; zero or negative values are valid and must remain visible.
+- **Windward/leeward VMG:** propose defining signed, ground-velocity VMG from the GPS-derived velocity component along the selected wind axis. For a wind-from bearing, positive VMG is windward (into the wind) and negative VMG is leeward (downwind). Upwind performance seeks a greater positive value; downwind performance seeks a greater magnitude (a more negative value), not the numerically highest signed value. Zero and negative values are valid and must remain visible. State the sign convention and wind reference alongside every value.
 - **Mark-directed VMC:** propose defining velocity made good to a mark as the ground-velocity component along the bearing from the boat position toward an explicitly recorded and valid mark. Positive means closing along that bearing; negative means moving away along it. Identify which mark and bearing were used, and show when no valid mark geometry exists.
 - VMG and VMC answer different questions. VMG uses the wind axis; VMC uses a mark-directed axis. Do not label one as the other or compare their values as though they shared a reference.
 - A mark, gate, course line or wind direction must come from recorded, user-confirmed or otherwise validated data with provenance. Never invent course marks, locations or start-line geometry.
@@ -142,6 +152,8 @@ The background is visual context. It is never a nautical chart, a source of navi
 - Allow a user to select a geographic section and compare the portions of multiple laps that cross it, using the same section bounds, projection and scale. State the selection rule, segment time range, sample coverage and whether the comparison follows spatial position or lap progress. A map selection does not create a course mark or imply tactical equivalence.
 - Keep basemap requests separate from race-result requests. Do not include account IDs, race IDs, timestamps, raw track samples, replay position or other race payload in provider requests, URL parameters, referrers, analytics or provider logs. Do not send a raw GPS track to a basemap provider.
 - Before any external provider request, show the provider identity and a clear notice that the visible map area and ordinary network metadata (such as IP address) may be disclosed. Require the user's explicit opt-in after that notice; only then may the browser load that provider's script, style or tiles. The choice can be declined and withdrawn. The provider-free simple map remains usable without that choice.
+- A satellite/hybrid provider receives view requests that disclose geographic viewport/tile bounds and ordinary network metadata. Camera behavior can reveal more than the initially selected view: auto-fit to a race or lap can disclose its geographic extent; section selection/zoom can disclose a smaller location; auto-follow/recentering during replay can disclose a sequence of viewed areas that may reveal part or much of the track over time. Not uploading the raw polyline does not prevent this indirect disclosure.
+- Before a later design permits such requests, its just-in-time notice must describe which selected race/lap/section and camera modes can affect provider requests, that viewport sequences can reveal race geography, the provider and network metadata involved, and what the provider may retain. Require an explicit user choice for the provider and disclose whether auto-fit or replay auto-follow will run. Whether camera movement is user-driven, fixed/coarsened, or requires a separate per-session opt-in remains unapproved. No provider request occurs before the relevant choice; withdrawing cannot retract requests already sent.
 - Provider choice may be scoped to the current view/session until a reviewed preference-storage decision exists. Do not persist viewed locations as a side effect of remembering the visual preference.
 
 ### Optional distance-to-shore and environmental context
