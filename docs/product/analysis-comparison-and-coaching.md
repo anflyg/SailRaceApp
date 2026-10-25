@@ -127,7 +127,7 @@ Do not add a personal-data category or collect more precise location, continuous
 
 Offer map backgrounds as an optional post-race analysis preference:
 
-- **Simple analysis map (default):** a restrained, provider-independent background suitable for reading GPS tracks. It should render without contacting an external map provider.
+- **Simple analysis map (default):** a restrained, provider-independent coordinate background suitable for reading GPS tracks, with scale and position cues but no unlicensed geographic feature data. It should render without contacting an external map provider. Any coastline or other geographic basemap feature requires a separately approved data license.
 - **Satellite imagery:** optional external imagery.
 - **Hybrid imagery:** optional imagery with provider-supplied labels/features, subject to the provider's terms and required attribution.
 - **3D terrain:** a possible future mode only. No provider, dataset, SDK, license or delivery date is selected.
@@ -141,7 +141,7 @@ The background is visual context. It is never a nautical chart, a source of navi
 - Synchronize replay to the recorded timestamps and show the position at the current replay time from the validated source sample. If a display interpolation is later proposed for irregular intervals, identify it as an interpolated display position and leave the underlying sample/metric unchanged.
 - Allow a user to select a geographic section and compare the portions of multiple laps that cross it, using the same section bounds, projection and scale. State the selection rule, segment time range, sample coverage and whether the comparison follows spatial position or lap progress. A map selection does not create a course mark or imply tactical equivalence.
 - Keep basemap requests separate from race-result requests. Do not include account IDs, race IDs, timestamps, raw track samples, replay position or other race payload in provider requests, URL parameters, referrers, analytics or provider logs. Do not send a raw GPS track to a basemap provider.
-- The browser must not load external provider scripts, styles or tiles until the user explicitly selects that provider-backed background and receives a clear notice that the visible map area and ordinary network metadata (such as IP address) may be disclosed to the provider. The choice is opt-in, can be declined, and can be withdrawn. The provider-free simple map remains usable without that choice.
+- Before any external provider request, show the provider identity and a clear notice that the visible map area and ordinary network metadata (such as IP address) may be disclosed. Require the user's explicit opt-in after that notice; only then may the browser load that provider's script, style or tiles. The choice can be declined and withdrawn. The provider-free simple map remains usable without that choice.
 - Provider choice may be scoped to the current view/session until a reviewed preference-storage decision exists. Do not persist viewed locations as a side effect of remembering the visual preference.
 
 ### Optional distance-to-shore and environmental context
