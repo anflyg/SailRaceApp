@@ -80,7 +80,7 @@ The phone computes SHA-256 over the exact gzip artifact bytes and persists those
 
 Upload/sync must be idempotent:
 - retrying the same race must not create duplicate race records,
-- the immutable race UUID is the idempotency identity,
+- the immutable server-issued cloud race UUID is the upload idempotency identity; the phone's local race ID remains separate,
 - conflicting content for an existing race UUID must be rejected or explicitly handled as a version/migration case.
 
 ## Access model
@@ -89,8 +89,8 @@ R2 is private.
 
 Clients must not receive permanent R2 credentials.
 
-The first flow is the authenticated Worker-mediated prepare/content/finalize protocol in ADR-003:
-1. prepare reserves the client race UUID and expected immutable object description,
+The cloud race UUID is first returned by the authenticated, idempotent server creation flow in ADR-003. The first upload flow is then the Worker-mediated prepare/content/finalize protocol:
+1. prepare reserves the previously issued cloud race UUID and expected immutable object description; it cannot create an identity or gate,
 2. the bounded gzip body is authenticated, hashed, decompressed with a hard ceiling, schema-validated, and written through the private Worker R2 binding,
 3. finalize first returns a matching accepted race idempotently; otherwise it verifies object presence and invokes the atomic PostgreSQL acceptance operation,
 4. analysis may read the object only after an accepted race row exists.

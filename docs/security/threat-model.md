@@ -41,7 +41,7 @@
 - server-side ownership checks for service-role operations,
 - object access issued only after authenticated ownership validation,
 - no trust in client-supplied `user_id`.
-- globally reserved race UUIDs scoped to the validated user at every upload phase,
+- server-issued cloud race UUIDs (separate from local IDs), scoped to the validated user at every phase; only the authenticated creation flow may issue IDs, and incoming UUIDs never provision or reopen gates,
 - server-derived R2 keys; race UUID or object-key knowledge never grants access.
 
 ### Exposure of GPS/location data
@@ -66,7 +66,8 @@
 - no custom password database,
 - tokens/secrets never logged,
 - secrets kept out of client bundles and source control,
-- normal session expiry/logout behavior tested.
+- normal session expiry/logout behavior tested,
+- account admission checked transactionally on every protected operation; an older but valid JWT does not bypass account closure or provision a missing gate.
 
 ### Service-role or infrastructure secret leakage
 
