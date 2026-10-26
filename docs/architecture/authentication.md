@@ -118,11 +118,12 @@ only. There is no token-bearing diagnostics UI or SDK debug logger.
    Keep other end-user login providers disabled, matching the Apple-only decision. Confirm repeated
    sign-in/Hide My Email resolve to the same Supabase UUID and the existing
    account lifecycle trigger behavior. Do not derive identity from email.
-2. Under separate approval, enable Sign in with Apple for the existing Apple App
-   ID, add the `com.apple.developer.applesignin = [Default]` entitlement to the
-   signed app and matching provisioning profile. This PR does not change App IDs,
-   capabilities, signing profiles or developer/project configuration. The unsigned
-   app compiles without these; live Apple sign-in does not work until configured.
+2. The app target now references `App/App.entitlements` in both Debug and Release,
+   requesting only `com.apple.developer.applesignin = [Default]`. The existing
+   Bundle ID (`com.anflyg.sailraceapp`), Team ID and automatic signing are unchanged.
+   An authorized Apple Developer operator must confirm Sign in with Apple is
+   enabled for that existing App ID and the matching provisioning profile.
+   The source entitlement alone does not prove signed capability or live sign-in.
 3. Supply only the approved project's public values through untracked `.env.local`:
    `VITE_SUPABASE_URL` (exact HTTPS origin, no trailing slash/path) and
    `VITE_SUPABASE_PUBLISHABLE_KEY` (publishable key or legacy anon key). Both are
@@ -130,6 +131,9 @@ only. There is no token-bearing diagnostics UI or SDK debug logger.
    endpoints are committed. Web stays disabled even with these values. Native-only
    ID-token sign-in needs no app-shipped Apple private key or OAuth client secret;
    separate web OAuth/Services ID setup remains a separate task.
+   For Xcode Cloud, supply these same two public build variables in its workflow
+   environment before the post-clone hook builds the web assets. Without them,
+   the optional account panel remains disabled even in a signed archive.
 4. Rebuild and synchronize iOS with the same public config; inspect the final bundle
    for privileged credentials and confirm bridge logging remains off. Run on a
    physical iPhone in the approved environment: success/cancel/repeat/Hide My Email,
@@ -143,6 +147,24 @@ only. There is no token-bearing diagnostics UI or SDK debug logger.
    PR #16 remain separate gates before any upload activation.
 
 ### Evidence and sources
+
+2026-10-26 main-first signing follow-up: the missing entitlement is now wired to
+both app configurations. Cloud checks passed: plist parsing confirmed the sole
+Apple entitlement and both configuration references with unchanged Bundle/Team
+IDs; the existing Auth/account-integration tests passed **46/46**; production
+TypeScript/Vite build, `cap sync ios` and `git diff --check` passed. Dependencies
+and generated SwiftPM files are unchanged. This implements the existing Apple
+decision without new scopes, storage, logging or cloud activation; it introduces
+no additional personal-data category or retention change.
+
+The remaining external handoff is one signed-device acceptance run: an authorized
+operator confirms the existing App ID/profile, approved Supabase native audience,
+nonce/email-optional settings and public build configuration, then installs the
+resulting Xcode Cloud build on the test iPhone and performs step 4 above. Record
+build/commit, safe pass/fail outcomes and UUID consistency without tokens or Apple
+identifiers. This Linux Cloud environment cannot run Xcode signing or the device
+test; no provider or physical-device success is claimed. Upload remains gated
+until authentication is verified and the separate synthetic-provider gates pass.
 
 Injected tests cover nonce tampering, real SDK token/refresh/user/logout requests,
 protected persistence, offline/restart, errors/revocation, refresh concurrency,
