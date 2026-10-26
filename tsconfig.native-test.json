@@ -1,0 +1,8 @@
+{
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "types": ["vite/client", "node"],
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.native-test.tsbuildinfo"
+  },
+  "include": ["native-test/**/*.ts", "native-test/**/*.tsx", "vite.native-test.config.ts"]
+}

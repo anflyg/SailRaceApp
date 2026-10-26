@@ -80,3 +80,32 @@ TackWise Race is the iPhone product in the TackWise sailing-instrument suite, bu
 - Implement screen wake lock and keep-awake behavior.
 - Wire real race recording and replay.
 - Add race data persistence and analysis graphs.
+
+## M2 post-race synchronization (synthetic only)
+
+In **Analysis → Library**, open **Synthetic sync test** to run the complete local
+mock Worker flow. It uses fixed fictional positions, separate private persistence
+and an explicit “no cloud upload” success label. Your recordings and accounts are
+not used. Real per-race sync controls remain disabled; no session or Worker URL is
+configured. Recording, local race IDs, export and analysis remain offline-first.
+
+Run `npm test -- --maxWorkers=1`, `npm run build` and `npm run sync:validation`.
+The browser check runs a local Vite server and Playwright Chromium only.
+[Client protocol, storage, recovery and real-integration gates](docs/architecture/m2-iphone-cloud-sync.md)
+include the existing native dependency advisories and physical-device checks.
+
+Dependency security baseline: Capacitor core/CLI/iOS are pinned together at 8.4.3.
+Use `npm ci` and `npx cap sync ios` after building; the tracked SwiftPM resolution
+must agree with npm. See [security and native-build evidence](docs/security/m2-dependency-remediation.md)
+for audit results, reproducible native commands and remaining device checks.
+
+## M2 native account layer (cloud uploads still disabled)
+
+Setup includes optional Swedish/English account controls. Native Apple sign-in,
+Supabase session refresh and Keychain persistence are implemented; browser sign-in
+and unconfigured builds stay disabled. `.env.auth.example` lists public-only
+configuration names, with no endpoints or secrets. Run the existing test/build/
+validation commands; `npx cap sync ios` includes the local Swift bridge. See
+[auth design and exact external/device prerequisites](docs/architecture/authentication.md)
+before configuring an approved test environment. No live Apple authentication is
+claimed; signing capabilities and external projects were not configured.

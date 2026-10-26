@@ -31,6 +31,7 @@ import {
   stopActiveRace,
 } from '../services/raceLogger'
 import { loadAppSettings, saveAppSettings } from '../services/appSettingsStorage'
+import { AccountPanel } from '../components/AccountPanel'
 import { LanguageProvider } from '../i18n/LanguageContext'
 import type { AppLanguage } from '../i18n/translations'
 import type {
@@ -431,6 +432,7 @@ export function AppShell() {
 
       <main className="app-panel">
         {activeViewContent}
+        {activeView === 'setup' && <AccountPanel />}
       </main>
     </div>
     </LanguageProvider>

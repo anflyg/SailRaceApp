@@ -1,3 +1,5 @@
+import { RaceSyncControl } from './RaceSyncControl'
+import type { RaceSyncCoordinator } from '../services/sync/coordinator'
 import type { Race, SailingDay } from '../types'
 import { useTranslation } from '../i18n/LanguageContext'
 
@@ -14,6 +16,7 @@ interface RaceLibraryProps {
   onRenameRace: (race: Race) => void
   onToggleFavorite: (race: Race) => void
   onExportRace: (race: Race) => Promise<void> | void
+  syncCoordinator?: RaceSyncCoordinator
   exportingRaceId?: string | null
 }
 
@@ -26,6 +29,7 @@ export function RaceLibrary({
   onToggleFavorite,
   onExportRace,
   exportingRaceId = null,
+  syncCoordinator,
 }: RaceLibraryProps) {
   const { language, t } = useTranslation()
   const raceCount = groups.reduce((count, group) => count + group.races.length, 0)
@@ -86,6 +90,7 @@ export function RaceLibrary({
                   </span>
                 </button>
 
+                <RaceSyncControl race={race} coordinator={syncCoordinator}/>
                 <div className="race-card-actions" aria-label={t('library.actionsFor', { name: race.name })}>
                   <button type="button" onClick={() => onToggleFavorite(race)}>
                     {race.isFavorite ? t('library.unfavorite') : t('library.favorite')}

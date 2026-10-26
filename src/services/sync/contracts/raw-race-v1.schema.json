@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tackwise.se/contracts/raw-race-v1.schema.json",
+  "title": "TackWise raw race v1",
+  "description": "Private immutable telemetry artifact; excludes personal identifiers other than opaque race UUID, credentials, analytics, and object keys.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["rawFormatVersion", "raceId", "recordingStartedAt", "endedAt", "samples"],
+  "properties": {
+    "rawFormatVersion": { "const": 1 },
+    "raceId": { "$ref": "#/$defs/uuid" },
+    "recordingStartedAt": { "$ref": "#/$defs/timestamp" },
+    "startGunAt": { "$ref": "#/$defs/timestamp" },
+    "endedAt": { "$ref": "#/$defs/timestamp" },
+    "course": { "$ref": "#/$defs/course" },
+    "samples": { "type": "array", "minItems": 1, "maxItems": 50000, "items": { "$ref": "#/$defs/sample" } },
+    "events": { "type": "array", "maxItems": 10000, "items": { "$ref": "#/$defs/laylineTackEvent" } }
+  },
+  "$defs": {
+    "uuid": { "type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$" },
+    "timestamp": { "type": "string", "maxLength": 30, "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-([0-2][0-9]|3[0-1])T([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](\\.[0-9]{1,9})?Z$" },
+    "latitude": { "type": "number", "minimum": -90, "maximum": 90 },
+    "longitude": { "type": "number", "minimum": -180, "maximum": 180 },
+    "degrees": { "type": "number", "minimum": 0, "exclusiveMaximum": 360 },
+    "nonNegative": { "type": "number", "minimum": 0 },
+    "point": {
+      "type": "object", "additionalProperties": false, "required": ["latitude", "longitude"],
+      "properties": { "latitude": { "$ref": "#/$defs/latitude" }, "longitude": { "$ref": "#/$defs/longitude" } }
+    },
+    "course": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "startLine": {
+          "type": "object", "additionalProperties": false, "required": ["port", "starboard"],
+          "properties": { "port": { "$ref": "#/$defs/point" }, "starboard": { "$ref": "#/$defs/point" } }
+        },
+        "windwardMark": { "$ref": "#/$defs/point" },
+        "leewardMark": { "$ref": "#/$defs/point" },
+        "windDirectionDegrees": { "$ref": "#/$defs/degrees" },
+        "courseAxisDegrees": { "$ref": "#/$defs/degrees" },
+        "marksEstimated": { "type": "boolean" }
+      }
+    },
+    "sample": {
+      "type": "object", "additionalProperties": false, "required": ["timestamp", "latitude", "longitude"],
+      "properties": {
+        "timestamp": { "$ref": "#/$defs/timestamp" }, "latitude": { "$ref": "#/$defs/latitude" }, "longitude": { "$ref": "#/$defs/longitude" },
+        "accuracy": { "$ref": "#/$defs/nonNegative" }, "speedKnots": { "$ref": "#/$defs/nonNegative" }, "nativeSpeedKnots": { "$ref": "#/$defs/nonNegative" }, "positionSpeedKnots": { "$ref": "#/$defs/nonNegative" }, "fusedSpeedKnots": { "$ref": "#/$defs/nonNegative" },
+        "cogDegrees": { "$ref": "#/$defs/degrees" }, "headingDegrees": { "$ref": "#/$defs/degrees" }, "nativeCourseDegrees": { "$ref": "#/$defs/degrees" }, "positionCourseDegrees": { "$ref": "#/$defs/degrees" }, "fusedCourseDegrees": { "$ref": "#/$defs/degrees" }, "windDirectionDegrees": { "$ref": "#/$defs/degrees" }
+      }
+    },
+    "laylineTackEvent": {
+      "type": "object", "additionalProperties": false,
+      "required": ["type", "timestamp", "latitude", "longitude", "alphaDegrees", "postTackHeadingDegrees", "laylineVariant", "target"],
+      "properties": {
+        "type": { "const": "layline-tack" }, "timestamp": { "$ref": "#/$defs/timestamp" }, "latitude": { "$ref": "#/$defs/latitude" }, "longitude": { "$ref": "#/$defs/longitude" }, "speedKnots": { "$ref": "#/$defs/nonNegative" }, "cogDegrees": { "$ref": "#/$defs/degrees" }, "alphaDegrees": { "$ref": "#/$defs/degrees" }, "postTackHeadingDegrees": { "$ref": "#/$defs/degrees" }, "laylineVariant": { "enum": ["plus-alpha", "minus-alpha"] }, "target": { "const": "K1" }
+      }
+    }
+  }
+}

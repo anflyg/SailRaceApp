@@ -18,16 +18,22 @@
     "cap:copy": "npx cap copy",
     "cap:sync": "npm run build && npx cap sync",
     "cap:sync:simulation": "npm run build:simulation && npx cap sync",
-    "cap:open:ios": "npx cap open ios"
+    "cap:open:ios": "npx cap open ios",
+    "sync:validation": "node scripts/run-sync-validation.mjs",
+    "sync:compatibility": "vitest run --config scripts/upload-compatibility.config.ts",
+    "build:native-test": "tsc -p tsconfig.native-test.json && vite build --config vite.native-test.config.ts --mode native-test",
+    "cap:copy:native-test": "npm run build:native-test && TACKWISE_NATIVE_TEST_BUILD=1 cap copy ios"
   },
   "dependencies": {
     "@capacitor-community/keep-awake": "^8.0.1",
-    "@capacitor/cli": "^8.3.3",
-    "@capacitor/core": "^8.3.3",
+    "@capacitor/cli": "8.4.3",
+    "@capacitor/core": "8.4.3",
     "@capacitor/filesystem": "^8.1.2",
     "@capacitor/geolocation": "^8.2.0",
-    "@capacitor/ios": "^8.3.3",
+    "@capacitor/ios": "8.4.3",
     "@capacitor/share": "^8.0.1",
+    "@supabase/auth-js": "2.118.0",
+    "ajv": "^8.18.0",
     "fflate": "^0.8.3",
     "react": "^19.2.5",
     "react-dom": "^19.2.5"
@@ -45,7 +51,7 @@
     "playwright": "^1.60.0",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.58.2",
-    "vite": "^8.0.10",
-    "vitest": "^4.0.7"
+    "vite": "^8.3.5",
+    "vitest": "^4.1.12"
   }
 }
