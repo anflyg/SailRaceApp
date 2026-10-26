@@ -43,6 +43,14 @@ TackWise Race is the iPhone product in the TackWise sailing-instrument suite, bu
 
 ## Notes
 
+- Xcode Cloud runs `ios/App/ci_scripts/ci_post_clone.sh` before Swift package
+  resolution. The executable hook installs Node 22 via Homebrew if needed,
+  installs locked npm dependencies (including build tools), builds the normal
+  production web assets and syncs Capacitor for iOS. Keep it beside
+  `App.xcodeproj`; the local Swift packages require `node_modules` on each fresh
+  checkout. It clears `TACKWISE_NATIVE_TEST_BUILD` and leaves the existing
+  Release/archive guard against synthetic native-test assets enabled.
+
 - Xcode krävs för iPhone/native-test, men webbläsartest fungerar med `npm run dev`.
 - Den här versionen är testbar i webbläsaren och använder React + TypeScript + Capacitor. Live GPS används i Setup, Bana, Start och Segling, och iOS använder Core Motion för vindmätning i Bana.
 - Appen innehåller fem huvudvyer: Setup, Bana, Start, Segling och Analys.
