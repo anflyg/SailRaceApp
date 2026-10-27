@@ -23,7 +23,7 @@ try {
   })
   await page.getByRole('button',{name:'Analys',exact:true}).click()
   assert.equal(await page.getByRole('button',{name:'Synkronisera',exact:true}).isDisabled(),true,'real sync must stay disabled')
-  await page.getByText('Molnsynk är avstängd.',{exact:false}).waitFor()
+  await page.getByText('Molnsynk är avstängd för inspelade race.',{exact:false}).waitFor()
   await page.getByRole('button',{name:'Öppna syntetiskt test',exact:true}).click()
   await page.getByRole('button',{name:'Synkronisera syntetiska data',exact:true}).click()
   await page.getByText('Syntetiskt test klart – ingen molnuppladdning',{exact:true}).waitFor()

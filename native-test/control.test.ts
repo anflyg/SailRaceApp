@@ -17,6 +17,27 @@ function fixture() {
   return { handle, create, control: new NativeTestControl(testConfig(env), create) }
 }
 describe('dedicated manual native test caller', () => {
+  it('runs the app upload button explicitly with the same checkpoint and no second sign-in', async () => {
+    const f = fixture()
+    expect(f.create).not.toHaveBeenCalled()
+    await f.control.upload()
+    expect(f.create).toHaveBeenCalledOnce()
+    expect(f.handle.account.signIn).not.toHaveBeenCalled()
+    expect(f.handle.sync).toHaveBeenCalledWith({ retry: true })
+    expect(JSON.stringify(f.control.snapshot())).not.toMatch(/PRIVATE|ownerId|accessToken/)
+    await f.control.upload()
+    expect(f.create).toHaveBeenCalledOnce()
+    expect(f.handle.sync).toHaveBeenLastCalledWith({ retry: true })
+  })
+  it('stops a delayed app preparation without restoring or sending an upload', async () => {
+    const f = fixture(), release = barrier()
+    vi.mocked(f.create).mockImplementationOnce(async () => { await release.promise; return f.handle as never })
+    const pending = f.control.upload()
+    f.control.stop(); release.release(); await pending
+    expect(f.handle.stop).toHaveBeenCalledOnce()
+    expect(f.handle.sync).not.toHaveBeenCalled()
+    expect(f.handle.account.restore).not.toHaveBeenCalled()
+  })
   it('does nothing on construction; config/approval must be supplied before manual preparation', async () => {
     const f = fixture(); expect(f.create).not.toHaveBeenCalled()
     const absent = new NativeTestControl(null, f.create)

@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import { Directory } from '@capacitor/filesystem'
 import { NativeAccountSession } from '../auth/session'
 import { AuthError, type AuthTokens, type StoredSession } from '../auth/types'
-import { createIsolatedNativeSync, type IsolatedNativeConfig, type IsolatedNativeRuntime } from './isolatedNative'
+import { createIsolatedNativeSync, existingWorkerOrigin, type IsolatedNativeConfig, type IsolatedNativeRuntime } from './isolatedNative'
 import { createMockWorker, syntheticOwner } from './mockWorker'
 import { digest, unbase64 } from './artifact'
 import { createSyncStore, nativePrivateFiles } from './storage'
@@ -53,6 +53,71 @@ function fixture() {
 }
 beforeEach(() => vi.stubGlobal('fetch', vi.fn(() => { throw new Error('network forbidden') })))
 afterEach(() => vi.unstubAllGlobals())
+const existingConfig: IsolatedNativeConfig = { ...config, purpose: 'synthetic-existing-backend', workerOrigin: existingWorkerOrigin, approvedWorkerOrigin: existingWorkerOrigin }
+function existingFixture() {
+  const f = fixture(), request = f.runtime.request
+  const probe = vi.fn(async () => ({ status: 401, headers: {}, data: JSON.stringify({ code: 'unauthorized', requestId: 'probe-request' }) }))
+  f.runtime.request = vi.fn(async options => options.headers?.Authorization ? request(options) : { ...await probe(), url: options.url })
+  return { ...f, probe, open: () => createIsolatedNativeSync(existingConfig, f.runtime) }
+}
+describe('fixed synthetic upload to the existing backend', () => {
+  it('checks admission without a bearer, uploads the same fixed race, and retains its accepted receipt', async () => {
+    const f = existingFixture(), handle = await f.open()
+    expect(f.runtime.request).not.toHaveBeenCalled()
+    await handle.account.restore()
+    const result = await handle.sync()
+    expect(result).toMatchObject({ status: 'accepted', mode: 'worker', ownerId: syntheticOwner })
+    expect(handle.label).not.toContain('NONPRODUCTION')
+    expect(f.probe).toHaveBeenCalledOnce()
+    expect(vi.mocked(f.runtime.request).mock.calls[0][0]).toMatchObject({ url: existingWorkerOrigin + '/v1/race-creation-intents', method: 'POST', headers: { 'Content-Type': 'application/json' }, data: '{}' })
+    expect(vi.mocked(f.runtime.request).mock.calls[0][0].headers?.Authorization).toBeUndefined()
+    expect(f.worker.requests).toHaveLength(5)
+    expect(await handle.sync({ retry: true })).toEqual(result)
+    expect(f.probe).toHaveBeenCalledOnce()
+    expect(f.worker.requests).toHaveLength(5)
+    expect(fetch).not.toHaveBeenCalled()
+  })
+  it('reports disabled uploads before creating any checkpoint, intent or R2 work', async () => {
+    const f = existingFixture(), handle = await f.open(); await handle.account.restore()
+    f.probe.mockResolvedValue({ status: 404, headers: {}, data: '{"error":"not_found"}' })
+    await expect(handle.sync()).rejects.toThrow('uploads_disabled')
+    expect(f.files.size).toBe(0); expect(f.worker.requests).toHaveLength(0)
+    // Once admitted, retry uses the existing protocol without uncertain issuance.
+    f.probe.mockResolvedValue({ status: 401, headers: {}, data: '{"code":"unauthorized","requestId":"probe"}' })
+    expect((await handle.sync({ retry: true })).status).toBe('accepted')
+  })
+  it.each([
+    [200, '{"code":"unauthorized","requestId":"probe"}'],
+    [401, '{"code":"unauthorized"}'], [401, '{"code":"other","requestId":"probe"}'],
+    [404, '{"error":"other"}'], [500, 'PRIVATE_PROVIDER_ERROR'], [401, 'x'.repeat(8193)],
+  ])('fails closed for unexpected probe response %s without persisting issuance', async (status, data) => {
+    const f = existingFixture(), handle = await f.open(); await handle.account.restore()
+    f.probe.mockResolvedValue({ status: Number(status), headers: {}, data: String(data) })
+    await expect(handle.sync()).rejects.toThrow('upstream_unavailable')
+    expect(f.files.size).toBe(0); expect(f.worker.requests).toHaveLength(0)
+  })
+  it.each(['stop', 'logout', 'switch'])('does not begin issuance after %s during admission', async action => {
+    const f = existingFixture(), handle = await f.open(); await handle.account.restore()
+    const entered = barrier(), release = barrier()
+    f.probe.mockImplementationOnce(async () => { entered.release(); await release.promise; return { status: 401, headers: {}, data: '{"code":"unauthorized","requestId":"probe"}' } })
+    const pending = handle.sync(); await entered.promise
+    if (action === 'stop') handle.stop()
+    else { await handle.account.logout(); if (action === 'switch') { f.switchOwner(); await handle.account.restore() } }
+    release.release()
+    await expect(pending).rejects.toThrow(action === 'stop' ? 'unauthorized' : 'account_changed')
+    expect(f.files.size).toBe(0); expect(f.worker.requests).toHaveLength(0)
+  })
+  it('requires the exact existing origin and does not probe while recording or offline', async () => {
+    const f = existingFixture()
+    await expect(createIsolatedNativeSync({ ...existingConfig, workerOrigin: config.workerOrigin, approvedWorkerOrigin: config.workerOrigin }, f.runtime)).rejects.toThrow('transport_unavailable')
+    const handle = await f.open(); await handle.account.restore()
+    f.state.active = 'recording'
+    await expect(handle.sync()).rejects.toThrow('recording_active')
+    f.state.active = null; f.state.online = false
+    await expect(handle.sync()).rejects.toThrow('offline')
+    expect(f.runtime.request).not.toHaveBeenCalled()
+  })
+})
 describe('explicit native nonproduction synthetic composition', () => {
   it.each([
     undefined, {}, { ...config, purpose: 'production' }, { ...config, workerOrigin: '' },
@@ -108,7 +173,7 @@ describe('explicit native nonproduction synthetic composition', () => {
     expect(f.worker.requests.some(r => r.path.endsWith('/finalize'))).toBe(false)
     if (action === 'switch') { await expect(test.sync()).rejects.toThrow('account_changed'); await expect(test.read()).rejects.toThrow('account_changed') }
     if (action === 'stop') {
-      expect(() => test.sync()).toThrow('unauthorized')
+      await expect(test.sync()).rejects.toThrow('unauthorized')
       f.intercept(undefined)
       expect((await (await f.open()).sync({ retry: true })).status).toBe('accepted')
     }

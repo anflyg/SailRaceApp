@@ -1,5 +1,50 @@
 # M6b — isolated native synthetic upload preparation
 
+## Delivery update — 2026-10-27
+
+The owner confirmed working Apple sign-in on a physical iPhone and explicitly
+directed this delivery to use the existing backend rather than provision another
+environment. The normal iOS library now calls this same composition with purpose
+`synthetic-existing-backend`, restricted to `https://api.tackwise.se` and the app's
+existing public Auth configuration/session. This is a fixed-fixture, explicit
+upload caller; it cannot select or read a user's recordings. The nonproduction
+purpose and dedicated Debug-only caller retain their previous restrictions.
+
+Before a new upload attempt, the existing-backend path sends an unauthenticated
+empty POST to `/v1/race-creation-intents`. The current API returns generic 404
+while disabled, or 401 before any issuance/DB/R2 access when enabled. Only the
+exact expected response shapes are admitted. Disabled/malformed/network outcomes
+do not create `issuancePending` or an artifact. Probe success is availability
+evidence only; actual requests still require verified session, owner gates,
+entitlement, HMAC, RLS and conditional private R2 storage. Stop/account changes
+during the probe prevent subsequent issuance. A known accepted receipt is reused
+without probing or reuploading.
+
+The shared manual controller is reused by the dedicated entry and iOS app; its
+one upload action prepares, restores the existing account if needed, and retries
+the same checkpoint without replacing uncertain/expired intents. Startup, render,
+reconnect and navigation never initiate uploads. Background/unmount stops later
+phases; already submitted server work can still finish. Safe localized status
+distinguishes disabled uploads, acceptance, and pending analysis. No token,
+owner UUID, raw GPS or provider body is exposed in status/logging.
+
+This adds no identity/storage architecture, new collected data category,
+retention policy, backend flag, secret or migration. Synthetic races remain
+account-linked personal data under the existing privacy/RLS/private-R2 rules.
+The test may consume one free-race allowance; the UI says so. The real provider
+receipt and subsequent Analysis result are still required for delivery 2/3.
+
+Cloud verification: **351/351 tests**, TypeScript/Vite production build and
+Capacitor iOS sync passed; generated native packages/dependencies are unchanged.
+Phone/tablet browser checks passed for the retained mock demo and the injected
+real-upload UI (disabled backend, same-handle retry, acceptance versus analysis,
+stop and zero external requests). These are local/injected checks, not a live
+provider upload or a new signed-device result. This Cloud session has no
+Cloudflare/Supabase operator credentials; production configuration was not changed.
+
+The preparation-only NO-GO statements below describe the earlier nonproduction
+work; they do not override this explicitly authorized existing-backend caller.
+
 **GO for local preparation/tests. NO-GO for provider testing now:** no isolated
 origins, public Auth configuration, signing setup, environment approval or
 physical-device evidence have been supplied. This PR makes no provider calls,

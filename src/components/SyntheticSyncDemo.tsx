@@ -1,10 +1,15 @@
-import { useState } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import { useTranslation } from '../i18n/LanguageContext'
 import { RaceSyncControl } from './RaceSyncControl'
 import type { RaceSyncCoordinator } from '../services/sync/coordinator'
 import { syntheticRace } from '../services/sync/syntheticRace'
-/** Separate fixed synthetic race; never passes local recordings into the mock. */
+import { Capacitor } from '@capacitor/core'
+const SyntheticCloudUpload = lazy(() => import('./SyntheticCloudUpload').then(module => ({ default: module.SyntheticCloudUpload })))
 export function SyntheticSyncDemo() {
+  return Capacitor.getPlatform() === 'ios' ? <Suspense fallback={null}><SyntheticCloudUpload /></Suspense> : <LocalSyntheticSyncDemo />
+}
+/** Separate fixed synthetic race; never passes local recordings into the mock. */
+function LocalSyntheticSyncDemo() {
   const {t}=useTranslation(),[coordinator,setCoordinator]=useState<RaceSyncCoordinator>(),[failed,setFailed]=useState(false)
   async function open() {
     try {
