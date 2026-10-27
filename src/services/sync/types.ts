@@ -1,6 +1,6 @@
 export const LIMITS = { compressedBytes: 5242880, expandedBytes: 20971520, samples: 50000, events: 10000 } as const
 export const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
-export type SyncErrorCode = 'invalid_request' | 'unauthorized' | 'cloud_access_unavailable' | 'upload_not_found' | 'race_conflict' | 'upload_expired' | 'payload_too_large' | 'unsupported_media_type' | 'invalid_race_payload' | 'rate_limited' | 'upstream_unavailable' | 'recording_active' | 'offline' | 'account_changed' | 'intent_expired' | 'issuance_uncertain' | 'artifact_missing' | 'storage_unavailable' | 'transport_unavailable'
+export type SyncErrorCode = 'uploads_disabled' | 'invalid_request' | 'unauthorized' | 'cloud_access_unavailable' | 'upload_not_found' | 'race_conflict' | 'upload_expired' | 'payload_too_large' | 'unsupported_media_type' | 'invalid_race_payload' | 'rate_limited' | 'upstream_unavailable' | 'recording_active' | 'offline' | 'account_changed' | 'intent_expired' | 'issuance_uncertain' | 'artifact_missing' | 'storage_unavailable' | 'transport_unavailable'
 export class SyncError extends Error {
   readonly code: SyncErrorCode
   readonly retryAfterMs: number

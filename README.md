@@ -109,6 +109,23 @@ for audit results, reproducible native commands and remaining device checks.
 
 ## M2 native account layer (cloud uploads still disabled)
 
+### Synthetic upload on iPhone
+
+Analysis → Library now offers **Synthetic cloud upload** on iOS. It uses the
+existing Apple/Supabase session and `https://api.tackwise.se`, sending only the
+fixed fictional race after an explicit tap. The same two public Auth build
+variables are sufficient; there is no new app credential or infrastructure.
+Recorded races stay outside this path. Browser builds retain the local mock demo.
+Retries preserve the existing private worker checkpoint, immutable gzip and cloud
+UUID. An accepted upload is reported separately from pending analysis.
+
+Before persisting an issuance attempt, a token-free request checks the backend's
+existing upload gate. A disabled route is shown as disabled without creating an
+intent/checkpoint; no automatic flag enablement or retry timer is installed.
+The backend still needs its existing HMAC, conditional R2 S3 and Supabase settings
+and upload gate. No Worker flags, secrets, SQL or deployment are changed here.
+The separate Debug-only `native-test` entry remains prohibited from distribution.
+
 Setup includes optional Swedish/English account controls. Native Apple sign-in,
 Supabase session refresh and Keychain persistence are implemented; browser sign-in
 and unconfigured builds stay disabled. `.env.auth.example` lists public-only

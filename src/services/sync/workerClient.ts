@@ -87,8 +87,8 @@ export class WorkerClient {
   }
 }
 
-/** Never instantiated by the shipped app. Requires future reviewed session +
- * exact nonproduction origin injection. No browser fallback or default URL. */
+/** Native-only transport with exact origin injection. Synthetic callers retain
+ * the existing session and fixed fixture; no browser fallback. */
 export function nativeWorkerTransport(origin:string, request:(options:HttpOptions)=>Promise<HttpResponse>=CapacitorHttp.request,
   platform:()=>string=()=>Capacitor.getPlatform()):WorkerTransport {
   let url:URL

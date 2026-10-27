@@ -2101,3 +2101,4 @@ button:focus-visible {
 .synthetic-sync-demo { border:1px solid #64748b; border-radius:0.7rem; padding:0.8rem; margin-bottom:1rem; }
 .synthetic-sync-demo p { font-size:0.9rem; line-height:1.4; }
 .synthetic-sync-demo button { min-height:44px; }
+.synthetic-upload-actions { display:flex; flex-wrap:wrap; gap:0.5rem; }
