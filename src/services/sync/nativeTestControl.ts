@@ -3,7 +3,7 @@ import { createIsolatedNativeSync, type IsolatedNativeConfig } from './isolatedN
 import { SyncError } from './types'
 
 type Handle = Awaited<ReturnType<typeof createIsolatedNativeSync>>
-export type Action = 'prepare' | 'restore' | 'signIn' | 'sync' | 'retry'
+export type Action = 'prepare' | 'restore' | 'signIn' | 'sync' | 'retry' | 'newTest'
 const codes = new Set(['invalid_request','unauthorized','cloud_access_unavailable','upload_not_found','race_conflict','upload_expired','payload_too_large','unsupported_media_type','invalid_race_payload','rate_limited','upstream_unavailable','recording_active','offline','account_changed','intent_expired','issuance_uncertain','artifact_missing','storage_unavailable','transport_unavailable','cancelled','unavailable','invalid_credentials','busy','stale_session','configuration_missing','uploads_disabled'])
 const safeCode = (code: unknown) => typeof code === 'string' && codes.has(code) ? code : 'unavailable'
 export class NativeTestControl {
@@ -47,6 +47,10 @@ export class NativeTestControl {
         await this.handle!.account[action]()
         if (generation !== this.generation) return
         this.publish({ status: this.handle!.account.snapshot().status === 'signed_in' ? 'Signed in' : 'Signed out' })
+      } else if (action === 'newTest') {
+        await this.handle!.newTest()
+        if (generation !== this.generation) return
+        this.publish({ status: 'New synthetic test prepared — not uploaded' })
       } else {
         const result = await this.handle!.sync(action === 'retry' ? { retry: true } : {})
         if (generation !== this.generation) return

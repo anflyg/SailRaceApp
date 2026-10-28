@@ -4,9 +4,11 @@ import { publicAuthConfig, type PublicAuthConfig } from '../auth/supabase'
 import type { AccountSession } from '../auth/types'
 import { getActiveRaceId } from '../raceLogger'
 import { RaceSyncCoordinator, type SyncOptions } from './coordinator'
+import { verifyArtifact } from './artifact'
 import { createSyncStore, localKey, nativePrivateFiles, type PrivateFiles } from './storage'
 import { syntheticRace } from './syntheticRace'
 import { SyncError } from './types'
+import { syntheticTestSelection } from './syntheticTestSelection'
 import { nativeWorkerTransport, WorkerClient } from './workerClient'
 
 export interface IsolatedNativeConfig {
@@ -37,6 +39,7 @@ const nativeRuntime: IsolatedNativeRuntime = {
 }
 
 export const existingWorkerOrigin = 'https://api.tackwise.se'
+const activeTests = new Set<string>()
 
 /** Fixed synthetic caller only; creation does no Auth,
  * filesystem or HTTP work. There is no user-race argument or automatic sync. */
@@ -55,23 +58,41 @@ export async function createIsolatedNativeSync(config: IsolatedNativeConfig, run
   if (!account) throw new SyncError('unauthorized')
   const race = structuredClone(syntheticRace)
   race.id = `isolated-native-v1-${await localKey(JSON.stringify([config.workerOrigin, auth.url]))}`
-  const store = createSyncStore(runtime.files(), 'worker')
+  const legacyId = race.id
+  const files = runtime.files()
+  const store = createSyncStore(files, 'worker')
+  const selection = syntheticTestSelection(files, `worker-${await localKey(`synthetic-selection-v1:${legacyId}`)}-state`, legacyId)
   let stopped = false
   const sessions = { async current(refresh = false) {
     if (stopped || !runtime.online()) return null
     const current = await account.current(refresh)
     return stopped || !runtime.online() ? null : current
   } }
+  const api = new WorkerClient(transport, sessions)
   const coordinator = new RaceSyncCoordinator({
-    store, api: new WorkerClient(transport, sessions), race: id => id === race.id ? race : null,
+    store, api, race: id => id === race.id ? race : null,
     activeRace: runtime.activeRace, online: runtime.online, now: runtime.now, sleep: runtime.sleep, random: runtime.random,
   })
   const live = () => { if (stopped) throw new SyncError('unauthorized') }
+  const select = async () => {
+    if (existingBackend) {
+      if (!runtime.online()) throw new SyncError('offline')
+      if (runtime.activeRace() !== null) throw new SyncError('recording_active')
+      race.id = await selection.current(await api.owner())
+    }
+    live()
+  }
+  const exclusive = async <T>(action: () => Promise<T>): Promise<T> => {
+    if (activeTests.has(legacyId)) throw new SyncError('race_conflict')
+    activeTests.add(legacyId)
+    try { return await action() } finally { activeTests.delete(legacyId) }
+  }
   return {
     label: existingBackend ? 'SYNTHETIC UPLOAD — EXISTING TACKWISE BACKEND' as const : 'SYNTHETIC NATIVE WORKER TEST — NONPRODUCTION' as const,
     account, // The same native singleton; no separate Auth credential store/provider.
-    sync: async (options: SyncOptions = {}) => {
+    sync: (options: SyncOptions = {}) => exclusive(async () => {
       live()
+      await select()
       if (existingBackend) {
         if (!runtime.online()) throw new SyncError('offline')
         if (runtime.activeRace() !== null) throw new SyncError('recording_active')
@@ -105,9 +126,36 @@ export async function createIsolatedNativeSync(config: IsolatedNativeConfig, run
       }
       live()
       return coordinator.sync(race.id, options)
-    },
-    read: () => { live(); return coordinator.read(race.id) },
-    removeLocalArtifact: () => { live(); return coordinator.removeLocalArtifact(race.id) },
+    }),
+    /** User explicitly starts a DISTINCT fixture test after authoritative prepare expiry.
+     * No old checkpoint/artifact, cloud UUID, lease or R2 state is changed. */
+    newTest: () => exclusive(async () => {
+      live()
+      if (!existingBackend) throw new SyncError('invalid_request')
+      await select()
+      if (!runtime.online()) throw new SyncError('offline')
+      if (runtime.activeRace() !== null) throw new SyncError('recording_active')
+      const owner = await api.owner()
+      const saved = await coordinator.read(race.id)
+      if (!saved?.cloudRaceId || saved.status === 'accepted' || saved.issuancePending) throw new SyncError('race_conflict')
+      const artifact = await store.artifact(race.id)
+      if (!artifact || artifact.cloudRaceId !== saved.cloudRaceId) throw new SyncError('artifact_missing')
+      await verifyArtifact(artifact, saved.cloudRaceId, saved.artifact)
+      // A content-route 410 can also mean a busy lease. Only a fresh prepare
+      // response can establish expiry; accepted, unknown and all other results stop.
+      try { await api.prepare(owner, artifact); throw new SyncError('race_conflict') }
+      catch (error) { if (!(error instanceof SyncError) || error.code !== 'upload_expired') throw error }
+      live()
+      if (!runtime.online()) throw new SyncError('offline')
+      if (runtime.activeRace() !== null) throw new SyncError('recording_active')
+      if (await api.owner() !== owner) throw new SyncError('account_changed')
+      live()
+      race.id = await selection.start(owner)
+      live()
+      // Selection only. The separate Upload button starts its first network work.
+    }),
+    read: async () => { live(); await select(); return coordinator.read(race.id) },
+    removeLocalArtifact: () => exclusive(async () => { live(); await select(); return coordinator.removeLocalArtifact(race.id) }),
     // Stops later phases/admission, not a submitted native HTTP request or server work.
     stop: () => { stopped = true },
   }

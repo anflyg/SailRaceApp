@@ -2,6 +2,9 @@ export type AppLanguage = 'sv' | 'en'
 
 export const translations = {
   sv: {
+    'cloud.expired': 'Testets uppladdningstid har gått ut. Tidigare testdata finns kvar.',
+    'cloud.newTest': 'Starta nytt syntetiskt test',
+    'cloud.newTestDescription': 'Starta ett separat test med fiktiva data. Det tidigare försöket bevaras. Tryck sedan på Ladda upp syntetiskt race.',
     'cloud.title': 'Syntetisk molnuppladdning',
     'cloud.description': 'Ladda upp ett fast fiktivt race till TackWise med ditt inloggade konto. Dina inspelade race används inte. Testet kan förbruka ett race i gratisutrymmet.',
     'cloud.ready': 'Redo för ett manuellt uppladdningsförsök',
@@ -69,6 +72,9 @@ export const translations = {
     'analysis.noStartTime': 'Ingen starttid beräknad', 'analysis.earlyRisk': 'tidig / risk för tjuvstart', 'analysis.late': 'sen', 'analysis.onLine': '0 s på linjen', 'analysis.startStatusOk': 'Tydlig linjepassage hittades i startfönstret.', 'analysis.startStatusUncertain': 'Passagen hittades, men sample-gap eller GPS accuracy gör resultatet osäkert.', 'analysis.startLineMissing': 'Startlinje saknas.', 'analysis.startGunMissing': 'Startskott saknas.', 'analysis.notEnoughSamples': 'För få datapunkter i startfönstret.', 'analysis.noCrossing': 'Ingen tydlig linjepassage hittades.',
   },
   en: {
+    'cloud.expired': 'The test upload has expired. Previous test data is retained.',
+    'cloud.newTest': 'Start new synthetic test',
+    'cloud.newTestDescription': 'Start a separate test with fictional data. The previous attempt is retained. Then press Upload synthetic race.',
     'cloud.title': 'Synthetic cloud upload',
     'cloud.description': 'Upload one fixed fictional race to TackWise with your signed-in account. Your recordings are never used. The test may consume one race from your free allowance.',
     'cloud.ready': 'Ready for a manual upload attempt',
