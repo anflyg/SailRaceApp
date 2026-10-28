@@ -1,5 +1,45 @@
 # M6b — isolated native synthetic upload preparation
 
+## Expired synthetic test — 2026-10-28
+
+The existing-backend iOS card now explains `upload_expired` and offers **Start
+new synthetic test**. This is a separate fixed-fixture test, not a reset/rebind
+of the previous local race. On this explicit action, the existing authenticated
+prepare route must return an exact `410 upload_expired` for the saved artifact.
+Accepted/prepared responses, content-route-only expiry, missing artifacts,
+unknown responses, account changes, active recording and stopped/offline handles
+do not authorize another test. No request issues a new intent during selection;
+the user must separately press Upload for the new test.
+
+The current test selection is persisted with an opaque local UUID and verified
+owner UUID through the existing native Library journal. It contains no token or
+provider payload. A missing selection uses the original fixed test association;
+corrupt or cross-owner selection fails closed. The previous checkpoint, immutable
+gzip, cloud UUID and all backend lease/fence/recovery evidence are retained.
+Concurrent sync/new-test actions are serialized per backend/project test scope.
+Normal retries, relaunch and acceptance reuse the selected test's same cloud
+UUID and artifact. There is no automatic replacement after a timeout, uncertain
+issuance or navigation, and no change to backend expiry or recovery authority.
+
+Live checks found an expired reservation with a stale content lease, no accepted
+race and no raw fence/operation. The earlier operator screenshot had a 31-character
+R2 account setting; the owner reported correcting it. This is configuration
+evidence, not proof of successful R2 storage. The abandoned attempt still needs
+the existing operator recovery/retention handling; this UI does not delete it.
+
+This adds only owner-bound local test-selection metadata to the existing native
+sync data category. GPS acquisition, real-race sync, backend flags/secrets,
+RLS/ownership, private R2 storage and free-race accounting are unchanged. A real
+provider acceptance receipt remains required before proceeding to Analysis.
+
+Cloud validation: **366/366 tests across 39 files**, TypeScript/Vite production
+build, Capacitor iOS sync and `git diff --check` passed. New regression cases
+exercise real native journal adapters with injected protocol responses: explicit
+expiry admission, retained old bytes/association, selection after restart,
+accepted/prepared/unknown rejection, account switch, stop and overlapping actions.
+The localized expiry UI/controller are covered. No new live upload, signed iPhone
+build or R2 acceptance is claimed by these local/injected checks.
+
 ## Delivery update — 2026-10-27
 
 The owner confirmed working Apple sign-in on a physical iPhone and explicitly

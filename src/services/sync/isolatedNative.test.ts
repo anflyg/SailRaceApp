@@ -61,6 +61,97 @@ function existingFixture() {
   return { ...f, probe, open: () => createIsolatedNativeSync(existingConfig, f.runtime) }
 }
 describe('fixed synthetic upload to the existing backend', () => {
+  async function expiredTest() {
+    const f = existingFixture(), handle = await f.open()
+    await handle.account.restore()
+    f.intercept(async (wire, next) => wire.path.endsWith('/content')
+      ? { status: 422, headers: {}, body: '{"code":"invalid_race_payload","requestId":"fixture"}' } : next())
+    const previous = await handle.sync()
+    const oldFiles = new Map(f.files)
+    f.intercept(async (wire, next) => wire.path === `/v1/races/${previous.cloudRaceId}/upload`
+      ? { status: 410, headers: {}, body: '{"code":"upload_expired","requestId":"fixture"}' } : next())
+    return { ...f, handle, previous, oldFiles }
+  }
+  it('starts a separate test only on explicit action after server-confirmed expiry; old evidence survives restart', async () => {
+    const f = await expiredTest(), calls = vi.mocked(f.runtime.request).mock.calls.length
+    await f.handle.newTest()
+    expect(vi.mocked(f.runtime.request).mock.calls).toHaveLength(calls + 1)
+    expect(vi.mocked(f.runtime.request).mock.calls.at(-1)![0].url).toBe(`${existingWorkerOrigin}/v1/races/${f.previous.cloudRaceId}/upload`)
+    expect(f.worker.intents.size).toBe(1)
+    for (const [path, text] of f.oldFiles) expect(f.files.get(path)).toBe(text)
+    f.handle.stop()
+    const restarted = await f.open()
+    expect(await restarted.read()).toBeNull()
+    const uploaded = await restarted.sync()
+    expect(uploaded.status).toBe('accepted')
+    expect(uploaded.cloudRaceId).not.toBe(f.previous.cloudRaceId)
+    expect(uploaded.localRaceId).toMatch(/^synthetic-test-/)
+    expect(f.worker.races.get(f.previous.cloudRaceId!)?.accepted).toBe(false)
+    expect(f.worker.intents.size).toBe(2)
+    const count = f.worker.requests.length
+    expect((await (await f.open()).sync()).cloudRaceId).toBe(uploaded.cloudRaceId)
+    expect(f.worker.requests).toHaveLength(count)
+    for (const [path, text] of f.oldFiles) expect(f.files.get(path)).toBe(text)
+    await expect(restarted.newTest()).rejects.toThrow('race_conflict')
+  })
+  it.each([400, 401, 403, 404, 409, 422, 503])('does not start another test after non-expiry or ambiguous prepare (%s)', async status => {
+    const f = await expiredTest()
+    f.intercept(async () => ({ status, headers: {}, body: '{"code":"upstream_unavailable","requestId":"fixture"}' }))
+    await expect(f.handle.newTest()).rejects.toThrow()
+    expect(f.files).toEqual(f.oldFiles)
+    expect(f.worker.intents.size).toBe(1)
+  })
+  it('does not replace a test whose reservation is still prepared, even after a content-route 410', async () => {
+    const f = await expiredTest()
+    f.intercept(async (wire, next) => wire.path.endsWith('/content')
+      ? { status: 410, headers: {}, body: '{"code":"upload_expired","requestId":"fixture"}' } : next())
+    await expect(f.handle.newTest()).rejects.toThrow('race_conflict')
+    expect(f.files).toEqual(f.oldFiles)
+  })
+  it('rejects corrupt selection instead of silently returning to an earlier test', async () => {
+    const f = await expiredTest()
+    await f.handle.newTest()
+    const selectionPath = [...f.files.keys()].find(path => !f.oldFiles.has(path))!
+    f.files.set(selectionPath, '{"version":1,"localRaceId":"bad"}')
+    await expect((await f.open()).sync()).rejects.toThrow('storage_unavailable')
+    expect(f.worker.intents.size).toBe(1)
+  })
+  it('fails closed for a missing saved artifact and for a remotely accepted old test', async () => {
+    const f = await expiredTest()
+    f.worker.races.get(f.previous.cloudRaceId!)!.accepted = true
+    f.intercept(undefined)
+    await expect(f.handle.newTest()).rejects.toThrow('race_conflict')
+    expect(f.files).toEqual(f.oldFiles)
+    f.worker.races.get(f.previous.cloudRaceId!)!.accepted = false
+    await f.handle.removeLocalArtifact()
+    const calls = vi.mocked(f.runtime.request).mock.calls.length
+    await expect(f.handle.newTest()).rejects.toThrow('artifact_missing')
+    expect(vi.mocked(f.runtime.request).mock.calls).toHaveLength(calls)
+    expect(f.worker.intents.size).toBe(1)
+  })
+  it('does not select a new test if the account changes while expiry is being checked', async () => {
+    const f = await expiredTest()
+    f.intercept(async () => {
+      f.switchOwner(); await f.account.restore()
+      return { status: 410, headers: {}, body: '{"code":"upload_expired","requestId":"fixture"}' }
+    })
+    await expect(f.handle.newTest()).rejects.toThrow('account_changed')
+    expect(f.files).toEqual(f.oldFiles)
+    expect(f.worker.intents.size).toBe(1)
+  })
+  it('retains selection ownership, rejects overlapping actions, and admits no new test after stop', async () => {
+    const f = await expiredTest(), wait = barrier()
+    f.intercept(async () => { await wait.promise; return { status: 410, headers: {}, body: '{"code":"upload_expired","requestId":"fixture"}' } })
+    const pending = f.handle.newTest()
+    await expect(f.handle.newTest()).rejects.toThrow('race_conflict')
+    f.handle.stop(); wait.release()
+    await expect(pending).rejects.toThrow('unauthorized')
+    expect(f.files).toEqual(f.oldFiles)
+    const fresh = await f.open(); await fresh.newTest()
+    f.switchOwner(); const otherHandle = await f.open(); await otherHandle.account.restore()
+    await expect(otherHandle.sync()).rejects.toThrow('account_changed')
+    expect(f.worker.intents.size).toBe(1)
+  })
   it('checks admission without a bearer, uploads the same fixed race, and retains its accepted receipt', async () => {
     const f = existingFixture(), handle = await f.open()
     expect(f.runtime.request).not.toHaveBeenCalled()

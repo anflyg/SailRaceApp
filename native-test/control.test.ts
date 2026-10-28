@@ -11,12 +11,25 @@ import { barrier } from '../src/services/sync/testSupport'
 const env = { VITE_NATIVE_TEST_APPROVAL: 'approved-synthetic-only', VITE_NATIVE_TEST_WORKER_ORIGIN: 'https://worker.synthetic.invalid', VITE_NATIVE_TEST_APPROVED_WORKER_ORIGIN: 'https://worker.synthetic.invalid', VITE_SUPABASE_URL: 'https://auth.synthetic.invalid', VITE_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_synthetic_public_only' }
 function fixture() {
   const account = { snapshot: () => ({ status: 'signed_in' as const, ownerId: 'PRIVATE_UUID' }), subscribe: vi.fn(), current: vi.fn(), restore: vi.fn(async () => {}), signIn: vi.fn(async () => {}), logout: vi.fn(async () => {}) }
-  const handle = { label: 'SYNTHETIC NATIVE WORKER TEST — NONPRODUCTION' as const, account, stop: vi.fn(), sync: vi.fn(async (_options?: unknown) => ({ status: 'accepted', ownerId: 'PRIVATE_UUID', accessToken: 'PRIVATE_TOKEN' })), read: vi.fn(), removeLocalArtifact: vi.fn() }
+  const handle = { label: 'SYNTHETIC NATIVE WORKER TEST — NONPRODUCTION' as const, account, stop: vi.fn(), sync: vi.fn(async (_options?: unknown) => ({ status: 'accepted', ownerId: 'PRIVATE_UUID', accessToken: 'PRIVATE_TOKEN' })), read: vi.fn(), removeLocalArtifact: vi.fn(), newTest: vi.fn(async () => {}) }
   // UI action stub only; transport, Auth and storage are exercised by existing M6b tests.
   const create = vi.fn(async () => handle) as unknown as typeof createIsolatedNativeSync
   return { handle, create, control: new NativeTestControl(testConfig(env), create) }
 }
 describe('dedicated manual native test caller', () => {
+  it('prepares a separate synthetic test only explicitly and requires another upload action', async () => {
+    const f = fixture()
+    await f.control.upload()
+    expect(f.handle.newTest).not.toHaveBeenCalled()
+    await f.control.run('newTest')
+    expect(f.handle.newTest).toHaveBeenCalledOnce()
+    expect(f.handle.sync).toHaveBeenCalledOnce()
+    expect(f.control.snapshot()).toMatchObject({ status: 'New synthetic test prepared — not uploaded', error: '', busy: false })
+    await f.control.upload()
+    expect(f.handle.sync).toHaveBeenCalledTimes(2)
+    expect(f.handle.sync).toHaveBeenLastCalledWith({ retry: true })
+  })
+
   it('runs the app upload button explicitly with the same checkpoint and no second sign-in', async () => {
     const f = fixture()
     expect(f.create).not.toHaveBeenCalled()

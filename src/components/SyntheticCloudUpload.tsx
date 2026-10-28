@@ -31,6 +31,7 @@ export function SyntheticCloudUpload({ control: injected }: { control?: NativeTe
   const accepted = state.status === 'Synthetic upload accepted — not analysis completion'
   const status = !control.configured ? 'account.unavailable' : state.busy ? 'sync.synchronizing'
     : state.error === 'uploads_disabled' ? 'cloud.disabled'
+    : state.error === 'upload_expired' ? 'cloud.expired'
     : state.error ? syncLabel(null, state.error as SyncErrorCode)
     : accepted ? 'cloud.accepted' : state.status === 'Signed out' ? 'sync.waitingSignIn'
     : state.status.startsWith('Stopped') ? 'cloud.stopped' : 'cloud.ready'
@@ -38,11 +39,14 @@ export function SyntheticCloudUpload({ control: injected }: { control?: NativeTe
     <strong>{t('cloud.title')}</strong>
     <p>{t('cloud.description')}</p>
     <p role="status" aria-live="polite">{t(status)}</p>
+    {state.error === 'upload_expired' && <p>{t('cloud.newTestDescription')}</p>}
     <div className="synthetic-upload-actions">
       <button type="button" disabled={!control.configured || state.busy || accepted}
         onClick={() => void control.upload()}>{t('cloud.upload')}</button>
       <button type="button" disabled={!state.prepared && !state.busy}
         onClick={control.stop}>{t('cloud.stop')}</button>
+      {state.error === 'upload_expired' && <button type="button" disabled={state.busy}
+        onClick={() => void control.run('newTest')}>{t('cloud.newTest')}</button>}
     </div>
     <p><small>{t('cloud.boundary')}</small></p>
   </aside>
