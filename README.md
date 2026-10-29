@@ -89,13 +89,23 @@ TackWise Race is the iPhone product in the TackWise sailing-instrument suite, bu
 - Wire real race recording and replay.
 - Add race data persistence and analysis graphs.
 
-## M2 post-race synchronization (synthetic only)
+## Recorded-race synchronization on iPhone
+
+The ordinary iPhone app now offers **Analysis → Library → Synchronize** for a
+completed local race, using the existing native Apple/Supabase account and private
+Worker upload flow. It requires the existing public Auth configuration and an
+authorized account/backend. Each upload is an explicit user action; recording,
+startup and reconnect never initiate it. Local recordings are retained on success
+and failure. No server flag is changed by the app. See the
+[implementation, installation and physical acceptance steps](docs/architecture/recorded-race-sync.md).
+
+### Independent synthetic demo
 
 In **Analysis → Library**, open **Synthetic sync test** to run the complete local
 mock Worker flow. It uses fixed fictional positions, separate private persistence
 and an explicit “no cloud upload” success label. Your recordings and accounts are
-not used. Real per-race sync controls remain disabled; no session or Worker URL is
-configured. Recording, local race IDs, export and analysis remain offline-first.
+not used. Browser builds keep real sync disabled. Recording, local race IDs,
+export and analysis remain offline-first.
 
 Run `npm test -- --maxWorkers=1`, `npm run build` and `npm run sync:validation`.
 The browser check runs a local Vite server and Playwright Chromium only.
@@ -107,7 +117,7 @@ Use `npm ci` and `npx cap sync ios` after building; the tracked SwiftPM resoluti
 must agree with npm. See [security and native-build evidence](docs/security/m2-dependency-remediation.md)
 for audit results, reproducible native commands and remaining device checks.
 
-## M2 native account layer (cloud uploads still disabled)
+## Native account and independent synthetic verification
 
 ### Synthetic upload on iPhone
 

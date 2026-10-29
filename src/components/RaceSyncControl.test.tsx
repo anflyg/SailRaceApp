@@ -5,6 +5,8 @@ import { translations } from '../i18n/translations'
 import { RaceSyncControl, syncLabel } from './RaceSyncControl'
 import { syntheticRace } from '../services/sync/syntheticRace'
 import type { SyncState } from '../services/sync/types'
+import type { RaceSyncCoordinator } from '../services/sync/coordinator'
+import type { AccountSession } from '../services/auth/types'
 const state:SyncState={version:1,mode:'mock',localRaceId:syntheticRace.id,ownerId:'10000000-0000-4000-8000-000000000071',status:'queued',step:'issue',attempts:0}
 describe('race library sync status and honest rollout boundary',()=>{
   it.each(['sv','en'] as const)('shows real sync disabled in %s',language=>{
@@ -23,5 +25,20 @@ describe('race library sync status and honest rollout boundary',()=>{
     for(const key of keys){expect(translations.sv[key]).toBeTruthy();expect(translations.en[key]).toBeTruthy()}
     expect(syncLabel(state,'invalid_race_payload')).toBe('sync.invalid')
     expect(syncLabel(state,'account_changed')).toBe('sync.manual')
+    expect(syncLabel(state,'uploads_disabled')).toBe('sync.uploadsDisabled')
+  })
+  it.each(['sv','en'] as const)('disables recording and signed-out controls and explains private upload in %s',language=>{
+    const coordinator={mode:'worker'} as RaceSyncCoordinator
+    const account:AccountSession={snapshot:()=>({status:'signed_out'}),subscribe:()=>()=>{},
+      current:async()=>null,restore:async()=>{},signIn:async()=>{},logout:async()=>{}}
+    const render=(props:Partial<Parameters<typeof RaceSyncControl>[0]>)=>renderToStaticMarkup(
+      <LanguageProvider language={language} setLanguage={()=>{}}><RaceSyncControl race={syntheticRace} coordinator={coordinator} {...props}/></LanguageProvider>)
+    expect(render({recordingActive:true})).toContain(translations[language]['sync.waitingRecording'])
+    expect(render({recordingActive:true})).toContain('disabled=""')
+    expect(render({account})).toContain(translations[language]['sync.signInHelp'])
+    expect(render({account})).toContain('disabled=""')
+    const ready=render({})
+    expect(ready).toContain(translations[language]['sync.privacy'])
+    expect(ready).not.toContain('disabled=""')
   })
 })

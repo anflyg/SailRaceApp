@@ -1,11 +1,9 @@
-import { Capacitor, CapacitorHttp, type HttpOptions, type HttpResponse } from '@capacitor/core'
-import { accountSession } from '../auth/native'
 import { publicAuthConfig, type PublicAuthConfig } from '../auth/supabase'
-import type { AccountSession } from '../auth/types'
-import { getActiveRaceId } from '../raceLogger'
 import { RaceSyncCoordinator, type SyncOptions } from './coordinator'
 import { verifyArtifact } from './artifact'
-import { createSyncStore, localKey, nativePrivateFiles, type PrivateFiles } from './storage'
+import { createSyncStore, localKey } from './storage'
+import { existingWorkerOrigin, nativeSyncRuntime, type NativeSyncRuntime } from './nativeRuntime'
+export { existingWorkerOrigin } from './nativeRuntime'
 import { syntheticRace } from './syntheticRace'
 import { SyncError } from './types'
 import { syntheticTestSelection } from './syntheticTestSelection'
@@ -18,32 +16,13 @@ export interface IsolatedNativeConfig {
   auth: PublicAuthConfig
 }
 /** Existing adapters are injectable for local tests, never selected by a runtime flag. */
-export interface IsolatedNativeRuntime {
-  platform(): string
-  configuredAuth(): PublicAuthConfig | null
-  account(): AccountSession | null
-  files(): PrivateFiles
-  request(options: HttpOptions): Promise<HttpResponse>
-  activeRace(): string | null
-  online(): boolean
-  now(): number
-  sleep(ms: number): Promise<void>
-  random(): number
-}
-const nativeRuntime: IsolatedNativeRuntime = {
-  platform: () => Capacitor.getPlatform(),
-  configuredAuth: () => publicAuthConfig(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY),
-  account: accountSession, files: nativePrivateFiles, request: options => CapacitorHttp.request(options),
-  activeRace: getActiveRaceId, online: () => navigator.onLine && document.visibilityState === 'visible',
-  now: Date.now, sleep: ms => new Promise(resolve => setTimeout(resolve, ms)), random: Math.random,
-}
+export type IsolatedNativeRuntime = NativeSyncRuntime
 
-export const existingWorkerOrigin = 'https://api.tackwise.se'
 const activeTests = new Set<string>()
 
 /** Fixed synthetic caller only; creation does no Auth,
  * filesystem or HTTP work. There is no user-race argument or automatic sync. */
-export async function createIsolatedNativeSync(config: IsolatedNativeConfig, runtime = nativeRuntime) {
+export async function createIsolatedNativeSync(config: IsolatedNativeConfig, runtime = nativeSyncRuntime) {
   const auth = publicAuthConfig(config?.auth?.url, config?.auth?.publishableKey)
   const configured = runtime.configuredAuth()
   const existingBackend = config?.purpose === 'synthetic-existing-backend'

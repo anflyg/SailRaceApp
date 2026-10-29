@@ -158,9 +158,9 @@ describe('PR #20 client → PR #49 API → authoritative upload contracts', () =
       expect(JSON.parse(last.body)).toEqual({ code, requestId: 'synthetic-request' })
     }
   })
-  it('characterizes the disabled backend gate envelope as a sanitized client failure', async () => {
+  it('recognizes only the exact disabled backend gate envelope', async () => {
     const h = harness(); h.dependencies.raceUploadsEnabled = false
-    await expect(h.api.issue(owner)).rejects.toThrow('upstream_unavailable')
+    await expect(h.api.issue(owner)).rejects.toThrow('uploads_disabled')
     expect(h.trace).toHaveLength(1)
     expect(h.trace[0].status).toBe(404)
     expect(JSON.parse(h.trace[0].body)).toEqual({ error: 'not_found' })
