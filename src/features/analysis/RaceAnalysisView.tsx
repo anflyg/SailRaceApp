@@ -1,5 +1,6 @@
 import { SyntheticSyncDemo } from '../../components/SyntheticSyncDemo'
 import type { RaceSyncCoordinator } from '../../services/sync/coordinator'
+import type { AccountSession } from '../../services/auth/types'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { RaceLibrary } from '../../components/RaceLibrary'
 import { RaceTrackMap } from '../../components/RaceTrackMap'
@@ -46,7 +47,9 @@ const analysisSections: Array<{ id: AnalysisSection; label: 'analysis.library' |
   { id: 'library', label: 'analysis.library' }, { id: 'overview', label: 'analysis.overview' }, { id: 'start', label: 'navigation.start' }, { id: 'graphs', label: 'analysis.graphs' }, { id: 'data', label: 'analysis.data' },
 ]
 
-export function RaceAnalysisView({ initialRaceId, initialRace, syncCoordinator }: { initialRaceId?: string; initialRace?: Race; syncCoordinator?: RaceSyncCoordinator } = {}) {
+export function RaceAnalysisView({ initialRaceId, initialRace, syncCoordinator, syncAccount, recordingActive = false }: {
+  initialRaceId?: string; initialRace?: Race; syncCoordinator?: RaceSyncCoordinator; syncAccount?: AccountSession; recordingActive?: boolean
+} = {}) {
   const { t } = useTranslation()
   const [groups, setGroups] = useState(() => loadRaceGroups(initialRaceId, initialRace))
   const [exportingRaceId, setExportingRaceId] = useState<string | null>(null)
@@ -222,6 +225,8 @@ export function RaceAnalysisView({ initialRaceId, initialRace, syncCoordinator }
           onExportRace={handleExportRace}
           exportingRaceId={exportingRaceId}
           syncCoordinator={syncCoordinator}
+          syncAccount={syncAccount}
+          recordingActive={recordingActive}
         />
         </>
       ) : isOverviewActive ? (

@@ -4,7 +4,7 @@ import { SetupView } from '../features/setup/SetupView'
 import { CourseSetupView } from '../features/course/CourseSetupView'
 import { StartTimerView } from '../features/timer/StartTimerView'
 import { RaceDashboardView } from '../features/race/RaceDashboardView'
-import { RaceAnalysisView } from '../features/analysis/RaceAnalysisView'
+import { RecordedRaceAnalysis } from '../features/analysis/RecordedRaceAnalysis'
 import { calculateRollPitchRelativeToCalibration } from '../domain/motion'
 import { getPointQuality } from '../domain/gps'
 import { calculateVelocityMadeGood, getCourseAxisHeading } from '../domain/navigation'
@@ -26,6 +26,7 @@ import { useLiveGps } from '../hooks/useLiveGps'
 import { useWakeLock } from '../hooks/useWakeLock'
 import {
   markStartGun,
+  getActiveRaceId,
   recordSampleIfDue,
   startRaceLogging,
   stopActiveRace,
@@ -418,7 +419,9 @@ export function AppShell() {
         manualLaylineCountdownValue={manualMode.enabled ? manualMode.laylineCountdownValue : null}
       />
     ),
-    analysis: <RaceAnalysisView initialRaceId={analysisValidationRace?.id ?? loggedRaceAnalysis?.race.id} initialRace={loggedRaceAnalysis?.race} />,
+    analysis: <RecordedRaceAnalysis enabled={!manualMode.enabled && !simulationMode.enabled}
+      recordingActive={getActiveRaceId() !== null}
+      initialRaceId={analysisValidationRace?.id ?? loggedRaceAnalysis?.race.id} initialRace={loggedRaceAnalysis?.race} />,
   }[activeView]
 
   return (

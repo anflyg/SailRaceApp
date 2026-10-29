@@ -1,5 +1,6 @@
 import { RaceSyncControl } from './RaceSyncControl'
 import type { RaceSyncCoordinator } from '../services/sync/coordinator'
+import type { AccountSession } from '../services/auth/types'
 import type { Race, SailingDay } from '../types'
 import { useTranslation } from '../i18n/LanguageContext'
 
@@ -17,6 +18,8 @@ interface RaceLibraryProps {
   onToggleFavorite: (race: Race) => void
   onExportRace: (race: Race) => Promise<void> | void
   syncCoordinator?: RaceSyncCoordinator
+  syncAccount?: AccountSession
+  recordingActive?: boolean
   exportingRaceId?: string | null
 }
 
@@ -30,6 +33,8 @@ export function RaceLibrary({
   onExportRace,
   exportingRaceId = null,
   syncCoordinator,
+  syncAccount,
+  recordingActive,
 }: RaceLibraryProps) {
   const { language, t } = useTranslation()
   const raceCount = groups.reduce((count, group) => count + group.races.length, 0)
@@ -90,7 +95,7 @@ export function RaceLibrary({
                   </span>
                 </button>
 
-                <RaceSyncControl race={race} coordinator={syncCoordinator}/>
+                <RaceSyncControl race={race} coordinator={syncCoordinator} account={syncAccount} recordingActive={recordingActive}/>
                 <div className="race-card-actions" aria-label={t('library.actionsFor', { name: race.name })}>
                   <button type="button" onClick={() => onToggleFavorite(race)}>
                     {race.isFavorite ? t('library.unfavorite') : t('library.favorite')}

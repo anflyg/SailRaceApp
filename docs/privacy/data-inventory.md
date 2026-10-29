@@ -54,6 +54,13 @@ The first raw cloud format contains only fields required to reproduce and analyz
 
 ## M2 client implementation boundary
 
+The [recorded-race integration](../architecture/recorded-race-sync.md) now connects
+the ordinary iPhone library to this same minimized raw-v1 upload and private retry
+storage, only after an explicit per-race action. It adds no personal-data fields,
+token store, automatic upload, retention rule or cloud-deletion claim. The earlier
+disabled statement below describes the original mock-backed implementation;
+physical file-protection/backup and cloud-deletion release evidence still applies.
+
 The mock-backed client adds private local sync checkpoints (local/owner/cloud ID,
 intent/expiry until mapped, artifact reference/digest/size, safe phase/retry/error
 and acceptance receipt) and a separate immutable gzip retry artifact. Native files

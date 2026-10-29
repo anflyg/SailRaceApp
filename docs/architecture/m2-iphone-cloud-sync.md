@@ -1,5 +1,9 @@
 # M2 iPhone cloud sync — mock-backed implementation
 
+**Current integration:** the ordinary iPhone library now reuses these components
+for explicit completed-recording sync. See [recorded-race sync](recorded-race-sync.md).
+The disabled/synthetic-only statements below describe the original M2 slice.
+
 This PR implements the post-race client slice with injected session/Worker
 boundaries. **Real sync stays disabled.** There is no default Worker URL, real
 session provider, credential, R2 client or privileged Supabase call. Local races,

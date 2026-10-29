@@ -116,6 +116,10 @@ export class RaceSyncCoordinator {
         await save();return state
       } catch(error) {
         const safe=error instanceof SyncError?error:new SyncError('upstream_unavailable')
+        if(state.issuancePending&&!state.intent&&!state.cloudRaceId&&safe.code==='uploads_disabled') {
+          state.issuancePending=false // Exact pre-issuance rejection, not an uncertain/lost response.
+          return fail(safe.code)
+        }
         if(state.issuancePending&&!state.intent&&!state.cloudRaceId)return fail('issuance_uncertain')
         state.attempts++
         if(!['upstream_unavailable','rate_limited','offline'].includes(safe.code))return fail(safe.code)

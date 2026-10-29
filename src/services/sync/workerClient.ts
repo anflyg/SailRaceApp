@@ -30,7 +30,7 @@ export class WorkerClient {
   private sessions: SessionProvider
   constructor(transport: WorkerTransport, sessions: SessionProvider) { this.mode=transport.mode;this.transport=transport;this.sessions=sessions }
   private async current(refresh=false):Promise<Session|null> {
-    try {return await this.sessions.current(refresh)} catch {throw new SyncError('upstream_unavailable')}
+    try {return await this.sessions.current(refresh)} catch(e) {if(e instanceof SyncError)throw e;throw new SyncError('upstream_unavailable')}
   }
   async owner(): Promise<string> {
     const s=await this.current();if(!s||!uuid.test(s.ownerId)||!s.accessToken)throw new SyncError('unauthorized');return s.ownerId
@@ -46,10 +46,18 @@ export class WorkerClient {
       try { response=await this.transport.request({path,method:binary?'PUT':'POST',body:data,
         headers:{Authorization:`Bearer ${session.accessToken}`,'Content-Type':binary?'application/gzip':'application/json',
           ...(binary?{'Content-Length':String((body as Uint8Array).length)}:{})}}) }
-      catch(e) { if(e instanceof SyncError && e.code==='transport_unavailable')throw e;throw new SyncError('upstream_unavailable') }
+      catch(e) { if(e instanceof SyncError && ['transport_unavailable','recording_active','offline'].includes(e.code))throw e;throw new SyncError('upstream_unavailable') }
       if(await this.owner()!==ownerId)throw new SyncError('account_changed')
       if(response.status===401&&refresh===0)continue
       if(response.status>=200&&response.status<300)return response
+      // The existing API's disabled gate runs before auth/intent issuance and has
+      // this exact bounded envelope. Other 404/error bodies remain fail-closed.
+      if(response.status===404 && response.body.length<=8192) {
+        try {
+          const disabled:unknown=JSON.parse(response.body)
+          if(record(disabled)&&Object.keys(disabled).join()==='error'&&disabled.error==='not_found')throw new SyncError('uploads_disabled')
+        } catch(e) {if(e instanceof SyncError)throw e}
+      }
       const v=json(response),code=String(v.code) as SyncErrorCode
       if(Object.keys(v).sort().join()!=='code,requestId'||!errors[response.status]?.includes(code))throw new SyncError('upstream_unavailable')
       const retry=Object.entries(response.headers).find(([k])=>k.toLowerCase()==='retry-after')?.[1]
