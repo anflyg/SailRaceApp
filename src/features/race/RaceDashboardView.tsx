@@ -8,6 +8,8 @@ import {
 import { useLaylineWarning } from './useLaylineWarning'
 import { playLaylineSignal, playLaylineTick } from '../../services/laylineAudio'
 import { recordLaylineTackEventIfActive } from '../../services/raceLogger'
+import { RecordingControl } from '../../components/RecordingControl'
+import type { TranslationKey } from '../../i18n/translations'
 import { useTranslation } from '../../i18n/LanguageContext'
 import type { CourseState, FilteredGpsReading, GeoPoint, RollPitchValues } from '../../types'
 
@@ -20,6 +22,9 @@ interface RaceDashboardViewProps {
   laylineEnabled: boolean
   laylineAlphaDegrees: number
   manualLaylineCountdownValue?: number | null
+  recordingActive?: boolean
+  recordingMessageKey?: TranslationKey | null
+  onStopRecording?: () => void
 }
 
 function getGpsPosition(gps: FilteredGpsReading): GeoPoint | null {
@@ -40,6 +45,9 @@ export function RaceDashboardView({
   laylineEnabled,
   laylineAlphaDegrees,
   manualLaylineCountdownValue = null,
+  recordingActive = false,
+  recordingMessageKey = null,
+  onStopRecording = () => {},
 }: RaceDashboardViewProps) {
   const { t } = useTranslation()
   const [activeVelocityMode, setActiveVelocityMode] = useState<VelocityMode>('vmc')
@@ -204,10 +212,14 @@ export function RaceDashboardView({
         </div>
       </div>
 
-      <div className="roll-pitch-strip" aria-label={t('sailing.rollPitch')}>
-        <span>R {rollPitch ? formatSignedDegrees(rollPitch.rollDegrees) : '—'}</span>
-        <span>S {rollPitch ? formatSignedDegrees(rollPitch.pitchDegrees) : '—'}</span>
-      </div>
+      {recordingActive || recordingMessageKey ? (
+        <RecordingControl active={recordingActive} messageKey={recordingMessageKey} onStop={onStopRecording} />
+      ) : (
+        <div className="roll-pitch-strip" aria-label={t('sailing.rollPitch')}>
+          <span>R {rollPitch ? formatSignedDegrees(rollPitch.rollDegrees) : '—'}</span>
+          <span>S {rollPitch ? formatSignedDegrees(rollPitch.pitchDegrees) : '—'}</span>
+        </div>
+      )}
     </section>
   )
 }

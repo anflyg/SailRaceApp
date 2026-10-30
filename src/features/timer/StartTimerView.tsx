@@ -21,9 +21,9 @@ interface StartTimerViewProps {
   gps: LiveGpsReading
   filteredGps: FilteredGpsReading
   onSelectedMinutesChange: (minutes: CountdownDuration) => void
-  onCountdownStart?: (durationSeconds: number) => void
+  onCountdownStart?: (durationSeconds: number) => boolean | void
   onStartGun?: () => void
-  onReset?: () => void
+  onReset?: () => boolean | void
   onRunningChange?: (isRunning: boolean) => void
   onFinish?: () => void
 }
@@ -117,8 +117,8 @@ export function StartTimerView({
 
     longPressRef.current = window.setTimeout(() => {
       longPressTriggered.current = true
+      if (onReset?.() === false) return
       onRunningChange?.(false)
-      onReset?.()
       startGunMarkedRef.current = false
       reset(selectedMinutes * 60)
     }, 500)
@@ -135,7 +135,7 @@ export function StartTimerView({
     if (!longPressTriggered.current) {
       if (status === 'stopped') {
         startGunMarkedRef.current = false
-        onCountdownStart?.(selectedMinutes * 60)
+        if (onCountdownStart?.(selectedMinutes * 60) === false) return
       }
 
       onRunningChange?.(status !== 'running')

@@ -821,6 +821,54 @@ button:focus-visible {
   font-variant-numeric: tabular-nums;
 }
 
+.recording-control {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 56px;
+  padding: 4px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 16px;
+  background: rgba(7, 31, 61, 0.94);
+  color: #fff;
+}
+
+.recording-control p {
+  margin: 0;
+  font-size: clamp(0.82rem, 3.2vw, 1rem);
+  font-weight: 850;
+  line-height: 1.2;
+}
+
+.recording-stop-button {
+  flex: 0 0 auto;
+  min-width: 150px;
+  min-height: 52px;
+  border: 2px solid #fff;
+  border-radius: 14px;
+  padding: 8px 12px;
+  background: #9b1c23;
+  color: #fff;
+  font-size: 0.96rem;
+  font-weight: 900;
+}
+
+.recording-stop-button:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 2px;
+}
+
+.recording-control-compact {
+  min-height: 0;
+  padding: 8px;
+}
+
+.recording-control-compact .recording-stop-button {
+  min-height: 48px;
+}
+
 .view-section.analysis-view {
   display: flex;
   min-height: 0;

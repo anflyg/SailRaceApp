@@ -6,7 +6,7 @@ import {
   startRaceLogging,
   stopActiveRace,
 } from './raceLogger'
-import { getRace, listRaces } from './raceStorage'
+import { createRace, getRace, listRaces } from './raceStorage'
 import { createRaceExportFiles } from './raceExport'
 
 class MockStorage implements Storage {
@@ -39,6 +39,60 @@ class MockStorage implements Storage {
 
 afterEach(() => {
   vi.unstubAllGlobals()
+})
+
+function stillGpsAt(timestamp: number) {
+  return {
+    status: 'watching' as const, error: null, latitude: 59.3, longitude: 18, accuracyMeters: 2,
+    speedKnots: 0.2, nativeSpeedKnots: 0.2, positionSpeedKnots: 0.2, fusedSpeedKnots: 0.2,
+    courseDegrees: 45, nativeCourseDegrees: 45, positionCourseDegrees: 45, fusedCourseDegrees: 45,
+    courseReliable: true, timestamp, displayCourseDegrees: 45, presentationTimestamp: timestamp, sampleCount: 1,
+  }
+}
+
+describe('active race stop lifecycle', () => {
+  it('starts a local race and lets a manual stop set endTime without changing samples or other saved races', () => {
+    const storage = new MockStorage()
+    vi.stubGlobal('localStorage', storage)
+    const previous = createRace({ date: '2026-10-13', name: 'Earlier race', endTime: '2026-10-13T11:00:00.000Z' })
+    const previousBefore = getRace(previous.id)
+    const started = startRaceLogging({ countdownDurationSeconds: 300, now: new Date('2026-10-14T07:00:00.000Z') })
+    expect(getActiveRaceId()).toBe(started.id)
+
+    recordSampleIfDue({ gps: stillGpsAt(Date.parse('2026-10-14T07:01:00.000Z')) })
+    const savedSamples = getRace(started.id)?.samples
+    const stopped = stopActiveRace({ now: new Date('2026-10-14T07:02:00.000Z') })
+
+    expect(stopped?.endTime).toBe('2026-10-14T07:02:00.000Z')
+    expect(stopped?.samples).toEqual(savedSamples)
+    expect(getActiveRaceId()).toBeNull()
+    expect(getRace(previous.id)).toEqual(previousBefore)
+    expect(storage.getItem('aster-race:race-logger:v1')).toContain('"activeRaceId":null')
+  })
+
+  it('restores the active race ID from local storage after the logger module is reloaded', async () => {
+    vi.stubGlobal('localStorage', new MockStorage())
+    const started = startRaceLogging({ countdownDurationSeconds: 300, now: new Date('2026-10-14T08:00:00.000Z') })
+
+    vi.resetModules()
+    const restartedLogger = await import('./raceLogger')
+    expect(restartedLogger.getActiveRaceId()).toBe(started.id)
+    restartedLogger.stopActiveRace({ now: new Date('2026-10-14T08:01:00.000Z') })
+  })
+
+  it('auto-stops after the existing stillness interval while preserving the final sample', () => {
+    vi.stubGlobal('localStorage', new MockStorage())
+    const started = startRaceLogging({ countdownDurationSeconds: 300, now: new Date('2026-10-14T09:00:00.000Z') })
+    recordSampleIfDue({ gps: stillGpsAt(Date.parse('2026-10-14T09:00:00.000Z')) })
+
+    const autoStopped = recordSampleIfDue({ gps: stillGpsAt(Date.parse('2026-10-14T09:10:00.000Z')) })
+
+    expect(autoStopped?.endTime).toBe('2026-10-14T09:10:00.000Z')
+    expect(autoStopped?.samples).toHaveLength(2)
+    expect(autoStopped?.samples.at(-1)?.timestamp).toBe('2026-10-14T09:10:00.000Z')
+    expect(getActiveRaceId()).toBeNull()
+    expect(getRace(started.id)?.samples).toEqual(autoStopped?.samples)
+  })
 })
 
 describe('recordLaylineTackEventIfActive', () => {

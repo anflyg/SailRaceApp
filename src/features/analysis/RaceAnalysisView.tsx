@@ -1,8 +1,9 @@
 import { SyntheticSyncDemo } from '../../components/SyntheticSyncDemo'
 import type { RaceSyncCoordinator } from '../../services/sync/coordinator'
 import type { AccountSession } from '../../services/auth/types'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { RaceLibrary } from '../../components/RaceLibrary'
+import { RecordingControl } from '../../components/RecordingControl'
 import { RaceTrackMap } from '../../components/RaceTrackMap'
 import { DEFAULT_RACE_MAP_PAN_OFFSET, type RaceMapPanOffset } from '../../components/raceTrackMapPan'
 import { useRaceReplay, type ReplaySpeed } from '../../hooks/useRaceReplay'
@@ -20,6 +21,7 @@ import {
   toggleFavorite,
 } from '../../services/raceStorage'
 import type { Race, SailingDay } from '../../types'
+import type { TranslationKey } from '../../i18n/translations'
 import { useTranslation } from '../../i18n/LanguageContext'
 import type { Translate } from '../../i18n/LanguageContext'
 
@@ -47,8 +49,9 @@ const analysisSections: Array<{ id: AnalysisSection; label: 'analysis.library' |
   { id: 'library', label: 'analysis.library' }, { id: 'overview', label: 'analysis.overview' }, { id: 'start', label: 'navigation.start' }, { id: 'graphs', label: 'analysis.graphs' }, { id: 'data', label: 'analysis.data' },
 ]
 
-export function RaceAnalysisView({ initialRaceId, initialRace, syncCoordinator, syncAccount, recordingActive = false }: {
+export function RaceAnalysisView({ initialRaceId, initialRace, syncCoordinator, syncAccount, recordingActive = false, recordingMessageKey = null, onStopRecording = () => {} }: {
   initialRaceId?: string; initialRace?: Race; syncCoordinator?: RaceSyncCoordinator; syncAccount?: AccountSession; recordingActive?: boolean
+  recordingMessageKey?: TranslationKey | null; onStopRecording?: () => void
 } = {}) {
   const { t } = useTranslation()
   const [groups, setGroups] = useState(() => loadRaceGroups(initialRaceId, initialRace))
@@ -59,6 +62,13 @@ export function RaceAnalysisView({ initialRaceId, initialRace, syncCoordinator, 
     ghostRaceId: null,
     currentReplayTime: 0,
   })
+  const wasRecordingActive = useRef(recordingActive)
+  useEffect(() => {
+    if (wasRecordingActive.current && !recordingActive) {
+      setGroups(loadRaceGroups())
+    }
+    wasRecordingActive.current = recordingActive
+  }, [recordingActive])
   useEffect(() => {
     if (!initialRaceId) return
     setGroups(loadRaceGroups(initialRaceId, initialRace))
@@ -197,6 +207,7 @@ export function RaceAnalysisView({ initialRaceId, initialRace, syncCoordinator, 
 
   return (
     <section className="view-section analysis-view">
+      <RecordingControl active={recordingActive} messageKey={recordingMessageKey} onStop={onStopRecording} compact />
       <div className="analysis-segmented-control" role="tablist" aria-label={t('analysis.tabs')}>
         {analysisSections.map((section) => (
           <button
