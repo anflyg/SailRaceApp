@@ -22,10 +22,21 @@ interface StartTimerViewProps {
   filteredGps: FilteredGpsReading
   onSelectedMinutesChange: (minutes: CountdownDuration) => void
   onCountdownStart?: (durationSeconds: number) => boolean | void
+  countdownBlockedMessageKey?: TranslationKey | null
   onStartGun?: () => void
   onReset?: () => boolean | void
   onRunningChange?: (isRunning: boolean) => void
   onFinish?: () => void
+}
+
+export function startCountdownIfAllowed(
+  durationSeconds: number,
+  onCountdownStart: StartTimerViewProps['onCountdownStart'],
+  startCountdown: () => void,
+): boolean {
+  if (onCountdownStart?.(durationSeconds) === false) return false
+  startCountdown()
+  return true
 }
 
 function getGpsPosition(gps: LiveGpsReading): GeoPoint | null {
@@ -66,6 +77,7 @@ export function StartTimerView({
   filteredGps,
   onSelectedMinutesChange,
   onCountdownStart,
+  countdownBlockedMessageKey = null,
   onStartGun,
   onReset,
   onRunningChange,
@@ -135,7 +147,11 @@ export function StartTimerView({
     if (!longPressTriggered.current) {
       if (status === 'stopped') {
         startGunMarkedRef.current = false
-        if (onCountdownStart?.(selectedMinutes * 60) === false) return
+        startCountdownIfAllowed(selectedMinutes * 60, onCountdownStart, () => {
+          onRunningChange?.(true)
+          toggle()
+        })
+        return
       }
 
       onRunningChange?.(status !== 'running')
@@ -209,6 +225,11 @@ export function StartTimerView({
         </div>
       ) : (
         <div className="button-grid timer-button-grid">
+          {countdownBlockedMessageKey ? (
+            <p className="countdown-blocked-status" role="status" aria-live="polite">
+              {t(countdownBlockedMessageKey)}
+            </p>
+          ) : null}
           {buttonSet.map((button) => (
             <button
               key={button.minutes}

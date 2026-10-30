@@ -467,6 +467,7 @@ export function AppShell() {
         filteredGps={filteredGps}
         onSelectedMinutesChange={setSelectedCountdownMinutes}
         onCountdownStart={handleCountdownStart}
+        countdownBlockedMessageKey={recordingMessageKey === 'recording.alreadyActive' ? recordingMessageKey : null}
         onStartGun={handleStartGun}
         onReset={handleTimerReset}
         onRunningChange={setIsStartTimerRunning}

@@ -212,8 +212,16 @@ export function RaceDashboardView({
         </div>
       </div>
 
-      {recordingActive || recordingMessageKey ? (
-        <RecordingControl active={recordingActive} messageKey={recordingMessageKey} onStop={onStopRecording} />
+      {recordingActive ? (
+        <div className="race-recording-footer">
+          <div className="roll-pitch-strip" aria-label={t('sailing.rollPitch')}>
+            <span>R {rollPitch ? formatSignedDegrees(rollPitch.rollDegrees) : '—'}</span>
+            <span>S {rollPitch ? formatSignedDegrees(rollPitch.pitchDegrees) : '—'}</span>
+          </div>
+          <RecordingControl active messageKey={null} onStop={onStopRecording} compact />
+        </div>
+      ) : recordingMessageKey ? (
+        <RecordingControl active={false} messageKey={recordingMessageKey} onStop={onStopRecording} />
       ) : (
         <div className="roll-pitch-strip" aria-label={t('sailing.rollPitch')}>
           <span>R {rollPitch ? formatSignedDegrees(rollPitch.rollDegrees) : '—'}</span>

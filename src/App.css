@@ -593,6 +593,20 @@ button:focus-visible {
   width: 100%;
 }
 
+.countdown-blocked-status {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--theme-red);
+  border-radius: 14px;
+  background: var(--theme-panel-muted);
+  color: var(--theme-text);
+  font-size: 0.95rem;
+  font-weight: 800;
+  line-height: 1.25;
+  text-align: center;
+}
+
 .start-run-panel {
   display: grid;
   flex: 1 1 auto;
@@ -867,6 +881,41 @@ button:focus-visible {
 
 .recording-control-compact .recording-stop-button {
   min-height: 48px;
+}
+
+.race-recording-footer {
+  display: grid;
+  flex: 0 0 auto;
+  grid-template-columns: minmax(82px, 0.45fr) minmax(0, 1fr);
+  align-items: stretch;
+  gap: 8px;
+}
+
+.race-recording-footer .roll-pitch-strip {
+  min-width: 0;
+  min-height: 56px;
+  gap: 8px;
+  padding: 6px 8px;
+  font-size: clamp(0.9rem, 3.8vw, 1.25rem);
+}
+
+.race-recording-footer .recording-control {
+  min-width: 0;
+  min-height: 56px;
+  gap: 6px;
+  padding: 2px 4px;
+}
+
+.race-recording-footer .recording-control p {
+  min-width: 0;
+  font-size: clamp(0.68rem, 2.7vw, 0.82rem);
+}
+
+.race-recording-footer .recording-stop-button {
+  min-width: min(150px, 58%);
+  min-height: 52px;
+  padding: 6px 8px;
+  font-size: clamp(0.76rem, 2.8vw, 0.9rem);
 }
 
 .view-section.analysis-view {
@@ -1789,6 +1838,18 @@ button:focus-visible {
     gap: 18px;
   }
 
+  .race-recording-footer .roll-pitch-strip {
+    min-height: 56px;
+    gap: 6px;
+    font-size: clamp(0.84rem, 3.8vw, 1.1rem);
+  }
+
+  .race-recording-footer .recording-stop-button {
+    min-height: 52px;
+    min-width: min(150px, 58%);
+    padding: 5px 6px;
+  }
+
   .metric-value-row {
     gap: 8px;
   }
@@ -1816,6 +1877,39 @@ button:focus-visible {
 
   .start-analysis-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 360px) {
+  .race-recording-footer {
+    grid-template-columns: minmax(78px, 0.42fr) minmax(0, 1fr);
+    gap: 6px;
+  }
+
+  .race-recording-footer .roll-pitch-strip {
+    gap: 4px;
+    padding-inline: 5px;
+    font-size: 0.82rem;
+  }
+
+  .race-recording-footer .recording-control {
+    flex-direction: column;
+    gap: 2px;
+    padding: 2px;
+  }
+
+  .race-recording-footer .recording-control p {
+    text-align: center;
+    font-size: 0.68rem;
+    line-height: 1;
+  }
+
+  .race-recording-footer .recording-stop-button {
+    width: 100%;
+    min-width: 0;
+    min-height: 48px;
+    padding: 4px 2px;
+    font-size: 0.78rem;
   }
 }
 
