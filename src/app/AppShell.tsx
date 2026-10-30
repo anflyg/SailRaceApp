@@ -33,8 +33,10 @@ import {
 } from '../services/raceLogger'
 import { loadAppSettings, saveAppSettings } from '../services/appSettingsStorage'
 import { AccountPanel } from '../components/AccountPanel'
+import { confirmRecordingStop } from '../components/RecordingControl'
 import { LanguageProvider } from '../i18n/LanguageContext'
 import type { AppLanguage } from '../i18n/translations'
+import { translations } from '../i18n/translations'
 import type {
   AppView,
   CountdownDuration,
@@ -147,6 +149,9 @@ export function AppShell() {
   ))
   const [selectedCountdownMinutes, setSelectedCountdownMinutes] = useState<CountdownDuration>(5)
   const [isStartTimerRunning, setIsStartTimerRunning] = useState(false)
+  const [activeRaceId, setActiveRaceId] = useState<string | null>(() => getActiveRaceId())
+  const [recordingMessageKey, setRecordingMessageKey] = useState<'recording.saved' | 'recording.alreadyActive' | null>(null)
+  const activeRaceIdRef = useRef(activeRaceId)
   const [courseGpsStatus, setCourseGpsStatus] = useState<string | null>(null)
   const [rollPitchCalibration, setRollPitchCalibration] = useState<RollPitchCalibration | null>(null)
   const [laylineEnabled, setLaylineEnabled] = useState(() => simulationLaylineSettings?.enabled ?? loadAppSettings().layline.enabled)
@@ -269,20 +274,78 @@ export function AppShell() {
   }, [])
 
   const handleCountdownStart = useCallback((durationSeconds: number) => {
-    startRaceLogging({
+    const currentRaceId = getActiveRaceId()
+    if (currentRaceId) {
+      activeRaceIdRef.current = currentRaceId
+      setActiveRaceId(currentRaceId)
+      setRecordingMessageKey('recording.alreadyActive')
+      return false
+    }
+
+    const race = startRaceLogging({
       countdownDurationSeconds: durationSeconds,
       course: courseDefinition,
       windMeasurement: course.windMeasurement,
     })
+    activeRaceIdRef.current = race.id
+    setActiveRaceId(race.id)
+    setRecordingMessageKey(null)
+    return true
   }, [course, courseDefinition])
 
   const handleStartGun = useCallback(() => {
     markStartGun()
   }, [])
 
-  const handleTimerReset = useCallback(() => {
-    stopActiveRace()
+  const refreshActiveRace = useCallback(() => {
+    const nextActiveRaceId = getActiveRaceId()
+    const previousActiveRaceId = activeRaceIdRef.current
+    activeRaceIdRef.current = nextActiveRaceId
+    setActiveRaceId(nextActiveRaceId)
+
+    if (previousActiveRaceId && !nextActiveRaceId) {
+      setRecordingMessageKey('recording.saved')
+    }
   }, [])
+
+  const handleStopRecording = useCallback(() => {
+    const stoppedRace = stopActiveRace()
+    refreshActiveRace()
+    if (stoppedRace) setRecordingMessageKey('recording.saved')
+  }, [refreshActiveRace])
+
+  const handleTimerReset = useCallback(() => {
+    if (getActiveRaceId() && !confirmRecordingStop(
+      translations[language]['recording.confirmStop'],
+      handleStopRecording,
+    )) {
+      return false
+    }
+    return true
+  }, [handleStopRecording, language])
+
+  useEffect(() => {
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') refreshActiveRace()
+    }
+    document.addEventListener('visibilitychange', refreshWhenVisible)
+    window.addEventListener('pageshow', refreshWhenVisible)
+    window.addEventListener('focus', refreshWhenVisible)
+
+    return () => {
+      document.removeEventListener('visibilitychange', refreshWhenVisible)
+      window.removeEventListener('pageshow', refreshWhenVisible)
+      window.removeEventListener('focus', refreshWhenVisible)
+    }
+  }, [refreshActiveRace])
+
+  useEffect(() => {
+    activeRaceIdRef.current = activeRaceId
+  }, [activeRaceId])
+
+  useEffect(() => {
+    refreshActiveRace()
+  }, [refreshActiveRace])
 
   useEffect(() => {
     if (manualMode.enabled || activeView === 'analysis') {
@@ -293,7 +356,8 @@ export function AppShell() {
       gps: filteredGps,
       course: courseDefinition,
     })
-  }, [activeView, courseDefinition, filteredGps, manualMode.enabled])
+    refreshActiveRace()
+  }, [activeView, courseDefinition, filteredGps, manualMode.enabled, refreshActiveRace])
 
   const getLiveGpsPosition = (): CoursePoint | null => {
     if (liveGps.latitude === null || liveGps.longitude === null) {
@@ -403,6 +467,7 @@ export function AppShell() {
         filteredGps={filteredGps}
         onSelectedMinutesChange={setSelectedCountdownMinutes}
         onCountdownStart={handleCountdownStart}
+        countdownBlockedMessageKey={recordingMessageKey === 'recording.alreadyActive' ? recordingMessageKey : null}
         onStartGun={handleStartGun}
         onReset={handleTimerReset}
         onRunningChange={setIsStartTimerRunning}
@@ -417,10 +482,15 @@ export function AppShell() {
         laylineEnabled={laylineEnabled}
         laylineAlphaDegrees={laylineAlphaDegrees}
         manualLaylineCountdownValue={manualMode.enabled ? manualMode.laylineCountdownValue : null}
+        recordingActive={activeRaceId !== null}
+        recordingMessageKey={recordingMessageKey}
+        onStopRecording={handleStopRecording}
       />
     ),
     analysis: <RecordedRaceAnalysis enabled={!manualMode.enabled && !simulationMode.enabled}
-      recordingActive={getActiveRaceId() !== null}
+      recordingActive={activeRaceId !== null}
+      recordingMessageKey={recordingMessageKey}
+      onStopRecording={handleStopRecording}
       initialRaceId={analysisValidationRace?.id ?? loggedRaceAnalysis?.race.id} initialRace={loggedRaceAnalysis?.race} />,
   }[activeView]
 

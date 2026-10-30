@@ -2,14 +2,15 @@ import { Capacitor } from '@capacitor/core'
 import { useEffect, useState } from 'react'
 import { RaceAnalysisView } from './RaceAnalysisView'
 import type { Race } from '../../types'
+import type { TranslationKey } from '../../i18n/translations'
 import type { createRecordedRaceSync } from '../../services/sync/recordedRaceSync'
 
 type Integration = ReturnType<typeof createRecordedRaceSync>
 
 /** Load validation/compression only when the library is opened on iPhone.
  * Neither mounting, returning online nor account changes initiate an upload. */
-export function RecordedRaceAnalysis({ enabled, recordingActive, initialRaceId, initialRace }: {
-  enabled: boolean; recordingActive: boolean; initialRaceId?: string; initialRace?: Race
+export function RecordedRaceAnalysis({ enabled, recordingActive, recordingMessageKey = null, onStopRecording, initialRaceId, initialRace }: {
+  enabled: boolean; recordingActive: boolean; recordingMessageKey?: TranslationKey | null; onStopRecording?: () => void; initialRaceId?: string; initialRace?: Race
 }) {
   const [integration, setIntegration] = useState<Integration>(null)
   useEffect(() => {
@@ -22,5 +23,6 @@ export function RecordedRaceAnalysis({ enabled, recordingActive, initialRaceId, 
   }, [enabled])
   return <RaceAnalysisView initialRaceId={initialRaceId} initialRace={initialRace}
     syncCoordinator={enabled ? integration?.coordinator : undefined}
-    syncAccount={enabled ? integration?.account : undefined} recordingActive={recordingActive} />
+    syncAccount={enabled ? integration?.account : undefined} recordingActive={recordingActive}
+    recordingMessageKey={recordingMessageKey} onStopRecording={onStopRecording} />
 }
