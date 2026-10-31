@@ -9,5 +9,6 @@ Current working documents:
 - `threat-model.md`
 - `vulnerability-policy.md`
 - `incident-response.md`
+- [ADR-007 verification register](adr-007-verification-register.md) — evidence status, recheck triggers and outstanding production-deletion blockers
 
 These documents are initial stubs and must evolve with the product.
