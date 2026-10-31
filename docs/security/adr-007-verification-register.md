@@ -60,3 +60,14 @@ The 2026-10-31 Cloudflare observations below were provided by the operator as sc
 - The authoritative decisions are [ADR-003](../architecture/decisions/adr-003-first-race-upload-and-sync.md), [ADR-005](../architecture/decisions/adr-005-analysis-result-v1-identity-and-storage.md), [ADR-006](../architecture/decisions/adr-006-cross-store-race-and-account-deletion.md), and proposed [ADR-007](../architecture/decisions/adr-007-deletion-resurrection-fencing.md).
 - The [2026-10-19 D5 audit](https://github.com/anflyg/tackwise-api/blob/28e0c59bcac4c1baf644a8367ca00a0c25502ead/docs/r2-write-path-security-audit-d5.md) has older pinned implementation baselines. Later D5c–D5e source, PR #57, and 2026-10-31 operator observations supersede stale descriptions; the old audit remains historical evidence.
 - Evidence in this public register deliberately contains no Secret values or private runtime journals. Unknowns remain explicit and do not become VERIFIED through repetition.
+
+## M6 local functional preparation — 2026-10-31
+
+Affected IDs: **TW-D5-006, TW-D5-010 remain OPEN for live functional proof**;
+this update supplies local evidence only, not provider execution or a recheck of
+permission/deployment snapshots. [M6 acceptance](../architecture/m6-functional-acceptance.md)
+records the pinned merged baselines, synthetic client/API compatibility, browser
+owner-detail/session/replay evidence and a single consolidated operator procedure.
+TW-D5-012/013 remains the broad-principal risk with a staged least-privilege plan;
+no credential change is authorized. TW-D5-018–022 retain their existing status.
+No live GPS was read, no upload/analysis was triggered and no gate was enabled.
