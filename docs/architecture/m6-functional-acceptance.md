@@ -139,3 +139,13 @@ A **direct, read-only Supabase provider query** on 2026-10-31, restricted to rac
 The query returned **no GPS bytes, personal identifiers, object keys, account IDs, bearer tokens or Secret values**, and made no database changes. No API owner-authenticated GET, private R2 GET/If-Match, browser GPS render, new Queue delivery or new upload was executed. Database metadata does **not** prove that the sealed object remains readable, that actual Worker CPU/isolate limits are satisfied, or that a correct alpha allowlist is deployed. Do not repeat these DB checks unless the race/configuration changes or new contradictory evidence appears.
 
 **Next bounded Run A gate:** review/record the temporary ADR-004 one-owner alpha decision and remaining privacy/security/resource prerequisites, verify current API/Pages deployments and the exact authenticated owner restriction, then obtain separate approval for any necessary production flag/Secret/build changes. Only afterward make one authenticated owner-read through the existing API/web UI; stop on any mismatch and use sanitized pass/fail observations. Run B (new physical recording and write) remains **separately gated**, even though the pre-existing test dataset is disposable.
+
+## Additional read-only private detail RPC privilege preflight — 2026-10-31
+
+An authenticated-API preflight examined the installed PostgreSQL function **metadata only**, not the race's private result or GPS:
+
+- `public.read_owner_analysis_detail(uuid,uuid)` exists in the connected Supabase project and is callable by `service_role` only among the API roles inspected; `anon`, `authenticated` and `PUBLIC` have no direct EXECUTE grant.
+- The function is `SECURITY DEFINER` with an explicit search path. Its owner is the dedicated `tackwise_analysis_reader` role, which is `NOLOGIN` and `NOBYPASSRLS` in the live provider catalog.
+- This matches the narrowly scoped intent of merged API migration 00028. It does **not** prove the deployed Worker's Auth, owner validation, R2 integrity, response allowlist/CORS, provider performance or alpha owner Secret/flag configuration.
+
+**Evidence surface:** read-only Supabase catalog/privilege query, 2026-10-31. No private user data, function execution, Secret values or production changes. Recheck only after migration/role-grant changes or contradictory evidence.
