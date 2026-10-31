@@ -18,7 +18,7 @@ The first production flow is an authenticated cloud-ID creation step followed by
 
 1. **Create cloud race:** in a dedicated authenticated, idempotent request, the server creates and returns a cloud race UUID. The phone retains its existing local race ID and stores the returned cloud ID separately. This request creates the only cloud identity eligible for synchronization.
 2. **Prepare:** reserve that server-issued cloud race UUID and immutable upload description without consuming entitlement.
-3. **Upload content:** send one bounded gzip object through the Worker. The Worker authenticates the user, validates ownership and the prepared description, validates the compressed and expanded payload, computes SHA-256, and writes the verified bytes through its private R2 binding.
+3. **Upload content:** send one bounded gzip object through the Worker. The Worker authenticates the user, validates ownership and the prepared description, validates the compressed and expanded payload, computes SHA-256, and writes the verified bytes to private R2.
 4. **Finalize:** verify the stored object and execute one authoritative PostgreSQL acceptance transaction. Only this step accepts the `races` row, consumes a free race where applicable, and makes the race eligible for analysis.
 
 ```text
@@ -38,6 +38,12 @@ This protocol is preferred over the alternatives for the first release:
 - A one-step Worker upload combines a large, failure-prone transfer with acceptance and makes recovery after a lost response harder.
 - A direct signed R2 upload saves Worker bandwidth but adds signing credentials/code, leak and expiry handling, and a more complex validation/finalization boundary. It does not by itself provide resumability. It may be reconsidered in a later ADR if measured payload size or cost requires it.
 - Multipart/resumable upload is deferred. With strict initial size limits, retrying the same immutable gzip object from the beginning is the smallest reliable mobile design.
+
+#### Raw R2 transport and conditional writes
+
+The Worker may access private Cloudflare R2 through a server-controlled S3 adapter instead of a direct Workers R2 binding. Raw object writes must use the registered guard/payload/seal protocol with conditional operations that preserve the original write conditions across retries. Unconditional PUTs and alternate write paths that bypass this protection are prohibited. Unknown provider outcomes remain unresolved and fail closed; they are never evidence that deletion is safe. Authentication, owner authorization, exact compressed and expanded payload validation, object identity, PostgreSQL acceptance, and private server-only credentials remain required. R2 keys and credentials are never disclosed to iPhone or browser clients. Any direct Worker R2 binding may be removed only after dependency review and a controlled deployment.
+
+This transport choice supports security-by-design through conditional writes and least-privilege server credentials, and privacy-by-design/default by keeping GPS data private and credentials and object keys server-side. GDPR handling of access, retention and deletion remains governed by existing decisions; this paragraph does not approve production deletion. CRA evidence must include provider-condition behavior, credential controls, dependency review and deployment records. ADR-007 remains PROPOSED; this is not approval of its full deletion architecture.
 
 Cloud failure never changes or deletes the local race. Synchronization begins only after recording has completed and is always retryable or deferrable.
 
