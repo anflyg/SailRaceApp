@@ -19,7 +19,7 @@ import { LIMITS, type WireRequest, type WorkerTransport } from '../../src/servic
 
 const owner = '10000000-0000-4000-8000-000000000091'
 const cloud = '20000000-0000-4000-8000-000000000091'
-const contractCommit = '28e8e7ec1f716a204e8dab73e61feb882f2520e7'
+const contractCommit = '52d4a155f2bf324acf4f6f42baa766d672c5391e'
 function contract(path: string) {
   return execFileSync('git', ['-C', process.env.TACKWISE_CONTRACTS_PATH!, 'show', `${contractCommit}:${path}`], { encoding: 'utf8' })
 }
@@ -98,7 +98,7 @@ function harness() {
 }
 beforeEach(() => vi.stubGlobal('fetch', vi.fn(() => { throw new Error('network forbidden') })))
 afterEach(() => vi.unstubAllGlobals())
-describe('PR #20 client → PR #49 API → authoritative upload contracts', () => {
+describe('recorded-sync client → merged API → accepted upload contracts', () => {
   it('keeps the client snapshots and API limits identical to the authoritative contract', () => {
     for (const file of ['raw-race-v1.schema.json', 'race-upload-v1.schema.json', 'content-put-v1.json']) {
       expect(readFileSync(new URL(`../../src/services/sync/contracts/${file}`, import.meta.url), 'utf8')).toBe(contract(`schemas/${file}`))

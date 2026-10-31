@@ -159,3 +159,10 @@ See also the [M2c detailed prerequisites](m2-iphone-cloud-sync.md#remaining-prer
 
 The reference repositories remain unchanged. No physical device, provider,
 production network, SQL migration, feature activation, deployment or merge was used.
+
+## Current merged baseline (2026-10-31)
+
+The compatibility runner now pins API `28e0c59bcac4c1baf644a8367ca00a0c25502ead`
+and contracts `52d4a155f2bf324acf4f6f42baa766d672c5391e`. Historical PR #49 pins
+above describe earlier evidence. See [M6 functional acceptance](m6-functional-acceptance.md)
+for current commands, results and live-provider boundaries.
