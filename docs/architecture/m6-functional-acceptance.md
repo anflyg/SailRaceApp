@@ -122,3 +122,20 @@ These are 600 local tests with synthetic/injected boundaries. They do not prove
 live R2/Supabase consistency, deployed Queue processing, physical native behavior,
 production resource fitness or safe deletion. The existing operator-reported
 14 October summary is the live functional evidence available to this task.
+
+## Owner test authorization and provider metadata preflight — 2026-10-31
+
+The product owner explicitly authorized using the **already uploaded 14 October 2026 race** and its previously published analysis for a restricted internal lab/acceptance test, accepting that this particular test dataset might become unusable. This is **data-use approval for the owner-only internal test**, not a waiver of GDPR/CRA or owner authorization; it does **not** authorize new production writes, object deletion, SQL migrations, flag/Secret changes, privileged-token rotation, deployments or an unrestricted beta. The provisional one-owner detail-alpha design in `tackwise-api/docs/analysis-detail-alpha.md` still requires its documented architecture/security approval and operational preflight before feature activation. ADR-007 remains PROPOSED.
+
+A **direct, read-only Supabase provider query** on 2026-10-31, restricted to race dates around 14 October and returning only aggregate status/integrity metadata, observed:
+
+- Exactly one race dated 2026-10-14 in the project's local timezone, `sync_state=ready`.
+- Exactly one associated `analysis-v1` run with `status=complete`, registered immutable result identity and nonempty size/digest metadata.
+- Its registered analysis preparation matched the completed result identity, and its source digest matched the accepted race.
+- The result-fence record had a payload ETag and completed timestamp, both account/race admission gates were open, and analysis-owner equality held.
+- Raw gzip and result artifacts were recorded as small (well below the browser's 16 MiB detail-response cap); the exact size is not itself a memory/CPU measurement.
+- Database migration history was observed through 00029, and the relevant public tables reported RLS enabled. This is **not** evidence that every runtime grant, role, current deployment or provider object has been qualified.
+
+The query returned **no GPS bytes, personal identifiers, object keys, account IDs, bearer tokens or Secret values**, and made no database changes. No API owner-authenticated GET, private R2 GET/If-Match, browser GPS render, new Queue delivery or new upload was executed. Database metadata does **not** prove that the sealed object remains readable, that actual Worker CPU/isolate limits are satisfied, or that a correct alpha allowlist is deployed. Do not repeat these DB checks unless the race/configuration changes or new contradictory evidence appears.
+
+**Next bounded Run A gate:** review/record the temporary ADR-004 one-owner alpha decision and remaining privacy/security/resource prerequisites, verify current API/Pages deployments and the exact authenticated owner restriction, then obtain separate approval for any necessary production flag/Secret/build changes. Only afterward make one authenticated owner-read through the existing API/web UI; stop on any mismatch and use sanitized pass/fail observations. Run B (new physical recording and write) remains **separately gated**, even though the pre-existing test dataset is disposable.
