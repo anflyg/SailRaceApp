@@ -6,6 +6,8 @@ The current documentation under `docs/` is authoritative for product, architectu
 
 Before implementing a change, read the relevant files under `docs/product`, `docs/architecture`, `docs/security` and `docs/privacy`.
 
+For changes affecting ADR-007, R2, Cloudflare Workers/Queues, deletion/recovery or their permissions, consult `docs/security/adr-007-verification-register.md` before proposing repeated checks. Revalidate affected control IDs only. Record new evidence in the same PR for this repository or a linked SailRaceApp documentation PR for other repositories. The register is not authorization for production deletion.
+
 ## Security and privacy
 
 TackWise is developed using security-by-design and privacy-by-design/default principles.
