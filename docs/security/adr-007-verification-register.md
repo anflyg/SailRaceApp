@@ -71,3 +71,11 @@ owner-detail/session/replay evidence and a single consolidated operator procedur
 TW-D5-012/013 remains the broad-principal risk with a staged least-privilege plan;
 no credential change is authorized. TW-D5-018–022 retain their existing status.
 No live GPS was read, no upload/analysis was triggered and no gate was enabled.
+
+## M6 provider metadata preflight — 2026-10-31
+
+The product owner authorized restricted internal testing of the previously uploaded October 14 race, accepting possible loss of **that test dataset only**. This did **not** authorize production R2/SQL mutations, deletion, Secrets/flags/deployment changes, broader user access or ADR-007 acceptance.
+
+A direct read-only Supabase query (not source-model testing) verified one race on that date at `ready`, one completed analysis with matching result-preparation identity, existing positive result-fence metadata, open account/race admission gates and ownership agreement. Migration history was observed through 00029; relevant public tables reported RLS enabled. Only bounded aggregate/status metadata was read and recorded; **no GPS, race UUID, user UUID, object key or Secret** was retrieved or placed in this public register. See [M6 acceptance preflight](../architecture/m6-functional-acceptance.md#owner-test-authorization-and-provider-metadata-preflight--2026-10-31).
+
+This new provider metadata observation supplements, but **does not close**, `TW-D5-006` (post-PR #57 end-to-end upload/analysis is not executed), `TW-D5-010` (no new Queue delivery proved), or `TW-D5-017`–`TW-D5-022` (provider fencing/deletion/retention/restore requirements). The owner-authenticated private result GET, actual deployed Worker resource budget and browser GPS rendering still need controlled Run A evidence. Do not re-query the unchanged database state solely to revalidate a new ChatGPT session.
