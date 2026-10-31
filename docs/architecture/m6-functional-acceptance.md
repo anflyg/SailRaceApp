@@ -149,3 +149,9 @@ An authenticated-API preflight examined the installed PostgreSQL function **meta
 - This matches the narrowly scoped intent of merged API migration 00028. It does **not** prove the deployed Worker's Auth, owner validation, R2 integrity, response allowlist/CORS, provider performance or alpha owner Secret/flag configuration.
 
 **Evidence surface:** read-only Supabase catalog/privilege query, 2026-10-31. No private user data, function execution, Secret values or production changes. Recheck only after migration/role-grant changes or contradictory evidence.
+
+## Conditional detail-alpha approval — 2026-10-31
+
+The product owner has now approved the **one-owner, existing-race** internal detail-alpha approach and conditionally approved its necessary server allowlist/flags and Pages build capability after explicit security, privacy, resource and deployment checks. This supersedes only the prior *pending authorization* for these narrowly specified configuration changes; it does **not** claim that any precondition has passed or that a config value was changed. The accepted bounded design is recorded in [ADR-004](decisions/adr-004-analysis-dispatch-lifecycle-and-cleanup.md#conditional-owner-only-gps-detail-alpha--owner-approval-2026-10-31).
+
+Before enabling, record the exact alpha account through private verified Supabase identity metadata (not email), the active Worker CPU plan/limit and RAM budget, the privately checked R2/owner validation, sensitive OAuth/NEL logging decision, and a supervised session end time with a named operator responsible for reverting backend and frontend flags. Do not expose UUIDs, credentials or GPS in GitHub or ChatGPT. The current 14 October analysis result is small according to SQL metadata, but **no real deployed detail CPU/heap measurement exists**. There is no additional code feature to implement for Run A. Keep production detail OFF until the gate passes. Run B continues to require separate write authorization.
