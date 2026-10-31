@@ -84,6 +84,14 @@ Acceptance of this contract does not authorize production activation. Before det
 
 Before Analysis client rollout, a reviewed forward migration must remove/restrict current direct table visibility of internal fields, including `raw_object_key` and `result_object_key`, while preserving authorized owner access through the Worker. RLS remains defense in depth, and service-role operations must explicitly enforce ownership because service role bypasses RLS. This architecture PR changes no grants.
 
+### Conditional owner-only GPS detail alpha — owner approval 2026-10-31
+
+The product owner approved **the existing server-enforced, single-owner detail-alpha design** for one supervised internal Run A using the already accepted 14 October 2026 race, and conditionally authorized the **specific necessary** Cloudflare API read-gate, server-only owner Secret and Pages build-time detail capability configuration **after** the security, privacy, provider and Worker resource gates below have passed. This is a bounded architecture/test-direction approval, **not an authorization to bypass prerequisites or evidence of successful production activation**.
+
+Only the account whose canonical Supabase Auth UUID matches a valid single server-only `ANALYSIS_DETAIL_ALPHA_OWNER_ID` may receive detailed GPS through the existing authenticated owner-authorized Worker API. It must also require `ANALYSIS_READ_API_ENABLED=true`, `ANALYSIS_DETAIL_READ_API_ENABLED=true`, existing race/owner/open-gate/integrity checks and the accepted seven-field projection; no public R2, broad alpha or additional account admission. The web `VITE_CLOUD_DETAIL_ENABLED=true` flag is solely a UI/build capability and **cannot** be used as authorization. No extra personal identifiers or credentials are committed here.
+
+**Activation gate:** before any configuration change, the operator must verify active deployments, effective account restriction, Workers paid/CPU limit and memory margin, provider GET/If-Match and cross-owner negative behavior, production OAuth/log privacy, and applicable deletion/retention/backup/restore requirements. Document a specific end time and operator rollback responsibility for the supervised session. After Run A, disable the backend detail gate, rebuild Pages with the detail capability off, verify active versions and retain sanitized evidence. The owner accepts possible loss of *that test dataset*, but has **not** approved new raw-race writes, deletion, unrelated Secrets or credential changes, or customer rollout. ADR-007 remains PROPOSED; its resurrection/deletion obligations are not waived. Until activation prerequisites are met, **NO-GO for live detail access**.
+
 ### Durable lifecycle and failure handling
 
 | Stage | Durable behavior |
