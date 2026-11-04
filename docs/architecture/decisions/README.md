@@ -16,8 +16,8 @@ Accepted decisions currently include:
 - server-controlled beta entitlement rather than client-reported TestFlight status.
 - operator-only, audited and narrowly scoped beta entitlement administration.
 - authenticated Worker-mediated prepare/upload/finalize race sync with PostgreSQL-authoritative acceptance and exactly-once free-race accounting.
-- [ADR-004: Analysis dispatch, lifecycle, reconciliation and abandoned-upload cleanup](adr-004-analysis-dispatch-lifecycle-and-cleanup.md): Cloudflare Queues with PostgreSQL-authoritative work, versioned analysis, Worker-only owner APIs, bounded retries and safe cleanup; implementation deferred.
-- [ADR-005: Analysis result v1 identity and storage](adr-005-analysis-result-v1-identity-and-storage.md): bounded summary, deterministic canonical result bytes and private immutable R2 identity; implementation deferred.
+- [ADR-004: Analysis dispatch, lifecycle, reconciliation and abandoned-upload cleanup](adr-004-analysis-dispatch-lifecycle-and-cleanup.md): Cloudflare Queues with PostgreSQL-authoritative work, versioned analysis, Worker-only owner APIs, bounded retries and safe cleanup; basic analysis/read path observed, other controls incomplete.
+- [ADR-005: Analysis result v1 identity and storage](adr-005-analysis-result-v1-identity-and-storage.md): bounded summary, deterministic canonical result bytes and private immutable R2 identity; one real stored result/read observed, remaining controls incomplete.
 - [ADR-006: Cross-store race and account deletion](adr-006-cross-store-race-and-account-deletion.md): retryable PostgreSQL/R2 deletion, resurrection protection and safe orphan-tombstone removal; architecture accepted, implementation and deletion drill deferred.
 
 ## Implementation observation (2026-11-04)
