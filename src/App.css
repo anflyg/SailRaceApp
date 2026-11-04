@@ -130,6 +130,12 @@ button {
   min-height: 0;
   align-content: start;
   gap: 14px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.setup-language .analysis-segmented-control button {
+  min-height: 44px;
 }
 
 .setup-section-heading {
@@ -190,7 +196,7 @@ button {
 }
 
 .setup-layline-toggle {
-  min-height: 38px;
+  min-height: 44px;
   min-width: 72px;
   border-radius: 999px;
   border: 1px solid rgba(185, 198, 211, 0.24);
@@ -231,8 +237,8 @@ button {
 }
 
 .setup-layline-alpha-control button {
-  min-width: 40px;
-  min-height: 40px;
+  min-width: 44px;
+  min-height: 44px;
   border-radius: 10px;
   border: 1px solid rgba(185, 198, 211, 0.24);
   background: rgba(3, 20, 38, 0.8);

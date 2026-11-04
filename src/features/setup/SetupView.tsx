@@ -1,3 +1,4 @@
+import { AccountPanel } from '../../components/AccountPanel'
 import { formatSignedDegrees } from '../../domain/format'
 import { getGpsStatusDisplay } from '../../domain/gps'
 import {
@@ -128,6 +129,7 @@ export function SetupView({
           </strong>
         </div>
       </div>
+      <AccountPanel />
     </section>
   )
 }
