@@ -21,6 +21,7 @@ export function AccountPanel({ session: injected }: { session?: AccountSession |
     return () => { window.removeEventListener('online', restore); document.removeEventListener('visibilitychange', restore) }
   }, [session])
   const busy = state.status === 'restoring' || state.status === 'signing_in'
+  const canRetryLogout = logoutFailed || (state.status === 'error' && state.error === 'storage_unavailable')
   const label = state.status === 'signed_in' ? t('account.signedIn') : busy ? t('account.busy')
     : state.status === 'offline' ? t('account.offline')
     : state.error === 'storage_unavailable' ? t('account.storage') : state.error && state.error !== 'cancelled' ? t('account.error') : t('account.signedOut')
@@ -29,7 +30,7 @@ export function AccountPanel({ session: injected }: { session?: AccountSession |
     {!state.ownerId && <button className="account-sign-in" type="button" disabled={!session || busy || logoutFailed}
       onClick={() => { void session?.signIn().catch(() => {}) }}> {t('account.signIn')}</button>}
     <p className="account-status" role="status">{label}</p>
-    {session && state.ownerId && <button className="account-sign-out" type="button" disabled={busy} onClick={() => {
+    {session && (state.ownerId || canRetryLogout) && <button className="account-sign-out" type="button" disabled={busy} onClick={() => {
       void session.logout().then(() => setLogoutFailed(false)).catch(() => setLogoutFailed(true))
     }}>{t('account.signOut')}</button>}
     {logoutFailed && <p role="alert">{t('account.logoutError')}</p>}
