@@ -1,8 +1,12 @@
 # ADR-004: Analysis dispatch, lifecycle, reconciliation and abandoned-upload cleanup
 
-**Status:** Accepted; implementation deferred to roadmap steps 6B–6G and subsequent result/API work.
+**Status:** Accepted architecture; basic analysis persistence and owner-detail web read operator-demonstrated (M6, 2026-11-04). Remaining lifecycle, privacy/security, deletion/restore and rollout qualifications are not complete.
 
 **Date:** 2026-10-01
+
+## Implementation evidence — 2026-11-04
+
+The owner has observed one earlier recorded/synced race with completed stored `analysis-v1` metadata and real GPS/speed data rendered in the authenticated TackWise Analysis website. See [M6 functional acceptance](../m6-functional-acceptance.md#m6-run-a--real-owner-browser-result-2026-11-04). This updates **implementation evidence only**; the normative decision below is unchanged. A new post-deployment mobile upload/Queue run, replay movement, cross-owner denial, deletion/restore and all other release controls are not certified by this observation.
 
 ## Context and scope
 

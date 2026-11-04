@@ -1,8 +1,12 @@
 # ADR-005: Analysis result v1 identity and storage
 
-**Status:** Accepted design; implementation remains deferred until after roadmap step 6G.
+**Status:** Accepted design; one completed stored analysis-v1 result and owner-detail browser view operator-demonstrated (M6, 2026-11-04). Remaining lifecycle and release controls are not complete.
 
 **Date:** 2026-10-07
+
+## Implementation evidence — 2026-11-04
+
+The owner has observed one earlier recorded/synced race with completed stored `analysis-v1` metadata and real GPS/speed data rendered in the authenticated TackWise Analysis website. See [M6 functional acceptance](../m6-functional-acceptance.md#m6-run-a--real-owner-browser-result-2026-11-04). This updates **implementation evidence only**; the normative decision below is unchanged. A new post-deployment mobile upload/Queue run, replay movement, cross-owner denial, deletion/restore and all other release controls are not certified by this observation.
 
 **Approved amendment (2026-10-24):** The product owner approved only the bounded same-key guard/payload/seal exception for immutable analysis-result publication and separately authorized deletion. This does not approve ADR-007, any deletion activation, unverified provider behavior, or an indefinite retention/restore policy.
 

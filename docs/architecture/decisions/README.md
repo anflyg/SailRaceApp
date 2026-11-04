@@ -16,8 +16,14 @@ Accepted decisions currently include:
 - server-controlled beta entitlement rather than client-reported TestFlight status.
 - operator-only, audited and narrowly scoped beta entitlement administration.
 - authenticated Worker-mediated prepare/upload/finalize race sync with PostgreSQL-authoritative acceptance and exactly-once free-race accounting.
-- [ADR-004: Analysis dispatch, lifecycle, reconciliation and abandoned-upload cleanup](adr-004-analysis-dispatch-lifecycle-and-cleanup.md): Cloudflare Queues with PostgreSQL-authoritative work, versioned analysis, Worker-only owner APIs, bounded retries and safe cleanup; implementation deferred.
-- [ADR-005: Analysis result v1 identity and storage](adr-005-analysis-result-v1-identity-and-storage.md): bounded summary, deterministic canonical result bytes and private immutable R2 identity; implementation deferred.
+- [ADR-004: Analysis dispatch, lifecycle, reconciliation and abandoned-upload cleanup](adr-004-analysis-dispatch-lifecycle-and-cleanup.md): Cloudflare Queues with PostgreSQL-authoritative work, versioned analysis, Worker-only owner APIs, bounded retries and safe cleanup; basic analysis/read path observed, other controls incomplete.
+- [ADR-005: Analysis result v1 identity and storage](adr-005-analysis-result-v1-identity-and-storage.md): bounded summary, deterministic canonical result bytes and private immutable R2 identity; one real stored result/read observed, remaining controls incomplete.
 - [ADR-006: Cross-store race and account deletion](adr-006-cross-store-race-and-account-deletion.md): retryable PostgreSQL/R2 deletion, resurrection protection and safe orphan-tombstone removal; architecture accepted, implementation and deletion drill deferred.
+
+## Implementation observation (2026-11-04)
+
+Accepted **ADR-003, ADR-004 and ADR-005** now have an **operator-demonstrated basic functional vertical slice**: one previously recorded and synced race was analyzed, persisted and displayed with owner-scoped GPS and speed data on the web. See [M6 Run A](../m6-functional-acceptance.md#m6-run-a--real-owner-browser-result-2026-11-04). This updates an implementation milestone only: it does not mark every deferred part of those decisions implemented, supersede their security/privacy gates or certify a fresh upload under the current API revision.
+
+**ADR-006 remains accepted as a design with unfinished implementation and verification. ADR-007 remains PROPOSED**, with its deletion/resurrection and restore requirements unresolved. These are not closed by successful GPS visualization. There is no need for a new ADR merely to acknowledge that the existing data path works.
 
 When a decision changes, document why and what migration/consequences are required rather than silently changing implementation.

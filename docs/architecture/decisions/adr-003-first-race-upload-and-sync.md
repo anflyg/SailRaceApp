@@ -1,8 +1,12 @@
 # ADR-003: First race upload and sync architecture
 
-**Status:** Accepted, implementation deferred.
+**Status:** Accepted architecture; basic upload/sync path operator-demonstrated (M6, 2026-11-04). Remaining hardening, new-deployment rerun and deletion/recovery requirements are not complete.
 
 **Date:** 2026-09-15
+
+## Implementation evidence — 2026-11-04
+
+The owner has observed one earlier recorded/synced race with completed stored `analysis-v1` metadata and real GPS/speed data rendered in the authenticated TackWise Analysis website. See [M6 functional acceptance](../m6-functional-acceptance.md#m6-run-a--real-owner-browser-result-2026-11-04). This updates **implementation evidence only**; the normative decision below is unchanged. A new post-deployment mobile upload/Queue run, replay movement, cross-owner denial, deletion/restore and all other release controls are not certified by this observation.
 
 ## Context
 
