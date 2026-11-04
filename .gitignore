@@ -26,3 +26,9 @@ simulation-results/
 
 # Dedicated non-distributable synthetic native test assets
 dist-native-test
+
+# Machine-local Apple credentials and accidental duplicate native configs
+# Keep Apple auth keys and local development artifacts out of commits.
+/Apple nyckel/
+*.p8
+/ios/App/App/config 2.xml
