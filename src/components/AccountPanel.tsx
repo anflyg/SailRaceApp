@@ -21,19 +21,18 @@ export function AccountPanel({ session: injected }: { session?: AccountSession |
     return () => { window.removeEventListener('online', restore); document.removeEventListener('visibilitychange', restore) }
   }, [session])
   const busy = state.status === 'restoring' || state.status === 'signing_in'
-  const label = !session ? t('account.unavailable') : state.status === 'signed_in' ? t('account.signedIn') : busy ? t('account.busy')
-    : state.status === 'offline' ? t('account.offline') : state.error === 'cancelled' ? t('account.cancelled')
-    : state.error === 'storage_unavailable' ? t('account.storage') : state.error ? t('account.error') : t('account.signedOut')
+  const canRetryLogout = logoutFailed || (state.status === 'error' && state.error === 'storage_unavailable')
+  const label = state.status === 'signed_in' ? t('account.signedIn') : busy ? t('account.busy')
+    : state.status === 'offline' ? t('account.offline')
+    : state.error === 'storage_unavailable' ? t('account.storage') : state.error && state.error !== 'cancelled' ? t('account.error') : t('account.signedOut')
   return <section className="account-panel" aria-labelledby="account-heading">
     <h2 className="setup-section-heading" id="account-heading">{t('account.title')}</h2>
-    <p role="status">{label}</p>
-    <div className="account-actions">
-      {!state.ownerId && <button className="apple-sign-in" type="button" disabled={!session || busy || logoutFailed}
-        onClick={() => { void session?.signIn().catch(() => {}) }}> {t('account.signIn')}</button>}
-      {session && (state.ownerId || state.status === 'error' || logoutFailed || busy) && <button type="button" onClick={() => {
-        void session.logout().then(() => setLogoutFailed(false)).catch(() => setLogoutFailed(true))
-      }}>{t('account.signOut')}</button>}
-    </div>
+    {!state.ownerId && <button className="account-sign-in" type="button" disabled={!session || busy || logoutFailed}
+      onClick={() => { void session?.signIn().catch(() => {}) }}> {t('account.signIn')}</button>}
+    <p className="account-status" role="status">{label}</p>
+    {session && (state.ownerId || canRetryLogout) && <button className="account-sign-out" type="button" disabled={busy} onClick={() => {
+      void session.logout().then(() => setLogoutFailed(false)).catch(() => setLogoutFailed(true))
+    }}>{t('account.signOut')}</button>}
     {logoutFailed && <p role="alert">{t('account.logoutError')}</p>}
   </section>
 }
