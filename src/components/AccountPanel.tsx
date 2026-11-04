@@ -25,17 +25,15 @@ export function AccountPanel({ session: injected }: { session?: AccountSession |
     : state.status === 'offline' ? t('account.offline') : state.error === 'cancelled' ? t('account.cancelled')
     : state.error === 'storage_unavailable' ? t('account.storage') : state.error ? t('account.error') : t('account.signedOut')
   return <section className="account-panel" aria-labelledby="account-heading">
-    <h2 id="account-heading">{t('account.title')}</h2>
+    <h2 className="setup-section-heading" id="account-heading">{t('account.title')}</h2>
     <p role="status">{label}</p>
     <div className="account-actions">
       {!state.ownerId && <button className="apple-sign-in" type="button" disabled={!session || busy || logoutFailed}
         onClick={() => { void session?.signIn().catch(() => {}) }}> {t('account.signIn')}</button>}
-      {session && <button type="button" disabled={busy} onClick={() => { void session.restore().catch(() => {}) }}>{t('account.restore')}</button>}
       {session && (state.ownerId || state.status === 'error' || logoutFailed || busy) && <button type="button" onClick={() => {
         void session.logout().then(() => setLogoutFailed(false)).catch(() => setLogoutFailed(true))
       }}>{t('account.signOut')}</button>}
     </div>
     {logoutFailed && <p role="alert">{t('account.logoutError')}</p>}
-    <small>{t('account.boundary')}</small>
   </section>
 }

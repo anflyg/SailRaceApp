@@ -6,6 +6,13 @@ import { translations } from './translations'
 const point = { latitude: 59.3, longitude: 18, quality: 'good' as const }
 
 describe('centralized UI translations', () => {
+  it('uses sailing labels in both languages', () => {
+    for (const language of ['sv', 'en'] as const) {
+      expect(translations[language]['sailing.vmgWind']).toBe('VMG')
+      expect(translations[language]['sailing.vmgCourse']).toBe('VMC')
+    }
+  })
+
   it('maps a neutral Start status to Swedish and English UI text', () => {
     const result = calculateStartMetrics({
       boatPosition: null,

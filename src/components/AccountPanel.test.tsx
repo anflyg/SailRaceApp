@@ -11,10 +11,12 @@ describe('localized optional account UI', () => {
   it('explains unavailable native configuration and keeps offline/local use explicit', () => {
     const html = render({ status: 'signed_out' }, 'en', false)
     expect(html).toContain('configured iPhone'); expect(html).toContain('disabled=""')
-    expect(html).toContain('Uploads of recorded races are disabled'); expect(html).toContain('Signing out keeps local races')
+    expect(html).not.toContain('Check session'); expect(html).not.toContain('Uploads of recorded races are disabled')
   })
   it('localizes sign-in and presents safe status without account identifiers or tokens', () => {
-    expect(render({ status: 'signed_out' }, 'sv')).toContain('Logga in med Apple')
+    const signedOut = render({ status: 'signed_out' }, 'sv')
+    expect(signedOut).toContain('Logga in med Apple'); expect(signedOut).toContain('Inte inloggad')
+    expect(signedOut).not.toContain('Kontrollera session')
     const html = render({ status: 'signed_in', ownerId: 'PRIVATE_OWNER' }, 'en')
     expect(html).toContain('Signed in'); expect(html).toContain('Sign out'); expect(html).not.toContain('PRIVATE_OWNER')
   })
