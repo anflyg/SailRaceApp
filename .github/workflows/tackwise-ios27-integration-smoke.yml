@@ -40,7 +40,7 @@ jobs:
       - name: Cold launch on iPhone 17 and iPhone 17e
         run: |
           set -euo pipefail
-          APP="$RUNNER_TEMP/TackWiseDerived/Build/Products/Debug-iphonesimulator/App.app"
+          APP="$RUNNER_TEMP/TackWiseDerived/Build/Products/Debug-iphonesimulator/TackWise Race.app"
           test -d "$APP"
           for name in 'iPhone 17' 'iPhone 17e'; do
             DEVICE="$(xcrun simctl list devices available -j | jq -r --arg n "$name" '[.devices[][] | select(.name == $n)] | first | .udid // empty')"
