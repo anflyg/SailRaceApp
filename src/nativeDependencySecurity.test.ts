@@ -5,7 +5,7 @@ const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.ur
 const json = (path: string) => JSON.parse(read(path))
 
 // Deliberate security baseline: review these together when changing the native SDK.
-const capacitorVersion = '8.4.3'
+const capacitorVersion = '8.5.1'
 
 describe('native dependency security baseline', () => {
   it('keeps installed, locked and declared Capacitor packages aligned with SwiftPM', () => {
@@ -20,7 +20,7 @@ describe('native dependency security baseline', () => {
     expect(read('ios/App/CapApp-SPM/Package.swift')).toContain(`exact: "${capacitorVersion}"`)
     const pins = json('ios/App/App.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved').pins
     expect(pins.find((pin: { identity: string }) => pin.identity === 'capacitor-swift-pm').state)
-      .toEqual({ version: capacitorVersion, revision: '89e0d8ec2321025f549ddb19259a717467943b97' })
+      .toEqual({ version: capacitorVersion, revision: '6afa7424fd2fcd8ca1e577478e8a00af284b7e82' })
   })
 
   it('retains the installed upstream proxy navigation and disabled-proxy guards', () => {
