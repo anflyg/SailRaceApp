@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  MAX_COURSE_DEVIATION_FOR_WIND_ESTIMATE_DEGREES,
   createWindInstrumentState,
   clampWindShiftScalePosition,
   getWindRelativeCourseDegrees,
@@ -7,6 +8,7 @@ import {
   type WindInstrumentInput,
   type WindInstrumentOutput,
 } from './windShiftInstrument'
+import { normalizeDegrees } from './angles'
 
 const WIND = 180
 const ALPHA = 90
@@ -35,8 +37,12 @@ function feed(
   return stepWindInstrument(state, input)
 }
 
+function normalizeExpectedWind(tack: 'port' | 'starboard', deviation: number): number {
+  return normalizeDegrees(WIND + (tack === 'port' ? -deviation : deviation))
+}
+
 function establish(tack: 'port' | 'starboard' = 'port', start = 100_000) {
-  const heading = tack === 'port' ? 135 : 225
+  const heading = tack === 'starboard' ? 135 : 225
   let output = feed(createWindInstrumentState(), sample(start, heading))
   for (let second = 1; second <= 35; second += 1) {
     output = feed(output.state, sample(start + second * 1_000, heading))
@@ -59,97 +65,112 @@ describe('wind shift and tack instrument', () => {
     expect(starboard.output.state.tack).toBe('starboard')
     expect(port.output.isReferenced).toBe(true)
     expect(starboard.output.isReferenced).toBe(true)
-    expect(port.output.state.lockedCourseReferenceDegrees).toBe(135)
-    expect(starboard.output.state.lockedCourseReferenceDegrees).toBe(225)
+    expect(port.output.state.lockedCourseReferenceDegrees).toBe(225)
+    expect(starboard.output.state.lockedCourseReferenceDegrees).toBe(135)
   })
 
   it('uses a circular mean across 359° and 0°', () => {
     let state = createWindInstrumentState()
     const start = 50_000
     for (let second = 0; second <= 35; second += 1) {
-      state = feed(state, sample(start + second * 1_000, second % 2 === 0 ? 359 : 1, { windHeadingDegrees: 45 })).state
+      state = feed(state, sample(start + second * 1_000, second % 2 === 0 ? 359 : 1, { windHeadingDegrees: 314 })).state
     }
     expect(state.tack).toBe('port')
     expect(state.lockedCourseReferenceDegrees).toBeCloseTo(0, 0)
   })
 
-  it('shows lift and header in the expected direction for both tacks', () => {
+  it('uses the agreed starboard/port headings and shows lift/header colors correctly', () => {
     const port = establish('port')
-    const portLift = feed(port.output.state, sample(port.nextTime + 1_000, 129.5))
-    const portHeader = feed(port.output.state, sample(port.nextTime + 1_000, 140.5))
+    const portLift = feed(port.output.state, sample(port.nextTime + 1_000, 219.5))
+    const portHeader = feed(port.output.state, sample(port.nextTime + 1_000, 235))
     const starboard = establish('starboard', 200_000)
-    const starboardLift = feed(starboard.output.state, sample(starboard.nextTime + 1_000, 230.5))
-    const starboardHeader = feed(starboard.output.state, sample(starboard.nextTime + 1_000, 219.5))
+    const starboardLift = feed(starboard.output.state, sample(starboard.nextTime + 1_000, 145))
+    const starboardHeader = feed(starboard.output.state, sample(starboard.nextTime + 1_000, 129.5))
     expect(portLift.liftDots).toBe(1)
     expect(portHeader.headerDots).toBe(1)
     expect(starboardLift.liftDots).toBe(1)
     expect(starboardHeader.headerDots).toBe(1)
   })
 
-  it('keeps a 25° wind shift on the same tack and clamps the scale marker', () => {
-    const initial = establish('port')
-    const shifted = feed(initial.output.state, sample(initial.nextTime + 1_000, 160))
-    expect(shifted.state.phase).toBe('steady')
-    expect(shifted.state.tack).toBe('port')
-    expect(shifted.estimatedWindHeadingDegrees).toBe(205)
-    expect(shifted.scalePositionDegrees).toBe(25)
-    const clamped = feed(shifted.state, sample(initial.nextTime + 2_000, 170))
-    expect(clamped.state.phase).toBe('transition')
-    expect(clamped.scalePositionDegrees).toBe(25)
-    expect(clampWindShiftScalePosition(35)).toBe(30)
-    expect(clampWindShiftScalePosition(-35)).toBe(-30)
-
-    let state = shifted.state
-    for (let degree = 165, second = 2; degree <= 250; degree += 5, second += 1) {
-      state = feed(state, sample(initial.nextTime + second * 1_000, degree)).state
+  it('updates through 35° on both tacks and does not infer a tack at 30° or 35°', () => {
+    expect(MAX_COURSE_DEVIATION_FOR_WIND_ESTIMATE_DEGREES).toBe(35)
+    for (const tack of ['port', 'starboard'] as const) {
+      const initial = establish(tack, tack === 'port' ? 100_000 : 200_000)
+      const towardOpposite = tack === 'port' ? -1 : 1
+      let at30 = feed(initial.output.state, sample(initial.nextTime + 1_000, initial.heading + towardOpposite * 30))
+      expect(at30.state.phase).toBe('steady')
+      expect(at30.estimatedWindHeadingDegrees).toBe(normalizeExpectedWind(tack, 30))
+      const at35 = feed(at30.state, sample(initial.nextTime + 2_000, initial.heading + towardOpposite * 35))
+      expect(at35.state.phase).toBe('steady')
+      expect(at35.estimatedWindHeadingDegrees).toBe(normalizeExpectedWind(tack, 35))
+      expect(at35.scalePositionDegrees).toBe(tack === 'port' ? -30 : 30)
+      expect(clampWindShiftScalePosition(35)).toBe(30)
+      expect(clampWindShiftScalePosition(-35)).toBe(-30)
+      const at36 = feed(at35.state, sample(initial.nextTime + 3_000, initial.heading + towardOpposite * 36))
+      expect(at36.state.phase).toBe('transition')
+      expect(at36.estimatedWindHeadingDegrees).toBe(at35.estimatedWindHeadingDegrees)
     }
-    for (let second = 21; second <= 26; second += 1) {
-      state = feed(state, sample(initial.nextTime + second * 1_000, 250)).state
-    }
-    expect(state.phase).toBe('establishing')
-    expect(state.tack).toBe('starboard')
-    for (let second = 27; second <= 54; second += 1) {
-      state = feed(state, sample(initial.nextTime + second * 1_000, 250)).state
-    }
-    expect(state.phase).toBe('steady')
-    expect(state.lockedCourseReferenceDegrees).toBe(250)
-    expect(state.tackWindHeadingDegrees).toBe(205)
   })
 
-  it('does not commit an aborted tack or a large course change that never settles opposite', () => {
+  it('does not begin a transition above 35° when the course is moving away from the opposite tack', () => {
+    for (const tack of ['port', 'starboard'] as const) {
+      const initial = establish(tack, tack === 'port' ? 100_000 : 200_000)
+      const awayFromOpposite = tack === 'port' ? 1 : -1
+      const output = feed(initial.output.state, sample(initial.nextTime + 1_000, initial.heading + awayFromOpposite * 36))
+      expect(output.state.phase).toBe('steady')
+      expect(output.state.tack).toBe(tack)
+    }
+  })
+
+  it('cancels an aborted tack and never commits a large course change that does not settle opposite', () => {
     const initial = establish('port')
     const t = initial.nextTime
-    let state = feed(initial.output.state, sample(t + 1_000, 180)).state
-    state = feed(state, sample(t + 2_000, 195)).state
-    state = feed(state, sample(t + 3_000, 180)).state
-    state = feed(state, sample(t + 4_000, 155)).state
-    state = feed(state, sample(t + 5_000, 140)).state
+    let state = feed(initial.output.state, sample(t + 1_000, 189)).state
+    expect(state.phase).toBe('transition')
+    state = feed(state, sample(t + 2_000, 225)).state
     expect(state.phase).toBe('steady')
     expect(state.tack).toBe('port')
 
-    state = feed(state, sample(t + 6_000, 270)).state
-    for (let second = 7; second <= 52; second += 1) {
-      state = feed(state, sample(t + second * 1_000, 270)).state
+    state = feed(state, sample(t + 3_000, 189)).state
+    for (let second = 4; second <= 50; second += 1) {
+      state = feed(state, sample(t + second * 1_000, 189)).state
     }
     expect(state.tack).toBe('port')
-    expect(state.phase).toBe('steady')
   })
 
   it('confirms the opposite stable tack, turns cues off, and restarts reference establishment', () => {
-    const initial = establish('port')
-    const t = initial.nextTime
-    let state = initial.output.state
-    for (let degree = 135, second = 1; degree <= 250; degree += 5, second += 1) {
-      state = feed(state, sample(t + second * 1_000, degree)).state
+    for (const oldTack of ['port', 'starboard'] as const) {
+      const initial = establish(oldTack, oldTack === 'port' ? 100_000 : 200_000)
+      const newTack = oldTack === 'port' ? 'starboard' : 'port'
+      const target = newTack === 'starboard' ? 135 : 225
+      const direction = oldTack === 'port' ? -1 : 1
+      const heldWindEstimate = oldTack === 'port' ? 145 : 215
+      const t = initial.nextTime
+      let state = initial.output.state
+
+      for (let second = 1; second <= 18; second += 1) {
+        state = feed(state, sample(t + second * 1_000, initial.heading + direction * Math.min(second * 5, 90))).state
+      }
+      for (let second = 19; second <= 23; second += 1) {
+        state = feed(state, sample(t + second * 1_000, target)).state
+      }
+
+      expect(state.phase).toBe('establishing')
+      expect(state.tack).toBe(newTack)
+      expect(state.estimatedWindHeadingDegrees).toBe(heldWindEstimate)
+      const inactive = feed(state, sample(t + 24_000, target))
+      expect(inactive.liftDots).toBe(0)
+      expect(inactive.headerDots).toBe(0)
+      expect(inactive.estimatedWindHeadingDegrees).toBe(heldWindEstimate)
+
+      let settled = inactive.state
+      for (let second = 25; second <= 53; second += 1) {
+        settled = feed(settled, sample(t + second * 1_000, target)).state
+      }
+      expect(settled.phase).toBe('steady')
+      expect(settled.lockedCourseReferenceDegrees).toBe(target)
+      expect(settled.estimatedWindHeadingDegrees).toBe(180)
     }
-    for (let second = 25; second <= 30; second += 1) {
-      state = feed(state, sample(t + second * 1_000, 250)).state
-    }
-    expect(state.phase).toBe('establishing')
-    expect(state.tack).toBe('starboard')
-    const inactive = feed(state, sample(t + 31_000, 250))
-    expect(inactive.liftDots).toBe(0)
-    expect(inactive.headerDots).toBe(0)
   })
 
   it('can confirm the opposite stable tack when the wind corridor GPS sample is unavailable', () => {
@@ -157,7 +178,7 @@ describe('wind shift and tack instrument', () => {
     const t = initial.nextTime
     let state = feed(initial.output.state, sample(t + 1_000, 180, { courseReliable: false })).state
     for (let second = 2; second <= 7; second += 1) {
-      state = feed(state, sample(t + second * 1_000, 225)).state
+      state = feed(state, sample(t + second * 1_000, 135)).state
     }
     expect(state.phase).toBe('establishing')
     expect(state.tack).toBe('starboard')

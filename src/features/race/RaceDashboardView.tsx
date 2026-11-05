@@ -12,7 +12,7 @@ import { RecordingControl } from '../../components/RecordingControl'
 import type { TranslationKey } from '../../i18n/translations'
 import { useTranslation } from '../../i18n/LanguageContext'
 import { getWindRelativeCourseDegrees } from '../../domain/windShiftInstrument'
-import { WindShiftInstruments } from './WindShiftInstruments'
+import { WindShiftDots, WindShiftScale, useWindShiftInstrumentOutput } from './WindShiftInstruments'
 import type { CompassDisplayMode } from '../../services/appSettingsStorage'
 import type { CourseState, FilteredGpsReading, GeoPoint } from '../../types'
 
@@ -57,6 +57,8 @@ export function RaceDashboardView({
   const previousCountdownValueRef = useRef<number | null>(null)
   const speedKnots = gps.speedKnots
   const windReferenceCompatible = course.windMeasurement?.referenceFrame === 'true-north'
+  const hasTrueWindReference = windReferenceCompatible && course.windHeadingDegrees !== null
+  const windInstrumentOutput = useWindShiftInstrumentOutput(course, gps, laylineAlphaDegrees)
   const courseHeading = compassDisplayMode === 'wind-relative' &&
     windReferenceCompatible && course.windHeadingDegrees !== null
     ? isFreshReliableCourse(gps) && gps.displayCourseDegrees !== null
@@ -192,11 +194,13 @@ export function RaceDashboardView({
 
   return (
     <section className="view-section race-view">
-      <div className="race-grid">
+      <div className={`race-grid ${hasTrueWindReference ? 'with-wind-cues' : ''}`}>
         <div className="metric-box" aria-label={t('sailing.speed')}>
           <span className="metric-value">{speedKnots !== null ? formatKnots(speedKnots) : '--'}</span>
           <span className="metric-label">{t('sailing.speed')}</span>
         </div>
+
+        <WindShiftDots visible={hasTrueWindReference} output={windInstrumentOutput} />
 
         <div className="metric-box" aria-label={t('sailing.heading')}>
           <span className="metric-value">{hasDisplayCourse ? formatDegrees(courseHeading) : '--'}</span>
@@ -221,8 +225,12 @@ export function RaceDashboardView({
         </div>
       </div>
 
-      <div className={`race-instrument-footer ${recordingActive ? 'recording' : ''}`}>
-        <WindShiftInstruments course={course} gps={gps} alphaDegrees={laylineAlphaDegrees} />
+      <div className={`race-instrument-footer ${recordingActive ? 'recording' : ''} ${hasTrueWindReference ? 'with-wind-scale' : ''}`}>
+        <WindShiftScale
+          visible={hasTrueWindReference}
+          output={windInstrumentOutput}
+          windHeadingDegrees={course.windHeadingDegrees}
+        />
         {recordingActive ? (
           <RecordingControl active messageKey={null} onStop={onStopRecording} compact />
         ) : recordingMessageKey ? (

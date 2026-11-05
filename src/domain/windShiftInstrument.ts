@@ -13,9 +13,9 @@ export const REFERENCE_SETTLING_MS = 20_000
 export const REFERENCE_ESTABLISHMENT_MS = 30_000
 export const COURSE_SAMPLE_MAX_AGE_MS = 5_000
 export const TACK_SECTOR_TOLERANCE_DEGREES = 15
-export const TACK_TRANSITION_THRESHOLD_MIN_DEGREES = 30
 export const TACK_TRANSITION_TIMEOUT_MS = 45_000
-export const MAX_TACK_TARGET_WIND_SHIFT_DEGREES = 25
+export const MAX_COURSE_DEVIATION_FOR_WIND_ESTIMATE_DEGREES = 35
+export const MAX_TACK_TARGET_WIND_SHIFT_DEGREES = 35
 export const REFERENCE_MINIMUM_SAMPLES = 5
 export const REFERENCE_MAXIMUM_SPREAD_DEGREES = 10
 export const INDICATOR_THRESHOLDS_DEGREES = [5, 10, 15] as const
@@ -224,7 +224,11 @@ function collectReference(
       indicatorDotCount: 0,
     }
   }
-  const expected = getExpectedCourse(state.tack, state.estimatedWindHeadingDegrees ?? origin, alphaDegrees)
+  const expected = getExpectedCourse(
+    state.tack,
+    state.tackWindHeadingDegrees ?? state.estimatedWindHeadingDegrees ?? origin,
+    alphaDegrees,
+  )
   if (Math.abs(shortestAngleDeltaDegrees(meanCourse, expected)) > TACK_SECTOR_TOLERANCE_DEGREES) {
     return {
       ...state,
@@ -257,7 +261,8 @@ function observeSteadyTack(
   const reference = state.lockedCourseReferenceDegrees
   if (tack === null || reference === null) return { ...state, phase: 'seeking', indicatorDotCount: 0 }
   const windEstimateCandidate = estimateWindFromCourse(course, tack, alphaDegrees)
-  const stillWithinTackEstimateRange = Math.abs(shortestAngleDeltaDegrees(course, reference)) <= MAX_TACK_TARGET_WIND_SHIFT_DEGREES
+  const courseDeviationFromReference = Math.abs(shortestAngleDeltaDegrees(course, reference))
+  const stillWithinTackEstimateRange = courseDeviationFromReference <= MAX_COURSE_DEVIATION_FOR_WIND_ESTIMATE_DEGREES
   const windEstimate = stillWithinTackEstimateRange ? windEstimateCandidate : state.estimatedWindHeadingDegrees
   const tackWindEstimate = state.tackWindHeadingDegrees ?? origin
   const currentExpected = getExpectedCourse(tack, tackWindEstimate, alphaDegrees)
@@ -265,14 +270,15 @@ function observeSteadyTack(
   const oppositeExpected = getExpectedCourse(oppositeTack, tackWindEstimate, alphaDegrees)
   const originalOppositeExpected = getExpectedCourse(oppositeTack, origin, alphaDegrees)
   const progress = directedProgress(course, currentExpected, oppositeExpected)
-  const threshold = Math.max(TACK_TRANSITION_THRESHOLD_MIN_DEGREES, alphaDegrees / 2 + 10)
   const predictedOpposite = getExpectedCourse(oppositeTack, capWindEstimate(tackWindEstimate, windEstimateCandidate, MAX_TACK_TARGET_WIND_SHIFT_DEGREES), alphaDegrees)
   const nearOpposite = [oppositeExpected, predictedOpposite].some((heading) => (
     Math.abs(shortestAngleDeltaDegrees(course, heading)) <= TACK_SECTOR_TOLERANCE_DEGREES
   ))
   const withinWindCorridor = Math.abs(shortestAngleDeltaDegrees(course, tackWindEstimate)) <= 20
-  const crossedWindCorridorSupportsTack = withinWindCorridor && progress >= 30
-  if (progress >= threshold || crossedWindCorridorSupportsTack || nearOpposite) {
+  const beyondWindEstimateLimit = courseDeviationFromReference > MAX_COURSE_DEVIATION_FOR_WIND_ESTIMATE_DEGREES
+  const transitionEvidence = progress > MAX_COURSE_DEVIATION_FOR_WIND_ESTIMATE_DEGREES ||
+    nearOpposite || (withinWindCorridor && progress > 0)
+  if (beyondWindEstimateLimit && transitionEvidence) {
     return {
       ...state,
       phase: 'transition',
@@ -333,12 +339,10 @@ function observeTackTransition(
     return { ...state, candidateSinceMs: timestamp, transitionTargetDegrees: reachedTarget }
   }
   if (timestamp - state.candidateSinceMs < TACK_CONFIRMATION_MS) return state
-  const transitionWindEstimate = estimateWindFromCourse(course, targetTack, alphaDegrees) ?? origin
   return startEstablishment({
     ...state,
     tack: targetTack,
-    estimatedWindHeadingDegrees: transitionWindEstimate,
-    tackWindHeadingDegrees: transitionWindEstimate,
+    tackWindHeadingDegrees: estimateWindFromCourse(course, targetTack, alphaDegrees) ?? origin,
   }, timestamp)
 }
 
@@ -354,12 +358,12 @@ function getTackNearCourse(course: number, wind: number, alpha: number): Sailing
 
 function getExpectedCourse(tack: SailingTack | null, wind: number, alpha: number): number {
   if (tack === null) return normalizeDegrees(wind)
-  return normalizeDegrees(wind + (tack === 'starboard' ? 1 : -1) * alpha / 2)
+  return normalizeDegrees(wind - tackSign(tack) * alpha / 2)
 }
 
 function estimateWindFromCourse(course: number, tack: SailingTack | null, alpha: number): number | null {
   if (tack === null) return null
-  return normalizeDegrees(course - tackSign(tack) * alpha / 2)
+  return normalizeDegrees(course + tackSign(tack) * alpha / 2)
 }
 
 function capWindEstimate(reference: number, estimate: number | null, maximumShift: number): number {

@@ -72,4 +72,30 @@ describe('RaceDashboardView active recording layout', () => {
     expect(renderHeading('wind-relative', 'true-north')).toContain('225°')
     expect(renderHeading('wind-relative', 'magnetic-north')).toContain('135°')
   })
+
+  it('places the six unlabeled tack cues between speed and heading, with the scale below the metrics', () => {
+    const html = renderToStaticMarkup(
+      <LanguageProvider language="sv" setLanguage={() => {}}>
+        <RaceDashboardView
+          course={{ ...course, windHeadingDegrees: 90, windMeasurement: { referenceFrame: 'true-north' } as CourseState['windMeasurement'] }}
+          gps={gps}
+          compassDisplayMode="normal"
+          laylineEnabled={false}
+          laylineAlphaDegrees={90}
+        />
+      </LanguageProvider>,
+    )
+    const speed = html.indexOf('aria-label="Fart"')
+    const dots = html.indexOf('wind-tack-cues')
+    const heading = html.indexOf('aria-label="Riktning"')
+    const vmg = html.indexOf('aria-label="VMG"')
+    const scale = html.indexOf('wind-shift-scale')
+    expect(speed).toBeLessThan(dots)
+    expect(dots).toBeLessThan(heading)
+    expect(heading).toBeLessThan(vmg)
+    expect(vmg).toBeLessThan(scale)
+    expect(html.match(/class="wind-cue-dot /g)).toHaveLength(6)
+    expect(html).not.toContain('>Lyft<')
+    expect(html).not.toContain('>Motvrid<')
+  })
 })

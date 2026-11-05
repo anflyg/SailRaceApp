@@ -714,6 +714,11 @@ button:focus-visible {
   width: 100%;
 }
 
+.race-grid.with-wind-cues {
+  grid-template-rows: minmax(0, 1fr) 18px minmax(0, 1fr) minmax(0, 1fr);
+  gap: 6px;
+}
+
 .race-view .metric-box {
   display: grid;
   align-content: center;
@@ -847,34 +852,24 @@ button:focus-visible {
   gap: 8px;
 }
 
-.race-instrument-footer.recording {
+.race-instrument-footer.recording.with-wind-scale {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(150px, 0.8fr);
 }
 
-.wind-shift-instruments {
-  display: grid;
-  flex: 1 1 auto;
-  grid-template-columns: auto minmax(80px, 1fr);
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-  min-height: 44px;
-  padding: 4px 10px;
-  border-radius: 14px;
-  background: rgba(7, 31, 61, 0.9);
-}
-
 .wind-tack-cues {
-  display: grid;
-  gap: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  min-width: 0;
 }
 
 .wind-cue-dots {
   display: flex;
   min-width: 39px;
   justify-content: space-between;
-  gap: 5px;
+  gap: 4px;
 }
 
 .wind-cue-dot {
@@ -896,10 +891,15 @@ button:focus-visible {
 
 .wind-shift-scale {
   display: grid;
-  grid-template-rows: auto 10px;
-  justify-items: center;
-  gap: 2px;
+  flex: 1 1 auto;
+  grid-template-columns: 48px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
   min-width: 0;
+  min-height: 32px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgba(7, 31, 61, 0.9);
 }
 
 .wind-shift-origin {
@@ -911,7 +911,7 @@ button:focus-visible {
 
 .wind-shift-track {
   position: relative;
-  width: min(100%, 240px);
+  width: 100%;
   height: 4px;
   align-self: center;
   border-radius: 999px;
@@ -2217,7 +2217,7 @@ button:focus-visible {
   color: var(--theme-text);
 }
 
-.app-shell .wind-shift-instruments {
+.app-shell .wind-shift-scale {
   background: var(--theme-panel-muted);
 }
 
