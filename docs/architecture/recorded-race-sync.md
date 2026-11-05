@@ -40,6 +40,18 @@ its pending marker is cleared, permitting a later explicit retry. Lost/ambiguous
 issuance still remains `issuance_uncertain`; no replacement intent is automatic.
 Known cloud IDs and expired upload reservations are never silently replaced.
 
+## Analysis library UI
+
+The ordinary **Analysis → Library** interface displays only local recorded races,
+their per-race actions and the user-initiated recorded-race synchronization control.
+It does not mount the synthetic cloud upload or mock sync demo in either the iPhone
+or web application.
+
+Synthetic fixtures, isolated backends and validation tests remain available to
+developers; removing the UI entry point is not permission to delete test logic,
+enable background uploads, modify backend admission gates, or send recorded
+GPS/race data automatically.
+
 ## Security, privacy and release boundary
 
 The button explains that GPS/race data goes to the user's private TackWise account,
