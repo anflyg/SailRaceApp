@@ -30,6 +30,44 @@ During racing the interface prioritizes large, high-contrast, sunlight-readable 
 - course-relative direction where a course reference exists,
 - relevant mark/layline information as developed.
 
+## Wind-relative course and wind-shift cues
+
+**Approved product behavior; implementation is not implied by this specification.**
+
+### Compass display and tack angle
+
+Settings will offer the existing course display and a wind-relative course display. The latter uses the original wind-source heading (W) set in **Course** and the current filtered sailing course (C). It uses the full 0–360° scale:
+
+`relativeCourse = normalizeDegrees(W + 180° - C)`
+
+A course pointing into the recorded wind source (`C = W`) displays 180°; a course directly downwind (`C = W + 180°`) displays 0°. Do not apply half the tack angle to this large direction value. Preserve the existing size and layout of FART, RIKTNING and VMG.
+
+The Swedish setting label is **Slagvinkel** instead of Alpha. It means the full angle between the expected close-hauled courses on port and starboard tack. Use half that angle when estimating the wind-source direction from a close-hauled course, with the appropriate tack sign. Keep the existing internal Alpha setting name until its other consumers have been reviewed.
+
+### Tack-relative lift and header cues
+
+Show three unlabeled dots for lift and three for header in the Sailing view. Green always means lift and red always means header, on either tack. Each step represents 5°: [0°, 5°) shows none, [5°, 10°) one dot, [10°, 15°) two, and 15° or more three. Use a small hysteresis to prevent flicker at boundaries; its values are not yet set.
+
+The dots indicate change relative to a reference locked for the current tack. Interpret the signed course change for the current tack so the colors retain the same meaning on port and starboard. Assume the sailor holds a comparable close-hauled angle; the first version does not model every steering correction.
+
+Use the wind heading set in Course as the original wind reference. When a tack is detected, turn off all dots. Once the tack is complete, wait 30 seconds before setting a new tack reference: seconds 0–20 allow the course to settle; seconds 20–30 provide samples for a circular mean using the shared filtered course. At 30 seconds, lock that mean as the new tack reference and reactivate the dots from zero. Keep the reference fixed for that tack. A further tack before completion restarts the process.
+
+### Wind-shift scale
+
+Add a compact horizontal scale to the Sailing view. Keep its center fixed at the original Course wind heading; show that heading in degrees at the center. A green dot marks the latest reliable estimated wind direction relative to that origin. Hold the last valid dot through a tack until a newer estimate is available. Do not add explanatory dot labels or a history graph in the first version.
+
+This is a course-based wind estimate, not a directly measured true-wind value. The live course and saved Course wind heading must share a north reference; withhold an estimate when that cannot be established. Reuse the existing filtered course and circular angle helpers. Do not add parallel course filtering.
+
+The first version does not add new persisted telemetry or cloud processing. Any later decision to save estimated shifts must first review the privacy inventory, export/deletion behavior and logging.
+
+### Decisions still needed before implementation
+
+- Tack detection and port/starboard classification criteria.
+- Hysteresis entry/exit values.
+- Behavior when no original Course wind heading is set, and whether the selected compass mode persists across launches.
+- The scale's angular span and edge/clamping behavior.
+- How to handle the existing true-north versus magnetic-north wind-measurement fallback when it does not match the live course reference.
+
 ## Race recording
 
 Race telemetry is recorded locally and must not depend on cloud availability. Recorded data may include timestamp, position, accuracy, speed, course over ground, heading, sensor-derived values, course configuration and race events.
