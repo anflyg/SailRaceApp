@@ -1,4 +1,4 @@
-name: TackWise Xcode 27 integration smoke (#48 + #51)
+name: TackWise iOS integration cold start (#48 + #51)
 on:
   push:
     branches:
@@ -7,7 +7,7 @@ permissions:
   contents: read
 jobs:
   ios:
-    runs-on: xcode-27
+    runs-on: macos-26
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
@@ -51,7 +51,7 @@ jobs:
             fi
             SLUG="$(printf '%s' "$name" | tr ' ' '-')"
             xcrun simctl boot "$DEVICE"
-            xcrun simctl bootstatus "$DEVICE" -b
+            perl -e 'alarm 180; exec @ARGV' xcrun simctl bootstatus "$DEVICE" -b
             xcrun simctl install "$DEVICE" "$APP"
             xcrun simctl privacy "$DEVICE" grant location com.anflyg.sailraceapp
             xcrun simctl launch "$DEVICE" com.anflyg.sailraceapp
