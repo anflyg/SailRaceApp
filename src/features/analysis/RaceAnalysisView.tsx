@@ -1,4 +1,3 @@
-import { SyntheticSyncDemo } from '../../components/SyntheticSyncDemo'
 import type { RaceSyncCoordinator } from '../../services/sync/coordinator'
 import type { AccountSession } from '../../services/auth/types'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -225,7 +224,6 @@ export function RaceAnalysisView({ initialRaceId, initialRace, syncCoordinator, 
 
       {isLibraryActive ? (
         <>
-        <SyntheticSyncDemo/>
         <RaceLibrary
           groups={groups}
           selectedRaceId={analysisState.selectedRaceId}

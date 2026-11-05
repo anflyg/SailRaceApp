@@ -99,42 +99,34 @@ startup and reconnect never initiate it. Local recordings are retained on succes
 and failure. No server flag is changed by the app. See the
 [implementation, installation and physical acceptance steps](docs/architecture/recorded-race-sync.md).
 
-### Independent synthetic demo
+### Internal synthetic sync verification
 
-In **Analysis → Library**, open **Synthetic sync test** to run the complete local
-mock Worker flow. It uses fixed fictional positions, separate private persistence
-and an explicit “no cloud upload” success label. Your recordings and accounts are
-not used. Browser builds keep real sync disabled. Recording, local race IDs,
-export and analysis remain offline-first.
+Synthetic fixtures and mock Worker tests remain available to developers, but
+**Analysis → Library no longer displays synthetic test controls** on iPhone or web.
+For completed local races, use the per-race **Synchronize** action on an approved,
+configured iPhone. Local recording and analysis remain offline-first.
 
 Run `npm test -- --maxWorkers=1`, `npm run build` and `npm run sync:validation`.
-The browser check runs a local Vite server and Playwright Chromium only.
-[Client protocol, storage, recovery and real-integration gates](docs/architecture/m2-iphone-cloud-sync.md)
-include the existing native dependency advisories and physical-device checks.
+The browser validation uses Vite and Playwright without accessing a live account.
+[Sync architecture and validation](docs/architecture/m2-iphone-cloud-sync.md)
+retain the developer-only mock flow and physical-device acceptance boundaries.
 
-Dependency security baseline: Capacitor core/CLI/iOS are pinned together at 8.4.3.
-Use `npm ci` and `npx cap sync ios` after building; the tracked SwiftPM resolution
-must agree with npm. See [security and native-build evidence](docs/security/m2-dependency-remediation.md)
-for audit results, reproducible native commands and remaining device checks.
+Capacitor core, CLI and iOS are pinned together at **8.5.1**. After `npm ci`,
+run `npm run cap:sync` before opening the native project. Locked SwiftPM
+resolutions must agree with npm.
 
-## Native account and independent synthetic verification
+## Native account and internal synthetic verification
 
-### Synthetic upload on iPhone
+The internal synthetic upload harness is retained for isolated regression testing.
+It uses fictional race data and existing approved Auth/Worker adapters only when
+explicitly invoked by a developer test. It is **not mounted in the normal app UI**,
+and does not use locally recorded races. Browser mocks likewise remain test-only.
 
-Analysis → Library now offers **Synthetic cloud upload** on iOS. It uses the
-existing Apple/Supabase session and `https://api.tackwise.se`, sending only the
-fixed fictional race after an explicit tap. The same two public Auth build
-variables are sufficient; there is no new app credential or infrastructure.
-Recorded races stay outside this path. Browser builds retain the local mock demo.
-Retries preserve the existing private worker checkpoint, immutable gzip and cloud
-UUID. An accepted upload is reported separately from pending analysis.
-
-Before persisting an issuance attempt, a token-free request checks the backend's
-existing upload gate. A disabled route is shown as disabled without creating an
-intent/checkpoint; no automatic flag enablement or retry timer is installed.
-The backend still needs its existing HMAC, conditional R2 S3 and Supabase settings
-and upload gate. No Worker flags, secrets, SQL or deployment are changed here.
-The separate Debug-only `native-test` entry remains prohibited from distribution.
+Test code retains guarded upload intent, immutable gzip, checkpoint/retry and
+accepted-versus-analysis-state checks. No backend gate, credentials, SQL,
+automatic upload or cloud deletion behavior is changed by hiding the test UI.
+The separate Debug-only `native-test` entry remains prohibited from
+distribution.
 
 Setup includes optional Swedish/English account controls. Native Apple sign-in,
 Supabase session refresh and Keychain persistence are implemented; browser sign-in
