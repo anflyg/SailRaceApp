@@ -101,6 +101,8 @@ and failure. No server flag is changed by the app. See the
 
 ### Independent synthetic demo
 
+**Developer-only historical test flow:** Synthetic test controls are no longer displayed under **Analysis → Library**. Test harnesses and fixtures remain in the repository for isolated regression testing; they are not user-facing features. Use the per-race **Synchronize** button for completed local races on an approved, configured iPhone.
+
 In **Analysis → Library**, open **Synthetic sync test** to run the complete local
 mock Worker flow. It uses fixed fictional positions, separate private persistence
 and an explicit “no cloud upload” success label. Your recordings and accounts are
@@ -119,7 +121,9 @@ for audit results, reproducible native commands and remaining device checks.
 
 ## Native account and independent synthetic verification
 
-### Synthetic upload on iPhone
+### Internal synthetic upload verification
+
+**Developer-only historical test flow:** Synthetic test controls are no longer displayed under **Analysis → Library**. Test harnesses and fixtures remain in the repository for isolated regression testing; they are not user-facing features. Use the per-race **Synchronize** button for completed local races on an approved, configured iPhone.
 
 Analysis → Library now offers **Synthetic cloud upload** on iOS. It uses the
 existing Apple/Supabase session and `https://api.tackwise.se`, sending only the
