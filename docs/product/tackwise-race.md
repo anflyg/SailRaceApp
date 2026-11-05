@@ -38,11 +38,11 @@ During racing the interface prioritizes large, high-contrast, sunlight-readable 
 
 Settings will offer the existing course display and a wind-relative course display. The latter uses the original wind-source heading (W) set in **Course** and the current filtered sailing course (C). It uses the full 0–360° scale:
 
-`relativeCourse = normalizeDegrees(W + 180° - C)`
+`relativeCourse = normalizeDegrees(C - W + 180°)`
 
-A course pointing into the recorded wind source (`C = W`) displays 180°; a course directly downwind (`C = W + 180°`) displays 0°. Do not apply half the tack angle to this large direction value. Preserve the existing size and layout of FART, RIKTNING and VMG.
+Here C is the existing filtered GPS course and W is the original wind-source direction set in Course; both must use compatible north references. For W=180°, C=135° displays 135°, C=180° displays 180°, C=225° displays 225°, and C=0° displays 0°. Do not apply half the tack angle to this large direction value. Preserve the existing size and layout of FART, RIKTNING and VMG.
 
-The Swedish setting label is **Slagvinkel** instead of Alpha. It means the full angle between the expected close-hauled courses on port and starboard tack. Use half that angle when estimating the wind-source direction from a close-hauled course, with the appropriate tack sign. Keep the existing internal Alpha setting name until its other consumers have been reviewed.
+The Swedish setting label is **Slagvinkel** instead of Alpha. It means the full angle between the expected close-hauled courses on port and starboard tack. The full angle is used to calculate the expected course after a tack. Half the angle is used when estimating wind direction from a close-hauled course, with the appropriate tack sign. Keep the existing internal Alpha setting name; do not change existing layline calculations as part of this product decision.
 
 ### Tack-relative lift and header cues
 
