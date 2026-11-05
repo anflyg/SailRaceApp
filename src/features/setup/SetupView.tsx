@@ -3,6 +3,7 @@ import { formatSignedDegrees } from '../../domain/format'
 import { getGpsStatusDisplay } from '../../domain/gps'
 import {
   clampLaylineAlphaDegrees,
+  type CompassDisplayMode,
 } from '../../services/appSettingsStorage'
 import {
   MAX_LAYLINE_ALPHA_DEGREES,
@@ -25,6 +26,8 @@ interface SetupViewProps {
   laylineAlphaDegrees: number
   onLaylineEnabledChange: (enabled: boolean) => void
   onLaylineAlphaDegreesChange: (alphaDegrees: number) => void
+  compassDisplayMode: CompassDisplayMode
+  onCompassDisplayModeChange: (mode: CompassDisplayMode) => void
 }
 
 export function SetupView({
@@ -37,6 +40,8 @@ export function SetupView({
   laylineAlphaDegrees,
   onLaylineEnabledChange,
   onLaylineAlphaDegreesChange,
+  compassDisplayMode,
+  onCompassDisplayModeChange,
 }: SetupViewProps) {
   const { language, setLanguage, t } = useTranslation()
   const gpsStatus = getGpsStatusDisplay(gps)
@@ -110,6 +115,14 @@ export function SetupView({
               +
             </button>
           </div>
+        </div>
+      </div>
+
+      <div className="setup-compass">
+        <h2 className="setup-section-heading">{t('setup.compass')}</h2>
+        <div className="analysis-segmented-control" role="group" aria-label={t('setup.compass')}>
+          <button type="button" className={compassDisplayMode === 'normal' ? 'active' : ''} aria-pressed={compassDisplayMode === 'normal'} onClick={() => onCompassDisplayModeChange('normal')}>{t('setup.compassNormal')}</button>
+          <button type="button" className={compassDisplayMode === 'wind-relative' ? 'active' : ''} aria-pressed={compassDisplayMode === 'wind-relative'} onClick={() => onCompassDisplayModeChange('wind-relative')}>{t('setup.compassWindRelative')}</button>
         </div>
       </div>
 

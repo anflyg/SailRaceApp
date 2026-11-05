@@ -8,6 +8,9 @@ import { RaceDashboardView } from './RaceDashboardView'
 const course: CourseState = {
   points: { startA: null, startB: null, kryss1: null, lans1: null },
   windHeadingDegrees: null,
+  windMeasurement: {
+    referenceFrame: 'true-north',
+  } as CourseState['windMeasurement'],
 }
 
 const gps: FilteredGpsReading = {
@@ -20,13 +23,13 @@ const gps: FilteredGpsReading = {
 }
 
 describe('RaceDashboardView active recording layout', () => {
-  it('keeps R/S, speed, heading and VMG visible with the recording stop control', () => {
+  it('keeps speed, heading and VMG visible with the wind instruments and recording stop control', () => {
     const html = renderToStaticMarkup(
       <LanguageProvider language="sv" setLanguage={() => {}}>
         <RaceDashboardView
           course={course}
           gps={gps}
-          rollPitch={{ rollDegrees: 8, pitchDegrees: -3 }}
+          compassDisplayMode="normal"
           laylineEnabled={false}
           laylineAlphaDegrees={90}
           recordingActive
@@ -35,14 +38,38 @@ describe('RaceDashboardView active recording layout', () => {
       </LanguageProvider>,
     )
 
-    expect(html).toContain('R +8°')
-    expect(html).toContain('S -3°')
     expect(html).toContain('5,5')
     expect(html).toContain('042°')
     expect(html).toContain(translations.sv['sailing.notSet'])
     expect(html).toContain(translations.sv['recording.active'])
     expect(html).toContain(translations.sv['recording.stop'])
-    expect(html).toContain('race-recording-footer')
+    expect(html).toContain('race-instrument-footer')
     expect(html.match(/class="metric-box/g)).toHaveLength(3)
+    expect(html).not.toContain('R +')
+    expect(html).not.toContain('S -')
+  })
+
+  it('uses wind-relative course only with a true-north origin and otherwise keeps the ordinary compass', () => {
+    const renderHeading = (compassDisplayMode: 'normal' | 'wind-relative', windReferenceFrame: string) => renderToStaticMarkup(
+      <LanguageProvider language="sv" setLanguage={() => {}}>
+        <RaceDashboardView
+          course={{ ...course, windHeadingDegrees: 90, windMeasurement: { referenceFrame: windReferenceFrame } as CourseState['windMeasurement'] }}
+          gps={{
+            ...gps,
+            courseDegrees: 135,
+            displayCourseDegrees: 135,
+            timestamp: Date.now(),
+            presentationTimestamp: Date.now(),
+          }}
+          compassDisplayMode={compassDisplayMode}
+          laylineEnabled={false}
+          laylineAlphaDegrees={90}
+        />
+      </LanguageProvider>,
+    )
+
+    expect(renderHeading('normal', 'true-north')).toContain('135°')
+    expect(renderHeading('wind-relative', 'true-north')).toContain('225°')
+    expect(renderHeading('wind-relative', 'magnetic-north')).toContain('135°')
   })
 })

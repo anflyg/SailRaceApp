@@ -23,6 +23,7 @@ Initial target architecture. Update this document when accepted design decisions
 ## Principles
 
 - Offline-first race execution.
+- Sailing wind-relative display and wind-shift cues are computed on-device from the shared filtered GPS course and the Course wind snapshot. They add no parallel course filter, sensor stream, persisted estimate, cloud processing or logging.
 - No permanently running application server required in the initial architecture.
 - Raw telemetry separated from relational metadata.
 - Opaque IDs rather than personal data in object names/keys.

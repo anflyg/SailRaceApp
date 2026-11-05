@@ -100,4 +100,15 @@ describe('appSettingsStorage layline alpha', () => {
     saveAppSettings({ layline: { enabled: true, alphaDegrees: 90 }, language: 'en' })
     expect(loadAppSettings().language).toBe('en')
   })
+
+  it('sparar och läser tillbaka valt kompassläge mellan appstarter', () => {
+    const storage = new MockStorage()
+    vi.stubGlobal('localStorage', storage)
+    saveAppSettings({
+      layline: { enabled: true, alphaDegrees: 90 },
+      language: 'sv',
+      compassDisplayMode: 'wind-relative',
+    })
+    expect(loadAppSettings().compassDisplayMode).toBe('wind-relative')
+  })
 })

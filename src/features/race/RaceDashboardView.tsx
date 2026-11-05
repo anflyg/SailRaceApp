@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { formatDegrees, formatKnots, formatSignedDegrees, formatSignedKnots } from '../../domain/format'
+import { formatDegrees, formatKnots, formatSignedKnots } from '../../domain/format'
 import {
   calculateBearingDegrees,
   calculateVelocityMadeGood,
@@ -11,14 +11,17 @@ import { recordLaylineTackEventIfActive } from '../../services/raceLogger'
 import { RecordingControl } from '../../components/RecordingControl'
 import type { TranslationKey } from '../../i18n/translations'
 import { useTranslation } from '../../i18n/LanguageContext'
-import type { CourseState, FilteredGpsReading, GeoPoint, RollPitchValues } from '../../types'
+import { getWindRelativeCourseDegrees } from '../../domain/windShiftInstrument'
+import { WindShiftInstruments } from './WindShiftInstruments'
+import type { CompassDisplayMode } from '../../services/appSettingsStorage'
+import type { CourseState, FilteredGpsReading, GeoPoint } from '../../types'
 
 type VelocityMode = 'vmg' | 'vmc'
 
 interface RaceDashboardViewProps {
   course: CourseState
   gps: FilteredGpsReading
-  rollPitch: RollPitchValues | null
+  compassDisplayMode: CompassDisplayMode
   laylineEnabled: boolean
   laylineAlphaDegrees: number
   manualLaylineCountdownValue?: number | null
@@ -41,7 +44,7 @@ function getGpsPosition(gps: FilteredGpsReading): GeoPoint | null {
 export function RaceDashboardView({
   course,
   gps,
-  rollPitch,
+  compassDisplayMode,
   laylineEnabled,
   laylineAlphaDegrees,
   manualLaylineCountdownValue = null,
@@ -53,7 +56,13 @@ export function RaceDashboardView({
   const [activeVelocityMode, setActiveVelocityMode] = useState<VelocityMode>('vmc')
   const previousCountdownValueRef = useRef<number | null>(null)
   const speedKnots = gps.speedKnots
-  const courseHeading = gps.displayCourseDegrees
+  const windReferenceCompatible = course.windMeasurement?.referenceFrame === 'true-north'
+  const courseHeading = compassDisplayMode === 'wind-relative' &&
+    windReferenceCompatible && course.windHeadingDegrees !== null
+    ? isFreshReliableCourse(gps) && gps.displayCourseDegrees !== null
+      ? getWindRelativeCourseDegrees(gps.displayCourseDegrees, course.windHeadingDegrees)
+      : null
+    : gps.displayCourseDegrees
   const hasDisplayCourse = courseHeading !== null
   const boatPosition = getGpsPosition(gps)
   const targetMark = course.points.kryss1
@@ -212,22 +221,21 @@ export function RaceDashboardView({
         </div>
       </div>
 
-      {recordingActive ? (
-        <div className="race-recording-footer">
-          <div className="roll-pitch-strip" aria-label={t('sailing.rollPitch')}>
-            <span>R {rollPitch ? formatSignedDegrees(rollPitch.rollDegrees) : '—'}</span>
-            <span>S {rollPitch ? formatSignedDegrees(rollPitch.pitchDegrees) : '—'}</span>
-          </div>
+      <div className={`race-instrument-footer ${recordingActive ? 'recording' : ''}`}>
+        <WindShiftInstruments course={course} gps={gps} alphaDegrees={laylineAlphaDegrees} />
+        {recordingActive ? (
           <RecordingControl active messageKey={null} onStop={onStopRecording} compact />
-        </div>
-      ) : recordingMessageKey ? (
-        <RecordingControl active={false} messageKey={recordingMessageKey} onStop={onStopRecording} />
-      ) : (
-        <div className="roll-pitch-strip" aria-label={t('sailing.rollPitch')}>
-          <span>R {rollPitch ? formatSignedDegrees(rollPitch.rollDegrees) : '—'}</span>
-          <span>S {rollPitch ? formatSignedDegrees(rollPitch.pitchDegrees) : '—'}</span>
-        </div>
-      )}
+        ) : recordingMessageKey ? (
+          <RecordingControl active={false} messageKey={recordingMessageKey} onStop={onStopRecording} />
+        ) : null}
+      </div>
     </section>
   )
+}
+
+function isFreshReliableCourse(gps: FilteredGpsReading): boolean {
+  const timestamp = gps.presentationTimestamp ?? gps.timestamp
+  if (!gps.courseReliable || timestamp === null || !Number.isFinite(timestamp)) return false
+  const ageMs = Date.now() - timestamp
+  return ageMs >= -1_000 && ageMs <= 5_000
 }

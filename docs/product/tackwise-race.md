@@ -62,10 +62,19 @@ This is a course-based wind estimate, not a directly measured true-wind value. T
 
 The first version does not add new persisted telemetry or cloud processing. Any later decision to save estimated shifts must first review the privacy inventory, export/deletion behavior and logging.
 
-### Decisions still needed before implementation
+### Current implementation behavior
 
-- Tack detection and port/starboard classification criteria.
-- How to handle the existing true-north versus magnetic-north wind-measurement fallback when it does not match the live course reference.
+The compass mode is stored with the existing local app settings. If the selected mode is wind-relative but the Course wind reference is absent or not marked `true-north`, the large direction value falls back to the ordinary filtered GPS course and the wind instruments are hidden. The ordinary compass remains available.
+
+The instrument consumes `displayCourseDegrees` from the shared GPS filter, but only when the existing `courseReliable` flag is true and its presentation timestamp is no more than 5 seconds old. It adds no course filter or sensor stream.
+
+The initial tack candidate is the nearer of the two courses at W ± Slagvinkel/2. It must remain within 15° for 5 seconds. After a tack, the detector uses the latest accepted wind estimate to predict the opposite course, limited to a 25° adjustment from the current tack's wind reference, and also accepts the original Course-based prediction as a fallback. A transition starts after sufficient progress toward the opposite course, when the ±20° wind corridor supports that progress, or on arrival at a predicted opposite course. The corridor is supporting evidence, not a required sample. The opposite course must then remain within 15° for 5 seconds. Returning within 15° of the previous tack cancels the transition; a transition that does not complete within 45 seconds returns to the previous tack with indicators off.
+
+After the first confirmed tack and each confirmed subsequent tack, the reference-establishment clock starts. Seconds 0–20 are settling time; samples from seconds 20–30 form a circular mean. At least five samples with circular RMS spread no greater than 10° are required, and the mean must remain within 15° of the expected tack course. Otherwise the detector returns to seeking a stable tack. The accepted mean is locked for that tack and indicators restart from zero.
+
+For the locked tack reference, course changes of 5°, 10° and 15° add green lift or red header dots according to tack; entries occur at threshold +0.5° and exits at threshold −0.5°. All dots are off while transitioning, establishing a reference or lacking reliable course data. The wind estimate is derived from course and Slagvinkel/2, updated from reliable course while within 25° of the locked tack reference, and held during a detected transition. The scale marker shows the last accepted estimate, clamped to ±30° from the original Course wind direction.
+
+Only measurements explicitly marked `true-north` enable these instruments. Magnetic, mock, missing and unknown frames fail closed; no declination conversion is attempted. Tack state and inferred wind are runtime display state and are not added to race recording, cloud payloads or logs.
 
 ## Race recording
 
