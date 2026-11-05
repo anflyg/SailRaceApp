@@ -854,7 +854,32 @@ button:focus-visible {
 
 .race-instrument-footer.recording.with-wind-scale {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(150px, 0.8fr);
+  grid-template-columns: minmax(0, 1fr) minmax(108px, 0.42fr);
+  gap: 6px;
+}
+
+.race-instrument-footer.recording.with-wind-scale .recording-control-compact {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2px;
+  min-width: 0;
+  padding: 3px 4px;
+}
+
+.race-instrument-footer.recording.with-wind-scale .recording-control-compact p {
+  min-width: 0;
+  font-size: clamp(0.62rem, 2.3vw, 0.72rem);
+  line-height: 1;
+  text-align: center;
+}
+
+.race-instrument-footer.recording.with-wind-scale .recording-stop-button {
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  padding: 4px 2px;
+  font-size: clamp(0.68rem, 2.6vw, 0.82rem);
+  line-height: 1;
 }
 
 .wind-tack-cues {
