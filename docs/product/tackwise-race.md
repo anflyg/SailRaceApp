@@ -56,7 +56,7 @@ Use the wind heading set in Course as the original wind reference. When a tack i
 
 Add a compact horizontal scale to the Sailing view. Keep its center fixed at the original Course wind heading; show that heading in degrees at the center. A green dot marks the latest reliable estimated wind direction relative to that origin. Hold the last valid dot through a tack until a newer estimate is available. Do not add explanatory dot labels or a history graph in the first version.
 
-This is a course-based wind estimate, not a directly measured true-wind value. The live course and saved Course wind heading must share a north reference; withhold an estimate when that cannot be established. Reuse the existing filtered course and circular angle helpers. Do not add parallel course filtering.
+This is a course-based wind estimate, not a directly measured true-wind value. The live course and saved Course wind heading must share a north reference; withhold an estimate when that cannot be established. Reuse the existing filtered course and circular angle helpers; angle differences and averages must handle 359°/0° wrap-around. Do not add parallel course filtering.
 
 The first version does not add new persisted telemetry or cloud processing. Any later decision to save estimated shifts must first review the privacy inventory, export/deletion behavior and logging.
 
