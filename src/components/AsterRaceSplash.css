@@ -24,20 +24,20 @@
   z-index: 1;
   display: grid;
   justify-items: center;
-  gap: 20px;
+  gap: 16px;
   animation: aster-race-splash-enter 240ms ease-out both;
 }
 
 .aster-race-splash__logo {
   display: block;
-  width: clamp(220px, 62vw, 360px);
+  width: min(88vw, 420px);
   height: auto;
 }
 
 .aster-race-splash__product {
   margin: 0;
   color: #080808;
-  font-size: clamp(0.8rem, 3.6vw, 1.55rem);
+  font-size: clamp(1.2rem, 5.6vw, 1.65rem);
   font-weight: 500;
   letter-spacing: 0.12em;
   line-height: 1;
@@ -45,11 +45,11 @@
 
 @media (min-width: 720px) {
   .aster-race-splash__content {
-    gap: 22px;
+    gap: 18px;
   }
 
   .aster-race-splash__logo {
-    width: clamp(300px, 37vw, 420px);
+    width: min(72vw, 500px);
   }
 }
 
