@@ -123,19 +123,23 @@ describe('wind shift and tack instrument', () => {
   })
 
   it('cancels an aborted tack and never commits a large course change that does not settle opposite', () => {
-    const initial = establish('port')
-    const t = initial.nextTime
-    let state = feed(initial.output.state, sample(t + 1_000, 189)).state
-    expect(state.phase).toBe('transition')
-    state = feed(state, sample(t + 2_000, 225)).state
-    expect(state.phase).toBe('steady')
-    expect(state.tack).toBe('port')
+    for (const tack of ['port', 'starboard'] as const) {
+      const initial = establish(tack, tack === 'port' ? 100_000 : 200_000)
+      const t = initial.nextTime
+      const direction = tack === 'port' ? -1 : 1
+      const beyondLimit = initial.heading + direction * 36
+      let state = feed(initial.output.state, sample(t + 1_000, beyondLimit)).state
+      expect(state.phase).toBe('transition')
+      state = feed(state, sample(t + 2_000, initial.heading)).state
+      expect(state.phase).toBe('steady')
+      expect(state.tack).toBe(tack)
 
-    state = feed(state, sample(t + 3_000, 189)).state
-    for (let second = 4; second <= 50; second += 1) {
-      state = feed(state, sample(t + second * 1_000, 189)).state
+      state = feed(state, sample(t + 3_000, beyondLimit)).state
+      for (let second = 4; second <= 50; second += 1) {
+        state = feed(state, sample(t + second * 1_000, beyondLimit)).state
+      }
+      expect(state.tack).toBe(tack)
     }
-    expect(state.tack).toBe('port')
   })
 
   it('confirms the opposite stable tack, turns cues off, and restarts reference establishment', () => {
