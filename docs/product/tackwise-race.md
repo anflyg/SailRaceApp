@@ -44,17 +44,19 @@ Here C is the existing filtered GPS course and W is the original wind-source dir
 
 The Swedish setting label is **Slagvinkel** instead of Alpha. It means the full angle between the expected close-hauled courses on port and starboard tack. The full angle is used to calculate the expected course after a tack. Half the angle is used when estimating wind direction from a close-hauled course, with the appropriate tack sign. Keep the existing internal Alpha setting name; do not change existing layline calculations as part of this product decision.
 
+With no wind direction recorded in Course, wind-relative compass mode and wind indicators are inactive; the ordinary compass remains available. The selected compass display mode is saved between app launches.
+
 ### Tack-relative lift and header cues
 
-Show three unlabeled dots for lift and three for header in the Sailing view. Green always means lift and red always means header, on either tack. Each step represents 5°: [0°, 5°) shows none, [5°, 10°) one dot, [10°, 15°) two, and 15° or more three. Use a small hysteresis to prevent flicker at boundaries; its values are not yet set.
+Show three unlabeled dots for lift and three for header in the Sailing view. Green always means lift and red always means header, on either tack. Each step represents 5°: [0°, 5°) shows none, [5°, 10°) one dot, [10°, 15°) two, and 15° or more three. Apply ±0.5° hysteresis around each threshold (5°, 10° and 15°) to prevent flicker.
 
 The dots indicate change relative to a reference locked for the current tack. Interpret the signed course change for the current tack so the colors retain the same meaning on port and starboard. Assume the sailor holds a comparable close-hauled angle; the first version does not model every steering correction.
 
-Use the wind heading set in Course as the original wind reference. When a tack is detected, turn off all dots. Once the tack is complete, wait 30 seconds before setting a new tack reference: seconds 0–20 allow the course to settle; seconds 20–30 provide samples for a circular mean using the shared filtered course. At 30 seconds, lock that mean as the new tack reference and reactivate the dots from zero. Keep the reference fixed for that tack. A further tack before completion restarts the process.
+Use the wind heading set in Course as the original wind reference. For the first upwind leg, use the same 30-second reference-establishment process as after subsequent tacks. After a detected tack, turn off all dots. Once the tack is complete, wait 30 seconds before setting a new tack reference: seconds 0–20 allow the course to settle; seconds 20–30 provide samples for a circular mean using the shared filtered course. At 30 seconds, lock that mean as the new tack reference and reactivate the dots from zero. Keep the reference fixed for that tack. A further tack before completion restarts the process.
 
 ### Wind-shift scale
 
-Add a compact horizontal scale to the Sailing view. Keep its center fixed at the original Course wind heading; show that heading in degrees at the center. A green dot marks the latest reliable estimated wind direction relative to that origin. Hold the last valid dot through a tack until a newer estimate is available. Do not add explanatory dot labels or a history graph in the first version.
+Add a compact horizontal scale to the Sailing view. Keep its center fixed at the original Course wind heading; show that heading in degrees at the center. The scale spans ±30° relative to that origin. A green dot marks the latest reliable estimated wind direction relative to that origin. Clamp the dot to the nearest scale edge for deviations beyond ±30°. Hold the last valid dot through a tack until a newer estimate is available. Do not add explanatory dot labels or a history graph in the first version.
 
 This is a course-based wind estimate, not a directly measured true-wind value. The live course and saved Course wind heading must share a north reference; withhold an estimate when that cannot be established. Reuse the existing filtered course and circular angle helpers; angle differences and averages must handle 359°/0° wrap-around. Do not add parallel course filtering.
 
@@ -63,9 +65,6 @@ The first version does not add new persisted telemetry or cloud processing. Any 
 ### Decisions still needed before implementation
 
 - Tack detection and port/starboard classification criteria.
-- Hysteresis entry/exit values.
-- Behavior when no original Course wind heading is set, and whether the selected compass mode persists across launches.
-- The scale's angular span and edge/clamping behavior.
 - How to handle the existing true-north versus magnetic-north wind-measurement fallback when it does not match the live course reference.
 
 ## Race recording
