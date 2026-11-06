@@ -5,6 +5,7 @@ import { useCountdown } from '../../hooks/useCountdown'
 import type { CountdownDuration, CourseState, FilteredGpsReading, GeoPoint, LiveGpsReading } from '../../types'
 import { useTranslation } from '../../i18n/LanguageContext'
 import type { TranslationKey } from '../../i18n/translations'
+import { RecordingControl } from '../../components/RecordingControl'
 
 const durations: CountdownDuration[] = [5, 4, 3, 2, 1]
 
@@ -27,6 +28,9 @@ interface StartTimerViewProps {
   onReset?: () => boolean | void
   onRunningChange?: (isRunning: boolean) => void
   onFinish?: () => void
+  recordingActive?: boolean
+  recordingMessageKey?: TranslationKey | null
+  onStopRecording?: () => void
 }
 
 export function startCountdownIfAllowed(
@@ -82,6 +86,9 @@ export function StartTimerView({
   onReset,
   onRunningChange,
   onFinish,
+  recordingActive = false,
+  recordingMessageKey = null,
+  onStopRecording = () => {},
 }: StartTimerViewProps) {
   const { t } = useTranslation()
   const { seconds, status, toggle, pause, reset } = useCountdown(selectedMinutes * 60)
@@ -245,6 +252,7 @@ export function StartTimerView({
           ))}
         </div>
       )}
+      <RecordingControl active={recordingActive} messageKey={recordingMessageKey} onStop={onStopRecording} compact />
     </section>
   )
 }

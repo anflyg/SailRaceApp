@@ -476,6 +476,9 @@ export function AppShell() {
         onReset={handleTimerReset}
         onRunningChange={setIsStartTimerRunning}
         onFinish={handleTimerFinish}
+        recordingActive={activeRaceId !== null}
+        recordingMessageKey={recordingMessageKey}
+        onStopRecording={handleStopRecording}
       />
     ),
     race: (
@@ -486,9 +489,6 @@ export function AppShell() {
         laylineEnabled={laylineEnabled}
         laylineAlphaDegrees={laylineAlphaDegrees}
         manualLaylineCountdownValue={manualMode.enabled ? manualMode.laylineCountdownValue : null}
-        recordingActive={activeRaceId !== null}
-        recordingMessageKey={recordingMessageKey}
-        onStopRecording={handleStopRecording}
       />
     ),
     analysis: <RecordedRaceAnalysis enabled={!manualMode.enabled && !simulationMode.enabled}

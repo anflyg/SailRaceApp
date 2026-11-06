@@ -20,6 +20,29 @@ const filteredGps: FilteredGpsReading = {
 }
 
 describe('StartTimerView when an active race blocks a new countdown', () => {
+  it('shows the existing recording status and stop control in Start', () => {
+    const html = renderToStaticMarkup(
+      <LanguageProvider language="sv" setLanguage={() => {}}>
+        <StartTimerView selectedMinutes={5} course={course} gps={gps} filteredGps={filteredGps}
+          onSelectedMinutesChange={() => {}} recordingActive onStopRecording={() => {}} />
+      </LanguageProvider>,
+    )
+    expect(html).toContain('5:00')
+    expect(html).toContain(translations.sv['recording.active'])
+    expect(html).toContain(translations.sv['recording.stop'])
+  })
+
+  it('keeps the saved recording status available after stopping', () => {
+    const html = renderToStaticMarkup(
+      <LanguageProvider language="sv" setLanguage={() => {}}>
+        <StartTimerView selectedMinutes={5} course={course} gps={gps} filteredGps={filteredGps}
+          onSelectedMinutesChange={() => {}} recordingMessageKey="recording.saved" />
+      </LanguageProvider>,
+    )
+    expect(html).toContain(translations.sv['recording.saved'])
+    expect(html).not.toContain('recording-stop-button')
+  })
+
   it('shows the translated explanation in the Start view', () => {
     const html = renderToStaticMarkup(
       <LanguageProvider language="sv" setLanguage={() => {}}>

@@ -12,7 +12,7 @@ Use a pure white (`#FFFFFF`) canvas across Setup, Course, Start, Sailing and Ana
 
 The five top-level destinations remain Setup, Course, Start, Sailing and Analysis. Present them as plain text tabs with a subtle blue underline on the selected tab. Preserve the navigation behavior and touch targets.
 
-In Sailing, FART, RIKTNING and VMG remain the dominant values and retain their existing numeric font family, weight, form and responsive size. Remove separate metric tiles. Set each small, consistently styled label left-aligned below its value in a reserved row, so it cannot overlap the number. Keep the six wind-shift indicators and their established order, outlines, colors and calculations. The bottom wind scale spans the available content width and retains its original wind degree and ±30° range. When the scale and recording control are both visible, place the control in its own row; its action and lifecycle remain unchanged.
+In Sailing, FART, RIKTNING and VMG remain the dominant values and retain their existing numeric font family, weight, form and responsive size. Remove separate metric tiles. Set each small, consistently styled label left-aligned below its value in a reserved row, so it cannot overlap the number. Keep the six wind-shift indicators and their established order, outlines, colors and calculations. The bottom wind scale spans the available content width and retains its original wind degree and ±30° range. Recording status and the confirmed stop control appear on Start and Analysis; recording continues independently of the selected view.
 
 ## Course setup
 
@@ -56,7 +56,7 @@ With no wind direction recorded in Course, wind-relative compass mode and wind i
 
 ### Tack-relative lift and header cues
 
-Show six unlabeled rectangular indicators in the Sailing view: three header indicators on the left and three lift indicators on the right, separated by a vertical divider. Red always means header and green always means lift, on either tack. Thin neutral outlines remain visible when inactive; active indicators fill with their color and retain a contrasting outline. During a tack or reference establishment, all color fills are off. Each step represents 5°: [0°, 5°) shows none, [5°, 10°) one, [10°, 15°) two, and 15° or more three. Apply ±0.5° hysteresis around each threshold (5°, 10° and 15°) to prevent flicker.
+Always show six unlabeled rectangular indicators in the Sailing view: three header indicators on the left and three lift indicators on the right, separated by a vertical divider. Red always means header and green always means lift, on either tack. Thin neutral outlines remain visible when inactive; active indicators fill with their color and retain a contrasting outline. With missing or unreliable course or a missing or incompatible wind reference, and during a tack or reference establishment, all color fills are off. Each step represents 5°: [0°, 5°) shows none, [5°, 10°) one, [10°, 15°) two, and 15° or more three. Apply ±0.5° hysteresis around each threshold (5°, 10° and 15°) to prevent flicker.
 
 The indicators show change relative to a reference locked for the current tack. Interpret the signed course change for the current tack so the colors retain the same meaning on port and starboard. Assume the sailor holds a comparable close-hauled angle; the first version does not model every steering correction.
 
@@ -64,7 +64,7 @@ Use the wind heading set in Course as the original wind reference. For the first
 
 ### Wind-shift scale
 
-Add a compact horizontal scale to the Sailing view. Keep its center fixed at the original Course wind heading; show that heading in degrees at the center. The scale spans ±30° relative to that origin. A green dot marks the latest reliable estimated wind direction relative to that origin. Clamp the dot to the nearest scale edge for deviations beyond ±30°. Hold the last valid dot through a tack until a newer estimate is available. Do not add explanatory dot labels or a history graph in the first version.
+Always show a compact horizontal scale at the bottom of the Sailing view. Keep its center fixed at the original Course wind heading and show that heading below the center; show `—°` when it is absent. The scale spans ±30° relative to that origin, with unlabeled marks at −20°, −10°, 0°, +10° and +20° and a longer center mark. A green dot marks the latest reliable estimated wind direction relative to that origin; show no dot when no reliable estimate exists. Clamp the dot to the nearest scale edge for deviations beyond ±30°. Hold the last valid dot through a tack until a newer estimate is available. Do not add explanatory dot labels or a history graph in the first version.
 
 This is a course-based wind estimate, not a directly measured true-wind value. The live course and saved Course wind heading must share a north reference; withhold an estimate when that cannot be established. Reuse the existing filtered course and circular angle helpers; angle differences and averages must handle 359°/0° wrap-around. Do not add parallel course filtering.
 
@@ -72,7 +72,7 @@ The first version does not add new persisted telemetry or cloud processing. Any 
 
 ### Current implementation behavior
 
-The compass mode is stored with the existing local app settings. If the selected mode is wind-relative but the Course wind reference is absent or not marked `true-north`, the large direction value falls back to the ordinary filtered GPS course and the wind instruments are hidden. The ordinary compass remains available.
+The compass mode is stored with the existing local app settings. If the selected mode is wind-relative but the Course wind reference is absent or not marked `true-north`, the large direction value falls back to the ordinary filtered GPS course. The wind indicator outlines and scale remain visible, with no indicator fills or estimated-wind marker until a compatible reference is available. The ordinary compass remains available.
 
 The instrument consumes `displayCourseDegrees` from the shared GPS filter, but only when the existing `courseReliable` flag is true and its presentation timestamp is no more than 5 seconds old. It adds no course filter or sensor stream.
 

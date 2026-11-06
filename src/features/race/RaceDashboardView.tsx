@@ -8,9 +8,8 @@ import {
 import { useLaylineWarning } from './useLaylineWarning'
 import { playLaylineSignal, playLaylineTick } from '../../services/laylineAudio'
 import { recordLaylineTackEventIfActive } from '../../services/raceLogger'
-import { RecordingControl } from '../../components/RecordingControl'
-import type { TranslationKey } from '../../i18n/translations'
 import { useTranslation } from '../../i18n/LanguageContext'
+import { normalizeDegrees } from '../../domain/angles'
 import { getWindRelativeCourseDegrees } from '../../domain/windShiftInstrument'
 import { WindShiftDots, WindShiftScale, useWindShiftInstrumentOutput } from './WindShiftInstruments'
 import type { CompassDisplayMode } from '../../services/appSettingsStorage'
@@ -25,9 +24,6 @@ interface RaceDashboardViewProps {
   laylineEnabled: boolean
   laylineAlphaDegrees: number
   manualLaylineCountdownValue?: number | null
-  recordingActive?: boolean
-  recordingMessageKey?: TranslationKey | null
-  onStopRecording?: () => void
 }
 
 function getGpsPosition(gps: FilteredGpsReading): GeoPoint | null {
@@ -48,17 +44,16 @@ export function RaceDashboardView({
   laylineEnabled,
   laylineAlphaDegrees,
   manualLaylineCountdownValue = null,
-  recordingActive = false,
-  recordingMessageKey = null,
-  onStopRecording = () => {},
 }: RaceDashboardViewProps) {
   const { t } = useTranslation()
   const [activeVelocityMode, setActiveVelocityMode] = useState<VelocityMode>('vmc')
   const previousCountdownValueRef = useRef<number | null>(null)
   const speedKnots = gps.speedKnots
   const windReferenceCompatible = course.windMeasurement?.referenceFrame === 'true-north'
-  const hasTrueWindReference = windReferenceCompatible && course.windHeadingDegrees !== null
   const windInstrumentOutput = useWindShiftInstrumentOutput(course, gps, laylineAlphaDegrees)
+  const matchingWindReference = windReferenceCompatible && course.windHeadingDegrees !== null &&
+    windInstrumentOutput.state.originWindHeadingDegrees === normalizeDegrees(course.windHeadingDegrees) &&
+    windInstrumentOutput.state.alphaDegrees === laylineAlphaDegrees
   const courseHeading = compassDisplayMode === 'wind-relative' &&
     windReferenceCompatible && course.windHeadingDegrees !== null
     ? isFreshReliableCourse(gps) && gps.displayCourseDegrees !== null
@@ -194,13 +189,13 @@ export function RaceDashboardView({
 
   return (
     <section className="view-section race-view">
-      <div className={`race-grid ${hasTrueWindReference ? 'with-wind-cues' : ''}`}>
+      <div className="race-grid with-wind-cues">
         <div className="metric-box" aria-label={t('sailing.speed')}>
           <span className="metric-value">{speedKnots !== null ? formatKnots(speedKnots) : '--'}</span>
           <span className="metric-label">{t('sailing.speed')}</span>
         </div>
 
-        <WindShiftDots visible={hasTrueWindReference} output={windInstrumentOutput} />
+        <WindShiftDots validReference={matchingWindReference && gps.displayCourseDegrees !== null && isFreshReliableCourse(gps)} output={windInstrumentOutput} />
 
         <div className="metric-box" aria-label={t('sailing.heading')}>
           <span className="metric-value">{hasDisplayCourse ? formatDegrees(courseHeading) : '--'}</span>
@@ -225,17 +220,12 @@ export function RaceDashboardView({
         </div>
       </div>
 
-      <div className={`race-instrument-footer ${recordingActive ? 'recording' : ''} ${hasTrueWindReference ? 'with-wind-scale' : ''}`}>
+      <div className="race-instrument-footer with-wind-scale">
         <WindShiftScale
-          visible={hasTrueWindReference}
+          validReference={matchingWindReference}
           output={windInstrumentOutput}
           windHeadingDegrees={course.windHeadingDegrees}
         />
-        {recordingActive ? (
-          <RecordingControl active messageKey={null} onStop={onStopRecording} compact />
-        ) : recordingMessageKey ? (
-          <RecordingControl active={false} messageKey={recordingMessageKey} onStop={onStopRecording} />
-        ) : null}
       </div>
     </section>
   )

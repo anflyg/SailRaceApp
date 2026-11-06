@@ -63,21 +63,20 @@ export function useWindShiftInstrumentOutput(
 }
 
 interface InstrumentProps {
-  visible: boolean
+  validReference: boolean
   output: WindInstrumentOutput
 }
 
-export function WindShiftDots({ visible, output }: InstrumentProps) {
+export function WindShiftDots({ validReference, output }: InstrumentProps) {
   const { t } = useTranslation()
-  if (!visible) return null
 
   return (
     <div className="wind-tack-cues">
       <div className="wind-cue-dots header" aria-label={t('sailing.header')}>
-        {renderDots(output.headerDots)}
+        {renderDots(validReference ? output.headerDots : 0)}
       </div>
       <div className="wind-cue-dots lift" aria-label={t('sailing.lift')}>
-        {renderDots(output.liftDots)}
+        {renderDots(validReference ? output.liftDots : 0)}
       </div>
     </div>
   )
@@ -87,16 +86,18 @@ interface WindShiftScaleProps extends InstrumentProps {
   windHeadingDegrees: number | null
 }
 
-export function WindShiftScale({ visible, output, windHeadingDegrees }: WindShiftScaleProps) {
+export function WindShiftScale({ validReference, output, windHeadingDegrees }: WindShiftScaleProps) {
   const { t } = useTranslation()
-  if (!visible || windHeadingDegrees === null) return null
 
   return (
     <div className="wind-shift-scale" aria-label={t('sailing.windShiftScale')}>
-      <span className="wind-shift-origin">{formatDegrees(windHeadingDegrees)}</span>
+      <span className="wind-shift-origin">{windHeadingDegrees === null ? '—°' : formatDegrees(windHeadingDegrees)}</span>
       <div className="wind-shift-track" aria-hidden="true">
+        {[1, 2, 4, 5].map((position) => (
+          <span key={position} className="wind-shift-tick" style={{ left: `${position * 100 / 6}%` }} />
+        ))}
         <span className="wind-shift-center-tick" />
-        {output.scalePositionDegrees !== null ? (
+        {validReference && output.scalePositionDegrees !== null ? (
           <span
             className="wind-shift-marker"
             style={{ left: `${((output.scalePositionDegrees + 30) / 60) * 100}%` }}

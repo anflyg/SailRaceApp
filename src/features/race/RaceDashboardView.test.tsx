@@ -22,31 +22,49 @@ const gps: FilteredGpsReading = {
   presentationTimestamp: 1_700_000_000_000,
 }
 
-describe('RaceDashboardView active recording layout', () => {
-  it('keeps speed, heading and VMG visible with the wind instruments and recording stop control', () => {
+describe('RaceDashboardView instrument layout', () => {
+  it('keeps the instruments visible without a wind reference and does not show a recording control', () => {
     const html = renderToStaticMarkup(
       <LanguageProvider language="sv" setLanguage={() => {}}>
         <RaceDashboardView
           course={course}
-          gps={gps}
+          gps={{ ...gps, speedKnots: null, courseDegrees: null, displayCourseDegrees: null, courseReliable: false, timestamp: null, presentationTimestamp: null }}
           compassDisplayMode="normal"
           laylineEnabled={false}
           laylineAlphaDegrees={90}
-          recordingActive
-          onStopRecording={() => {}}
         />
       </LanguageProvider>,
     )
 
-    expect(html).toContain('5,5')
-    expect(html).toContain('042°')
+    expect(html.match(/class="metric-value">--/g)).toHaveLength(3)
     expect(html).toContain(translations.sv['sailing.notSet'])
-    expect(html).toContain(translations.sv['recording.active'])
-    expect(html).toContain(translations.sv['recording.stop'])
+    expect(html).not.toContain(translations.sv['recording.stop'])
+    expect(html).toContain('—°')
+    expect(html.match(/class="wind-cue-dot /g)).toHaveLength(6)
+    expect(html).not.toContain('wind-cue-dot active')
+    expect(html).not.toContain('wind-shift-marker')
+    expect(html.match(/class="wind-shift-tick"/g)).toHaveLength(4)
+    expect(html).toContain('wind-shift-center-tick')
     expect(html).toContain('race-instrument-footer')
     expect(html.match(/class="metric-box/g)).toHaveLength(3)
     expect(html).not.toContain('R +')
     expect(html).not.toContain('S -')
+  })
+
+  it('shows empty cues and the origin with an unreliable course', () => {
+    const html = renderToStaticMarkup(
+      <LanguageProvider language="sv" setLanguage={() => {}}>
+        <RaceDashboardView
+          course={{ ...course, windHeadingDegrees: 180 }}
+          gps={{ ...gps, courseReliable: false, displayCourseDegrees: null, speedKnots: null }}
+          compassDisplayMode="normal" laylineEnabled={false} laylineAlphaDegrees={90}
+        />
+      </LanguageProvider>,
+    )
+    expect(html).toContain('180°')
+    expect(html.match(/class="wind-cue-dot /g)).toHaveLength(6)
+    expect(html).not.toContain('wind-cue-dot active')
+    expect(html).not.toContain('wind-shift-marker')
   })
 
   it('uses wind-relative course only with a true-north origin and otherwise keeps the ordinary compass', () => {
