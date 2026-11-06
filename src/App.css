@@ -2576,12 +2576,27 @@ button:focus-visible {
 }
 
 .app-shell .wind-shift-origin {
+  grid-column: 1;
   grid-row: 3;
   justify-self: center;
   align-self: center;
   font-size: 0.7rem;
   font-weight: 600;
 }
+
+.app-shell .wind-shift-endpoint {
+  grid-column: 1;
+  grid-row: 3;
+  align-self: center;
+  color: var(--theme-text);
+  font-size: 0.7rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.app-shell .wind-shift-endpoint.start { justify-self: start; }
+.app-shell .wind-shift-endpoint.end { justify-self: end; }
 
 .app-shell .wind-shift-track {
   grid-row: 1;

@@ -92,6 +92,8 @@ export function WindShiftScale({ validReference, output, windHeadingDegrees }: W
   return (
     <div className="wind-shift-scale" aria-label={t('sailing.windShiftScale')}>
       <span className="wind-shift-origin">{windHeadingDegrees === null ? '—°' : formatDegrees(windHeadingDegrees)}</span>
+      <span className="wind-shift-endpoint start">−30°</span>
+      <span className="wind-shift-endpoint end">+30°</span>
       <div className="wind-shift-track" aria-hidden="true">
         {[1, 2, 4, 5].map((position) => (
           <span key={position} className="wind-shift-tick" style={{ left: `${position * 100 / 6}%` }} />

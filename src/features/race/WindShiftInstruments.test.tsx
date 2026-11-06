@@ -32,6 +32,8 @@ describe('permanent wind instrument display', () => {
   it('renders equally spaced marks and suppresses fills and the marker without a valid reference', () => {
     const html = render(instrumentAt(145), false, null)
     expect(html).toContain('—°')
+    expect(html).toContain('class="wind-shift-endpoint start">−30°')
+    expect(html).toContain('class="wind-shift-endpoint end">+30°')
     expect(html.match(/class="wind-cue-dot /g)).toHaveLength(6)
     expect(html).not.toContain('wind-cue-dot active')
     expect(html).not.toContain('wind-shift-marker')
@@ -53,6 +55,8 @@ describe('permanent wind instrument display', () => {
     const headerHtml = render(header, true, 180)
     expect(liftHtml).toContain('wind-cue-dots lift')
     expect(liftHtml).toContain('wind-shift-marker')
+    expect(liftHtml).toContain('class="wind-shift-endpoint start">−30°')
+    expect(liftHtml).toContain('class="wind-shift-endpoint end">+30°')
     expect(liftHtml.split('wind-cue-dots lift')[1]).toContain('wind-cue-dot active')
     expect(headerHtml.split('wind-cue-dots header')[1].split('wind-cue-dots lift')[0]).toContain('wind-cue-dot active')
   })
