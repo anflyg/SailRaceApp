@@ -2,7 +2,7 @@
   color-scheme: light;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   color: #080808;
-  background: #F3F2ED;
+  background: #FFFFFF;
   --app-side-padding: 10px;
   --app-safe-top-padding: max(18px, calc(env(safe-area-inset-top, 0px) + 12px));
   --app-safe-bottom-padding: max(14px, calc(env(safe-area-inset-bottom, 0px) + 14px));
@@ -19,7 +19,7 @@ body,
 html,
 body,
 #root {
-  background: #F3F2ED;
+  background: #FFFFFF;
 }
 
 body {
@@ -27,7 +27,7 @@ body {
   height: 100vh;
   height: 100dvh;
   overflow: hidden;
-  background: #F3F2ED;
+  background: #FFFFFF;
 }
 
 #root {
@@ -50,7 +50,7 @@ button {
   grid-template-rows: auto minmax(0, 1fr);
   gap: 8px;
   overflow: hidden;
-  background: #F3F2ED;
+  background: #FFFFFF;
 }
 
 .navigation-bar {
@@ -2444,3 +2444,301 @@ button:focus-visible {
 .synthetic-sync-demo p { font-size:0.9rem; line-height:1.4; }
 .synthetic-sync-demo button { min-height:44px; }
 .synthetic-upload-actions { display:flex; flex-wrap:wrap; gap:0.5rem; }
+
+/* A1 Pure White: let the data and controls create hierarchy. */
+.app-shell {
+  gap: 4px;
+  background: #FFFFFF;
+}
+
+.app-shell .navigation-bar {
+  gap: 0;
+  border-bottom: 1px solid var(--theme-border);
+}
+
+.app-shell .nav-button,
+.app-shell .nav-button.active {
+  min-height: 48px;
+  padding: 8px 2px 7px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: #FFFFFF;
+  box-shadow: none;
+  color: var(--theme-text-muted);
+  font-weight: 650;
+  transform: none;
+}
+
+.app-shell .nav-button.active {
+  border-bottom-color: var(--theme-blue);
+  color: var(--theme-text);
+}
+
+.app-shell .nav-button:hover,
+.app-shell .nav-button:focus-visible {
+  transform: none;
+}
+
+.app-shell .nav-button:focus-visible {
+  outline: 2px solid var(--theme-blue);
+  outline-offset: -3px;
+}
+
+.app-shell .view-section,
+.app-shell .view-section.course-view,
+.app-shell .view-section.timer-view,
+.app-shell .view-section.race-view,
+.app-shell .view-section.setup-view,
+.app-shell .view-section.analysis-view {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.app-shell .view-section.race-view {
+  gap: 3px;
+}
+
+.app-shell .setup-calibration-panel,
+.app-shell .setup-layline-panel,
+.app-shell .setup-system-status-panel {
+  padding-inline: 0;
+  border: 0;
+  border-bottom: 1px solid var(--theme-border);
+  border-radius: 0;
+  background: transparent;
+}
+
+.app-shell .course-schematic {
+  margin-bottom: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.app-shell .large-timer,
+.app-shell .large-timer.timer-idle,
+.app-shell .large-timer.timer-running,
+.app-shell .large-timer.timer-negative {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  text-shadow: none;
+}
+
+.app-shell .large-timer.timer-idle { color: var(--theme-text); }
+.app-shell .large-timer.timer-running { color: var(--theme-green); }
+.app-shell .large-timer.timer-negative { color: var(--theme-red); }
+
+.app-shell .start-run-panel {
+  padding-inline: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.app-shell .race-view .metric-box,
+.app-shell .race-view .metric-box.velocity-made-good,
+.app-shell .race-view .velocity-mode-vmg,
+.app-shell .race-view .velocity-mode-vmc,
+.app-shell .race-view .velocity-mode-layline,
+.app-shell .race-view .velocity-mode-unset {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  justify-items: stretch;
+  gap: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--theme-text);
+}
+
+.app-shell .race-view .metric-value {
+  justify-self: center;
+  align-self: center;
+}
+
+.app-shell .race-view .metric-box.velocity-made-good:focus-visible {
+  outline: 3px solid var(--theme-blue);
+  outline-offset: 2px;
+}
+
+.app-shell .race-view .metric-box .metric-label,
+.app-shell .race-view .velocity-made-good .metric-label,
+.app-shell .race-view .velocity-mode-layline .metric-label {
+  justify-self: stretch;
+  min-height: 1.2em;
+  padding-inline: clamp(12px, 4vw, 24px);
+  color: var(--theme-text-muted);
+  font-size: 0.76rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+  text-align: left;
+}
+
+.app-shell .race-view .velocity-mode-vmg .metric-label,
+.app-shell .race-view .velocity-mode-vmg .metric-context-label { color: var(--theme-blue); }
+.app-shell .race-view .velocity-mode-vmc .metric-label,
+.app-shell .race-view .velocity-mode-vmc .metric-context-label { color: var(--theme-orange); }
+.app-shell .race-view .velocity-mode-layline .metric-label { color: var(--theme-magenta); }
+
+.app-shell .wind-tack-cues {
+  flex: 0 0 clamp(38px, 5.5dvh, 48px);
+}
+
+.app-shell .race-instrument-footer.recording.with-wind-scale {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  justify-items: stretch;
+  gap: 4px;
+  min-height: 0;
+}
+
+.app-shell .wind-shift-scale {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: 8px 1fr auto;
+  gap: 2px;
+  width: 100%;
+  min-height: 56px;
+  padding: 2px 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.app-shell .wind-shift-origin {
+  grid-row: 3;
+  justify-self: center;
+  align-self: center;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.app-shell .wind-shift-track {
+  grid-row: 1;
+  height: 5px;
+  background: var(--theme-border-strong);
+}
+
+.app-shell .wind-shift-center-tick {
+  top: -5px;
+  height: 15px;
+  background: var(--theme-text);
+}
+
+.app-shell .wind-shift-marker {
+  width: 12px;
+  height: 12px;
+  border: 2px solid #FFFFFF;
+  box-shadow: 0 0 0 1px var(--theme-green);
+}
+
+.app-shell .race-instrument-footer.recording.with-wind-scale .recording-control-compact {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, auto);
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--theme-text);
+}
+
+.app-shell .race-instrument-footer.recording.with-wind-scale .recording-control-compact p {
+  text-align: left;
+}
+
+.app-shell .recording-control {
+  border-color: transparent;
+  background: transparent;
+  color: var(--theme-text);
+}
+
+.app-shell .recording-stop-button {
+  border-color: var(--theme-red);
+}
+
+.app-shell .race-instrument-footer.recording.with-wind-scale .recording-stop-button {
+  width: auto;
+  min-width: 112px;
+  min-height: 44px;
+  padding: 6px 10px;
+}
+
+.app-shell .analysis-segmented-control {
+  gap: 0;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid var(--theme-border);
+  border-radius: 0;
+  background: transparent;
+}
+
+.app-shell .analysis-segmented-control button {
+  min-height: 44px;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+}
+
+.app-shell .analysis-segmented-control button.active {
+  border-bottom-color: var(--theme-blue);
+  background: transparent;
+  color: var(--theme-blue);
+  box-shadow: none;
+}
+
+.app-shell .race-library-card,
+.app-shell .race-leg-analysis,
+.app-shell .race-leg-card,
+.app-shell .analysis-placeholder-panel,
+.app-shell .race-library-empty,
+.app-shell .start-analysis-result,
+.app-shell .ghost-replay-panel,
+.app-shell .replay-timeline {
+  border: 0;
+  border-bottom: 1px solid var(--theme-border);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.app-shell .race-card-stats span,
+.app-shell .selected-race-basics div,
+.app-shell .start-analysis-grid div,
+.app-shell .replay-data-panel div {
+  padding-inline: 0;
+  border: 0;
+  border-bottom: 1px solid var(--theme-border);
+  border-radius: 0;
+  background: transparent;
+}
+
+.app-shell .race-track-map {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.app-shell .race-leg-best-badge,
+.app-shell .favorite-badge { background: transparent; }
+
+.app-shell .primary-button,
+.app-shell .duration-button.active,
+.app-shell .race-library-card.selected {
+  box-shadow: none;
+}
+
+:root .race-map-modal {
+  background: rgba(255, 255, 255, 0.94);
+}

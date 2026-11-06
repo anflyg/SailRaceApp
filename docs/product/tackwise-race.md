@@ -6,6 +6,14 @@ TackWise Race is the primary iPhone application used before, during and immediat
 
 The existing application and current code are more evolved than the original concept specification. This document therefore captures stable product intent and must be refined against the actual app before detailed behaviour is treated as final.
 
+## A1 Pure White visual design
+
+Use a pure white (`#FFFFFF`) canvas across Setup, Course, Start, Sailing and Analysis. Use near-black primary text, neutral dark-gray secondary text and restrained neutral rules. Remove decorative page slabs, gradients, shadows and warm off-white surfaces. Retain semantic status colors and outlined, accessible control hit areas.
+
+The five top-level destinations remain Setup, Course, Start, Sailing and Analysis. Present them as plain text tabs with a subtle blue underline on the selected tab. Preserve the navigation behavior and touch targets.
+
+In Sailing, FART, RIKTNING and VMG remain the dominant values and retain their existing numeric font family, weight, form and responsive size. Remove separate metric tiles. Set each small, consistently styled label left-aligned below its value in a reserved row, so it cannot overlap the number. Keep the six wind-shift indicators and their established order, outlines, colors and calculations. The bottom wind scale spans the available content width and retains its original wind degree and ±30° range. When the scale and recording control are both visible, place the control in its own row; its action and lifecycle remain unchanged.
+
 ## Course setup
 
 The app supports race-course preparation, including as applicable:
