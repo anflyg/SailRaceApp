@@ -22,9 +22,7 @@ interface SetupViewProps {
   rollPitch: RollPitchValues | null
   isCalibrated: boolean
   onCalibrate: () => void
-  laylineEnabled: boolean
   laylineAlphaDegrees: number
-  onLaylineEnabledChange: (enabled: boolean) => void
   onLaylineAlphaDegreesChange: (alphaDegrees: number) => void
   compassDisplayMode: CompassDisplayMode
   onCompassDisplayModeChange: (mode: CompassDisplayMode) => void
@@ -36,9 +34,7 @@ export function SetupView({
   rollPitch,
   isCalibrated,
   onCalibrate,
-  laylineEnabled,
   laylineAlphaDegrees,
-  onLaylineEnabledChange,
   onLaylineAlphaDegreesChange,
   compassDisplayMode,
   onCompassDisplayModeChange,
@@ -77,19 +73,8 @@ export function SetupView({
         {t('setup.calibrate')}
       </button>
 
-      <h2 className="setup-section-heading">{t('setup.layline')}</h2>
-      <div className="setup-layline-panel" aria-label={t('setup.laylineSettings')}>
-        <div className="setup-layline-header">
-          <button
-            type="button"
-            className={`setup-layline-toggle ${laylineEnabled ? 'enabled' : 'disabled'}`}
-            onClick={() => onLaylineEnabledChange(!laylineEnabled)}
-            aria-pressed={laylineEnabled}
-          >
-            {laylineEnabled ? t('setup.on') : t('setup.off')}
-          </button>
-        </div>
-
+      <h2 className="setup-section-heading">{t('sailing.windShiftInstruments')}</h2>
+      <div className="setup-layline-panel" aria-label={t('setup.alpha')}>
         <div className="setup-layline-alpha-row">
           <span>{t('setup.alpha')}</span>
           <div className="setup-layline-alpha-control">

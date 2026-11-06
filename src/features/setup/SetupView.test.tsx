@@ -12,9 +12,7 @@ function renderSetup(language: 'sv' | 'en') {
         rollPitch={null}
         isCalibrated={false}
         onCalibrate={() => {}}
-        laylineEnabled
         laylineAlphaDegrees={90}
-        onLaylineEnabledChange={() => {}}
         onLaylineAlphaDegreesChange={() => {}}
         compassDisplayMode="wind-relative"
         onCompassDisplayModeChange={() => {}}
@@ -30,6 +28,9 @@ describe('SetupView compass settings', () => {
     expect(html).toContain('Vanlig')
     expect(html).toContain('Vindrelativ')
     expect(html).toContain('SLAGVINKEL')
+    expect(html).toContain('90°')
+    expect(html).not.toContain('setup-layline-toggle')
+    expect(html).not.toContain('LAYLINE')
     expect(html).toContain('aria-pressed="true">Vindrelativ')
   })
 

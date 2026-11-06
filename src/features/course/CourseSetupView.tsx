@@ -3,7 +3,6 @@ import { formatDegrees, formatSignedDegrees } from '../../domain/format'
 import { getGpsStatusDisplay, getStartLineQuality } from '../../domain/gps'
 import {
   getCourseDisplayReference,
-  getStartLineAdvantageMeters,
   type CourseDisplayReference,
 } from '../../domain/navigation'
 import { useWindHeadingMeasurement } from '../../hooks/useWindHeadingMeasurement'
@@ -64,12 +63,6 @@ export function CourseSetupView({
   } = useWindHeadingMeasurement()
 
   const displayReference = getCourseDisplayReference(course)
-  const startLineAdvantage = getStartLineAdvantageMeters(course)
-  const startLineAdvantageLabel = !startLineAdvantage
-    ? null
-    : startLineAdvantage.favoredEnd === 'neutral'
-      ? t('course.startLineNeutral')
-      : t('course.startLineAdvantage', { end: startLineAdvantage.favoredEnd, meters: Math.round(startLineAdvantage.meters) })
   const windArrowRotation = getWindArrowRotation(course.windHeadingDegrees, displayReference)
   const windRelativeDisplayAngle = course.windHeadingDegrees !== null
     ? shortestAngleDeltaDegrees(course.windHeadingDegrees, displayReference.headingDegrees)
@@ -135,22 +128,6 @@ export function CourseSetupView({
 
         <button
           type="button"
-          className={getCourseMarkClassName('windward', course.points.kryss1)}
-          onClick={() => onToggleCoursePoint('kryss1')}
-        >
-          K1
-        </button>
-
-        <button
-          type="button"
-          className={getCourseMarkClassName('leeward', course.points.lans1)}
-          onClick={() => onToggleCoursePoint('lans1')}
-        >
-          L1
-        </button>
-
-        <button
-          type="button"
           className={`wind-arrow-button ${course.windHeadingDegrees !== null ? 'set' : 'unset'} ${isMeasuringWind ? 'measuring' : ''}`}
           onClick={handleWindArrowClick}
           disabled={isMeasuringWind}
@@ -183,9 +160,6 @@ export function CourseSetupView({
           <span>{t('course.reference')}: {referenceLabel}</span>
           {windRelativeDisplayAngle !== null ? (
             <span>{t('course.windRelative')}: {formatSignedDegrees(windRelativeDisplayAngle)}</span>
-          ) : null}
-          {startLineAdvantageLabel ? (
-            <span>{startLineAdvantageLabel}</span>
           ) : null}
         </div>
         <button type="button" className="primary-button clear-button" onClick={handleClearCourse}>
