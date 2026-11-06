@@ -37,7 +37,7 @@ describe('RaceDashboardView instrument layout', () => {
     )
 
     expect(html.match(/class="metric-value">--/g)).toHaveLength(3)
-    expect(html).toContain(translations.sv['sailing.notSet'])
+    expect(html).toContain('<span class="metric-label">VMG</span>')
     expect(html).not.toContain(translations.sv['recording.stop'])
     expect(html).toContain('—°')
     expect(html.match(/class="wind-cue-dot /g)).toHaveLength(6)
@@ -49,6 +49,18 @@ describe('RaceDashboardView instrument layout', () => {
     expect(html.match(/class="metric-box/g)).toHaveLength(3)
     expect(html).not.toContain('R +')
     expect(html).not.toContain('S -')
+  })
+
+  it.each(['sv', 'en'] as const)('labels the unavailable velocity instrument VMG in %s', (language) => {
+    const html = renderToStaticMarkup(
+      <LanguageProvider language={language} setLanguage={() => {}}>
+        <RaceDashboardView course={course} gps={{ ...gps, speedKnots: null, courseDegrees: null }}
+          compassDisplayMode="normal" laylineEnabled={false} laylineAlphaDegrees={90} />
+      </LanguageProvider>,
+    )
+    expect(html).toContain('aria-label="VMG"')
+    expect(html).toContain('<span class="metric-value">--</span><span class="metric-label">VMG</span>')
+    expect(html).not.toContain(translations[language]['sailing.notSet'])
   })
 
   it('shows empty cues and the origin with an unreliable course', () => {

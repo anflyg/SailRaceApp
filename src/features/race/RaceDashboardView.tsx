@@ -102,9 +102,7 @@ export function RaceDashboardView({
     : null
   const velocityLabel = selectedVelocityMode === 'vmc'
     ? t('sailing.vmgCourse')
-    : selectedVelocityMode === 'vmg'
-      ? t('sailing.vmgWind')
-      : t('sailing.notSet')
+    : t('sailing.vmgWind')
   const velocityValue = activeLaylineWarning.isActive
     ? `${activeLaylineWarning.countdownValue ?? '--'}`
     : velocityMadeGood !== null
