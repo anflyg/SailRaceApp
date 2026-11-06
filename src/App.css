@@ -2564,6 +2564,7 @@ button:focus-visible {
 }
 
 .app-shell .wind-shift-scale {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: 8px 1fr auto;
@@ -2585,18 +2586,17 @@ button:focus-visible {
 }
 
 .app-shell .wind-shift-endpoint {
-  grid-column: 1;
-  grid-row: 3;
-  align-self: center;
+  position: absolute;
+  bottom: 2px;
   color: var(--theme-text);
-  font-size: 0.7rem;
+  font-size: 1.4rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
-.app-shell .wind-shift-endpoint.start { justify-self: start; }
-.app-shell .wind-shift-endpoint.end { justify-self: end; }
+.app-shell .wind-shift-endpoint.start { left: 0; }
+.app-shell .wind-shift-endpoint.end { right: 0; }
 
 .app-shell .wind-shift-track {
   grid-row: 1;
