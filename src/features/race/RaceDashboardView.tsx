@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { formatDegrees, formatKnots, formatSignedDegrees, formatSignedKnots } from '../../domain/format'
+import { formatDegrees, formatKnots, formatSignedKnots } from '../../domain/format'
 import {
   calculateBearingDegrees,
   calculateVelocityMadeGood,
@@ -8,23 +8,22 @@ import {
 import { useLaylineWarning } from './useLaylineWarning'
 import { playLaylineSignal, playLaylineTick } from '../../services/laylineAudio'
 import { recordLaylineTackEventIfActive } from '../../services/raceLogger'
-import { RecordingControl } from '../../components/RecordingControl'
-import type { TranslationKey } from '../../i18n/translations'
 import { useTranslation } from '../../i18n/LanguageContext'
-import type { CourseState, FilteredGpsReading, GeoPoint, RollPitchValues } from '../../types'
+import { normalizeDegrees } from '../../domain/angles'
+import { getWindRelativeCourseDegrees } from '../../domain/windShiftInstrument'
+import { WindShiftDots, WindShiftScale, useWindShiftInstrumentOutput } from './WindShiftInstruments'
+import type { CompassDisplayMode } from '../../services/appSettingsStorage'
+import type { CourseState, FilteredGpsReading, GeoPoint } from '../../types'
 
 type VelocityMode = 'vmg' | 'vmc'
 
 interface RaceDashboardViewProps {
   course: CourseState
   gps: FilteredGpsReading
-  rollPitch: RollPitchValues | null
+  compassDisplayMode: CompassDisplayMode
   laylineEnabled: boolean
   laylineAlphaDegrees: number
   manualLaylineCountdownValue?: number | null
-  recordingActive?: boolean
-  recordingMessageKey?: TranslationKey | null
-  onStopRecording?: () => void
 }
 
 function getGpsPosition(gps: FilteredGpsReading): GeoPoint | null {
@@ -41,19 +40,26 @@ function getGpsPosition(gps: FilteredGpsReading): GeoPoint | null {
 export function RaceDashboardView({
   course,
   gps,
-  rollPitch,
+  compassDisplayMode,
   laylineEnabled,
   laylineAlphaDegrees,
   manualLaylineCountdownValue = null,
-  recordingActive = false,
-  recordingMessageKey = null,
-  onStopRecording = () => {},
 }: RaceDashboardViewProps) {
   const { t } = useTranslation()
   const [activeVelocityMode, setActiveVelocityMode] = useState<VelocityMode>('vmc')
   const previousCountdownValueRef = useRef<number | null>(null)
   const speedKnots = gps.speedKnots
-  const courseHeading = gps.displayCourseDegrees
+  const windReferenceCompatible = course.windMeasurement?.referenceFrame === 'true-north'
+  const windInstrumentOutput = useWindShiftInstrumentOutput(course, gps, laylineAlphaDegrees)
+  const matchingWindReference = windReferenceCompatible && course.windHeadingDegrees !== null &&
+    windInstrumentOutput.state.originWindHeadingDegrees === normalizeDegrees(course.windHeadingDegrees) &&
+    windInstrumentOutput.state.alphaDegrees === laylineAlphaDegrees
+  const courseHeading = compassDisplayMode === 'wind-relative' &&
+    windReferenceCompatible && course.windHeadingDegrees !== null
+    ? isFreshReliableCourse(gps) && gps.displayCourseDegrees !== null
+      ? getWindRelativeCourseDegrees(gps.displayCourseDegrees, course.windHeadingDegrees)
+      : null
+    : gps.displayCourseDegrees
   const hasDisplayCourse = courseHeading !== null
   const boatPosition = getGpsPosition(gps)
   const targetMark = course.points.kryss1
@@ -96,9 +102,7 @@ export function RaceDashboardView({
     : null
   const velocityLabel = selectedVelocityMode === 'vmc'
     ? t('sailing.vmgCourse')
-    : selectedVelocityMode === 'vmg'
-      ? t('sailing.vmgWind')
-      : t('sailing.notSet')
+    : t('sailing.vmgWind')
   const velocityValue = activeLaylineWarning.isActive
     ? `${activeLaylineWarning.countdownValue ?? '--'}`
     : velocityMadeGood !== null
@@ -183,11 +187,13 @@ export function RaceDashboardView({
 
   return (
     <section className="view-section race-view">
-      <div className="race-grid">
+      <div className="race-grid with-wind-cues">
         <div className="metric-box" aria-label={t('sailing.speed')}>
           <span className="metric-value">{speedKnots !== null ? formatKnots(speedKnots) : '--'}</span>
           <span className="metric-label">{t('sailing.speed')}</span>
         </div>
+
+        <WindShiftDots validReference={matchingWindReference && gps.displayCourseDegrees !== null && isFreshReliableCourse(gps)} output={windInstrumentOutput} />
 
         <div className="metric-box" aria-label={t('sailing.heading')}>
           <span className="metric-value">{hasDisplayCourse ? formatDegrees(courseHeading) : '--'}</span>
@@ -212,22 +218,20 @@ export function RaceDashboardView({
         </div>
       </div>
 
-      {recordingActive ? (
-        <div className="race-recording-footer">
-          <div className="roll-pitch-strip" aria-label={t('sailing.rollPitch')}>
-            <span>R {rollPitch ? formatSignedDegrees(rollPitch.rollDegrees) : '—'}</span>
-            <span>S {rollPitch ? formatSignedDegrees(rollPitch.pitchDegrees) : '—'}</span>
-          </div>
-          <RecordingControl active messageKey={null} onStop={onStopRecording} compact />
-        </div>
-      ) : recordingMessageKey ? (
-        <RecordingControl active={false} messageKey={recordingMessageKey} onStop={onStopRecording} />
-      ) : (
-        <div className="roll-pitch-strip" aria-label={t('sailing.rollPitch')}>
-          <span>R {rollPitch ? formatSignedDegrees(rollPitch.rollDegrees) : '—'}</span>
-          <span>S {rollPitch ? formatSignedDegrees(rollPitch.pitchDegrees) : '—'}</span>
-        </div>
-      )}
+      <div className="race-instrument-footer with-wind-scale">
+        <WindShiftScale
+          validReference={matchingWindReference}
+          output={windInstrumentOutput}
+          windHeadingDegrees={course.windHeadingDegrees}
+        />
+      </div>
     </section>
   )
+}
+
+function isFreshReliableCourse(gps: FilteredGpsReading): boolean {
+  const timestamp = gps.presentationTimestamp ?? gps.timestamp
+  if (!gps.courseReliable || timestamp === null || !Number.isFinite(timestamp)) return false
+  const ageMs = Date.now() - timestamp
+  return ageMs >= -1_000 && ageMs <= 5_000
 }

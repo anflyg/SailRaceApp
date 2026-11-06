@@ -10,7 +10,7 @@
   overflow: hidden;
   padding: max(28px, env(safe-area-inset-top, 0px)) 24px max(28px, env(safe-area-inset-bottom, 0px));
   color: #080808;
-  background: #F3F2ED;
+  background: #FFFFFF;
 }
 
 .aster-race-splash--leaving {

@@ -8,6 +8,9 @@ import { RaceDashboardView } from './RaceDashboardView'
 const course: CourseState = {
   points: { startA: null, startB: null, kryss1: null, lans1: null },
   windHeadingDegrees: null,
+  windMeasurement: {
+    referenceFrame: 'true-north',
+  } as CourseState['windMeasurement'],
 }
 
 const gps: FilteredGpsReading = {
@@ -19,30 +22,113 @@ const gps: FilteredGpsReading = {
   presentationTimestamp: 1_700_000_000_000,
 }
 
-describe('RaceDashboardView active recording layout', () => {
-  it('keeps R/S, speed, heading and VMG visible with the recording stop control', () => {
+describe('RaceDashboardView instrument layout', () => {
+  it('keeps the instruments visible without a wind reference and does not show a recording control', () => {
     const html = renderToStaticMarkup(
       <LanguageProvider language="sv" setLanguage={() => {}}>
         <RaceDashboardView
           course={course}
-          gps={gps}
-          rollPitch={{ rollDegrees: 8, pitchDegrees: -3 }}
+          gps={{ ...gps, speedKnots: null, courseDegrees: null, displayCourseDegrees: null, courseReliable: false, timestamp: null, presentationTimestamp: null }}
+          compassDisplayMode="normal"
           laylineEnabled={false}
           laylineAlphaDegrees={90}
-          recordingActive
-          onStopRecording={() => {}}
         />
       </LanguageProvider>,
     )
 
-    expect(html).toContain('R +8°')
-    expect(html).toContain('S -3°')
-    expect(html).toContain('5,5')
-    expect(html).toContain('042°')
-    expect(html).toContain(translations.sv['sailing.notSet'])
-    expect(html).toContain(translations.sv['recording.active'])
-    expect(html).toContain(translations.sv['recording.stop'])
-    expect(html).toContain('race-recording-footer')
+    expect(html.match(/class="metric-value">--/g)).toHaveLength(3)
+    expect(html).toContain('<span class="metric-label">VMG</span>')
+    expect(html).not.toContain(translations.sv['recording.stop'])
+    expect(html).toContain('—°')
+    expect(html.match(/class="wind-cue-dot /g)).toHaveLength(6)
+    expect(html).not.toContain('wind-cue-dot active')
+    expect(html).not.toContain('wind-shift-marker')
+    expect(html.match(/class="wind-shift-tick"/g)).toHaveLength(4)
+    expect(html).toContain('wind-shift-center-tick')
+    expect(html).toContain('race-instrument-footer')
     expect(html.match(/class="metric-box/g)).toHaveLength(3)
+    expect(html).not.toContain('R +')
+    expect(html).not.toContain('S -')
+  })
+
+  it.each(['sv', 'en'] as const)('labels the unavailable velocity instrument VMG in %s', (language) => {
+    const html = renderToStaticMarkup(
+      <LanguageProvider language={language} setLanguage={() => {}}>
+        <RaceDashboardView course={course} gps={{ ...gps, speedKnots: null, courseDegrees: null }}
+          compassDisplayMode="normal" laylineEnabled={false} laylineAlphaDegrees={90} />
+      </LanguageProvider>,
+    )
+    expect(html).toContain('aria-label="VMG"')
+    expect(html).toContain('<span class="metric-value">--</span><span class="metric-label">VMG</span>')
+    expect(html).not.toContain(translations[language]['sailing.notSet'])
+  })
+
+  it('shows empty cues and the origin with an unreliable course', () => {
+    const html = renderToStaticMarkup(
+      <LanguageProvider language="sv" setLanguage={() => {}}>
+        <RaceDashboardView
+          course={{ ...course, windHeadingDegrees: 180 }}
+          gps={{ ...gps, courseReliable: false, displayCourseDegrees: null, speedKnots: null }}
+          compassDisplayMode="normal" laylineEnabled={false} laylineAlphaDegrees={90}
+        />
+      </LanguageProvider>,
+    )
+    expect(html).toContain('180°')
+    expect(html.match(/class="wind-cue-dot /g)).toHaveLength(6)
+    expect(html).not.toContain('wind-cue-dot active')
+    expect(html).not.toContain('wind-shift-marker')
+  })
+
+  it('uses wind-relative course only with a true-north origin and otherwise keeps the ordinary compass', () => {
+    const renderHeading = (compassDisplayMode: 'normal' | 'wind-relative', windReferenceFrame: string) => renderToStaticMarkup(
+      <LanguageProvider language="sv" setLanguage={() => {}}>
+        <RaceDashboardView
+          course={{ ...course, windHeadingDegrees: 90, windMeasurement: { referenceFrame: windReferenceFrame } as CourseState['windMeasurement'] }}
+          gps={{
+            ...gps,
+            courseDegrees: 135,
+            displayCourseDegrees: 135,
+            timestamp: Date.now(),
+            presentationTimestamp: Date.now(),
+          }}
+          compassDisplayMode={compassDisplayMode}
+          laylineEnabled={false}
+          laylineAlphaDegrees={90}
+        />
+      </LanguageProvider>,
+    )
+
+    expect(renderHeading('normal', 'true-north')).toContain('135°')
+    expect(renderHeading('wind-relative', 'true-north')).toContain('225°')
+    expect(renderHeading('wind-relative', 'magnetic-north')).toContain('135°')
+  })
+
+  it('places the six unlabeled tack cues between speed and heading, with the scale below the metrics', () => {
+    const html = renderToStaticMarkup(
+      <LanguageProvider language="sv" setLanguage={() => {}}>
+        <RaceDashboardView
+          course={{ ...course, windHeadingDegrees: 90, windMeasurement: { referenceFrame: 'true-north' } as CourseState['windMeasurement'] }}
+          gps={gps}
+          compassDisplayMode="normal"
+          laylineEnabled={false}
+          laylineAlphaDegrees={90}
+        />
+      </LanguageProvider>,
+    )
+    const speed = html.indexOf('aria-label="Fart"')
+    const dots = html.indexOf('wind-tack-cues')
+    const headerCues = html.indexOf('wind-cue-dots header')
+    const liftCues = html.indexOf('wind-cue-dots lift')
+    const heading = html.indexOf('aria-label="Riktning"')
+    const vmg = html.indexOf('aria-label="VMG"')
+    const scale = html.indexOf('wind-shift-scale')
+    expect(speed).toBeLessThan(dots)
+    expect(dots).toBeLessThan(heading)
+    expect(headerCues).toBeLessThan(liftCues)
+    expect(heading).toBeLessThan(vmg)
+    expect(vmg).toBeLessThan(scale)
+    expect(html.match(/class="wind-cue-dot /g)).toHaveLength(6)
+    expect(html).not.toContain('>Lyft<')
+    expect(html).not.toContain('>Motvrid<')
   })
 })

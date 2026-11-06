@@ -32,6 +32,7 @@ import {
   stopActiveRace,
 } from '../services/raceLogger'
 import { loadAppSettings, saveAppSettings } from '../services/appSettingsStorage'
+import type { CompassDisplayMode } from '../services/appSettingsStorage'
 import { confirmRecordingStop } from '../components/RecordingControl'
 import { LanguageProvider } from '../i18n/LanguageContext'
 import type { AppLanguage } from '../i18n/translations'
@@ -156,6 +157,7 @@ export function AppShell() {
   const [laylineEnabled, setLaylineEnabled] = useState(() => simulationLaylineSettings?.enabled ?? loadAppSettings().layline.enabled)
   const [laylineAlphaDegrees, setLaylineAlphaDegrees] = useState(() => simulationLaylineSettings?.alphaDegrees ?? loadAppSettings().layline.alphaDegrees)
   const [language, setLanguage] = useState<AppLanguage>(() => loadAppSettings().language)
+  const [compassDisplayMode, setCompassDisplayMode] = useState<CompassDisplayMode>(() => loadAppSettings().compassDisplayMode)
   const liveGpsDevice = useLiveGps(
     !manualMode.enabled && activeView !== 'analysis',
     simulationGpsSource ?? undefined,
@@ -256,8 +258,9 @@ export function AppShell() {
         alphaDegrees: laylineAlphaDegrees,
       },
       language,
+      compassDisplayMode,
     })
-  }, [language, laylineAlphaDegrees, laylineEnabled, manualMode.enabled, simulationLaylineSettings])
+  }, [compassDisplayMode, language, laylineAlphaDegrees, laylineEnabled, manualMode.enabled, simulationLaylineSettings])
 
   const handleManualViewChange = useCallback((nextView: AppView) => {
     if (isNavigationLocked && nextView !== activeView) {
@@ -445,6 +448,8 @@ export function AppShell() {
         laylineAlphaDegrees={laylineAlphaDegrees}
         onLaylineEnabledChange={setLaylineEnabled}
         onLaylineAlphaDegreesChange={setLaylineAlphaDegrees}
+        compassDisplayMode={compassDisplayMode}
+        onCompassDisplayModeChange={setCompassDisplayMode}
       />
     ),
     course: (
@@ -471,19 +476,19 @@ export function AppShell() {
         onReset={handleTimerReset}
         onRunningChange={setIsStartTimerRunning}
         onFinish={handleTimerFinish}
+        recordingActive={activeRaceId !== null}
+        recordingMessageKey={recordingMessageKey}
+        onStopRecording={handleStopRecording}
       />
     ),
     race: (
       <RaceDashboardView
         course={course}
         gps={filteredGps}
-        rollPitch={rollPitch}
+        compassDisplayMode={compassDisplayMode}
         laylineEnabled={laylineEnabled}
         laylineAlphaDegrees={laylineAlphaDegrees}
         manualLaylineCountdownValue={manualMode.enabled ? manualMode.laylineCountdownValue : null}
-        recordingActive={activeRaceId !== null}
-        recordingMessageKey={recordingMessageKey}
-        onStopRecording={handleStopRecording}
       />
     ),
     analysis: <RecordedRaceAnalysis enabled={!manualMode.enabled && !simulationMode.enabled}

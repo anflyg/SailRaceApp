@@ -4,25 +4,25 @@
   font-size: 16px;
   line-height: 1.4;
   color: #080808;
-  background: #F3F2ED;
+  background: #FFFFFF;
   --surface: #FFFFFF;
-  --surface-strong: #F8F7F2;
-  --surface-muted: #EEEDE7;
+  --surface-strong: #FFFFFF;
+  --surface-muted: #FFFFFF;
   --primary: #006F94;
   --primary-strong: #006F94;
   --accent: #9A4C00;
   --text-high: #080808;
   --text-muted: #42484D;
-  --border: #6B7074;
+  --border: #D1D5D8;
   --border-active: #006F94;
-  --theme-page-background: #F3F2ED;
+  --theme-page-background: #FFFFFF;
   --theme-panel-background: #FFFFFF;
-  --theme-panel-muted: #F8F7F2;
-  --theme-panel-subtle: #EEEDE7;
+  --theme-panel-muted: #FFFFFF;
+  --theme-panel-subtle: #FFFFFF;
   --theme-text: #080808;
   --theme-text-muted: #42484D;
-  --theme-border: #6B7074;
-  --theme-border-strong: #22282C;
+  --theme-border: #D1D5D8;
+  --theme-border-strong: #555B60;
   --theme-blue: #006F94;
   --theme-orange: #A84F00;
   --theme-green: #147A45;
@@ -40,7 +40,7 @@ html, body, #root {
 
 body {
   margin: 0;
-  background: #F3F2ED;
+  background: #FFFFFF;
 }
 
 button {

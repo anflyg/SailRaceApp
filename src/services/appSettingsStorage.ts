@@ -13,15 +13,19 @@ export const DEFAULT_LAYLINE_SETTINGS: LaylineSettings = {
   alphaDegrees: DEFAULT_LAYLINE_ALPHA_DEGREES,
 }
 
+export type CompassDisplayMode = 'normal' | 'wind-relative'
+
 export interface AppSettingsState {
   layline: LaylineSettings
   language: AppLanguage
+  compassDisplayMode: CompassDisplayMode
 }
 
 function createDefaultSettingsState(): AppSettingsState {
   return {
     layline: DEFAULT_LAYLINE_SETTINGS,
     language: 'sv',
+    compassDisplayMode: 'normal',
   }
 }
 
@@ -49,7 +53,7 @@ export function loadAppSettings(): AppSettingsState {
   }
 }
 
-export function saveAppSettings(state: Pick<AppSettingsState, 'layline'> & Partial<Pick<AppSettingsState, 'language'>>): void {
+export function saveAppSettings(state: Pick<AppSettingsState, 'layline'> & Partial<Pick<AppSettingsState, 'language' | 'compassDisplayMode'>>): void {
   const storage = getLocalStorage()
 
   if (!storage) {
@@ -80,6 +84,7 @@ function normalizeSettingsState(value: unknown): AppSettingsState {
         : DEFAULT_LAYLINE_SETTINGS.alphaDegrees,
     },
     language: value.language === 'en' ? 'en' : 'sv',
+    compassDisplayMode: value.compassDisplayMode === 'wind-relative' ? 'wind-relative' : 'normal',
   }
 }
 
