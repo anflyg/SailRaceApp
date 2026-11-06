@@ -73,11 +73,11 @@ export function WindShiftDots({ visible, output }: InstrumentProps) {
 
   return (
     <div className="wind-tack-cues">
-      <div className="wind-cue-dots lift" aria-label={t('sailing.lift')}>
-        {renderDots(output.liftDots)}
-      </div>
       <div className="wind-cue-dots header" aria-label={t('sailing.header')}>
         {renderDots(output.headerDots)}
+      </div>
+      <div className="wind-cue-dots lift" aria-label={t('sailing.lift')}>
+        {renderDots(output.liftDots)}
       </div>
     </div>
   )

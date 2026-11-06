@@ -883,13 +883,26 @@ button:focus-visible {
 }
 
 .wind-tack-cues {
+  position: relative;
   display: flex;
   width: 100%;
   height: 100%;
   align-items: center;
-  justify-content: stretch;
+  justify-content: space-between;
   gap: clamp(4px, 1.2vw, 10px);
   min-width: 0;
+}
+
+.wind-tack-cues::after {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 2px;
+  background: var(--theme-border-strong);
+  content: '';
+  pointer-events: none;
+  transform: translateX(-50%);
 }
 
 .wind-cue-dots {
@@ -906,13 +919,13 @@ button:focus-visible {
   min-width: 0;
   height: 100%;
   border-radius: 5px;
-  background: var(--theme-border-strong);
-  opacity: 0;
-  transition: opacity 100ms linear;
+  border: 1px solid var(--theme-border-strong);
+  background: transparent;
 }
 
 .wind-cue-dot.active {
-  opacity: 1;
+  border: 2px solid var(--theme-border-strong);
+  box-shadow: inset 0 0 0 1px var(--theme-panel-muted);
 }
 
 .wind-cue-dots.lift .wind-cue-dot.active,
@@ -971,6 +984,18 @@ button:focus-visible {
   border: 2px solid var(--theme-panel-muted);
   border-radius: 50%;
   transform: translate(-50%, -50%);
+}
+
+@media (max-width: 430px) {
+  .view-section.race-view {
+    gap: 6px;
+    padding: 8px 6px;
+  }
+
+  .race-view .metric-box {
+    gap: 3px;
+    padding: 6px 0;
+  }
 }
 
 .roll-pitch-strip {
@@ -2258,6 +2283,10 @@ button:focus-visible {
 
 .app-shell .wind-cue-dot {
   background: var(--theme-border-strong);
+}
+
+.app-shell .wind-cue-dot:not(.active) {
+  background: transparent;
 }
 
 .app-shell .wind-cue-dots.lift .wind-cue-dot.active,
