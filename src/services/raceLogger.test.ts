@@ -226,6 +226,25 @@ describe('pre-start countdown synchronization', () => {
     expect(getRace(race.id)?.startGunTime).toBe(at(361).toISOString())
   })
 
+  it('saves an ended pre-start attempt and rejects its token even after a new race begins', () => {
+    vi.stubGlobal('localStorage', new MockStorage())
+    const first = startRaceLogging({ countdownDurationSeconds: 60, now: at(0) })
+    const oldToken = getActiveCountdownToken()!
+    recordSampleIfDue({ gps: stillGpsAt(at(5).getTime()) })
+    stopActiveRace({ now: at(10) })
+    expect(getActiveCountdownToken()).toBeNull()
+    expect(markStartGun(at(60), oldToken)).toBeNull()
+    expect(getRace(first.id)?.startGunTime).toBeUndefined()
+    expect(getRace(first.id)?.samples).toHaveLength(1)
+    expect(getRace(first.id)?.endTime).toBe(at(10).toISOString())
+
+    const next = startRaceLogging({ countdownDurationSeconds: 60, now: at(61) })
+    expect(next.id).not.toBe(first.id)
+    expect(markStartGun(at(121), oldToken)).toBeNull()
+    expect(getRace(next.id)?.startGunTime).toBeUndefined()
+    expect(markStartGun(at(121), getActiveCountdownToken()!)?.id).toBe(next.id)
+  })
+
   it('does not use the old high-frequency start window when paused', () => {
     vi.stubGlobal('localStorage', new MockStorage())
     const race = startRaceLogging({ countdownDurationSeconds: 300, now: at(0) })

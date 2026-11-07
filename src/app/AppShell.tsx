@@ -151,6 +151,7 @@ export function AppShell() {
   ))
   const [selectedCountdownMinutes, setSelectedCountdownMinutes] = useState<CountdownDuration>(5)
   const [isStartTimerRunning, setIsStartTimerRunning] = useState(false)
+  const [timerResetVersion, setTimerResetVersion] = useState(0)
   const [activeRaceId, setActiveRaceId] = useState<string | null>(() => getActiveRaceId())
   const [recordingMessageKey, setRecordingMessageKey] = useState<'recording.saved' | null>(null)
   const activeRaceIdRef = useRef(activeRaceId)
@@ -307,6 +308,8 @@ export function AppShell() {
 
   const handleStopRecording = useCallback(() => {
     const stoppedRace = stopActiveRace()
+    setIsStartTimerRunning(false)
+    setTimerResetVersion((version) => version + 1)
     refreshActiveRace()
     if (stoppedRace) setRecordingMessageKey('recording.saved')
   }, [refreshActiveRace])
@@ -448,6 +451,7 @@ export function AppShell() {
     ),
     timer: (
       <StartTimerView
+        key={timerResetVersion}
         selectedMinutes={selectedCountdownMinutes}
         course={course}
         gps={liveGps}

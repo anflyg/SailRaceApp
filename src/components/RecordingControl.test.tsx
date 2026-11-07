@@ -19,6 +19,13 @@ describe('recording control', () => {
     }
   })
 
+  it('labels the action and explains that the timer stops and the recording is saved', () => {
+    expect(translations.sv['recording.stop']).toBe('Avsluta race')
+    expect(translations.en['recording.stop']).toBe('End race')
+    expect(translations.sv['recording.confirmStop']).toContain('Startklockan stoppas och inspelningen sparas')
+    expect(translations.en['recording.confirmStop']).toContain('start timer will stop and the recording will be saved')
+  })
+
   it('can show only the stop action while keeping the default Analysis status available', () => {
     const startControl = renderToStaticMarkup(
       <LanguageProvider language="sv" setLanguage={() => {}}>
