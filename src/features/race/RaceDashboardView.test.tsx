@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { LanguageProvider } from '../../i18n/LanguageContext'
 import { translations } from '../../i18n/translations'
 import type { CourseState, FilteredGpsReading } from '../../types'
+import type { WindHeadingMeasurementResult } from '../../services/sensors/windHeadingService'
 import { RaceDashboardView } from './RaceDashboardView'
 
 // Mounting the retired warning engine would reintroduce its countdown/background work.
@@ -10,12 +11,13 @@ vi.mock('./useLaylineWarning', () => ({
   useLaylineWarning: () => { throw new Error('Layline warnings must not run in Sailing') },
 }))
 
+const measurement = (headingDegrees: number): WindHeadingMeasurementResult => ({
+  headingDegrees, selectedHeadingDegrees: headingDegrees, selectedHeadingSource: 'back-vector-row',
+  sampleCount: 40, referenceFrame: 'true-north', quality: 'good', accuracyDegrees: 2, spreadDegrees: 1, nativeDebug: null,
+})
 const course: CourseState = {
   points: { startA: null, startB: null, kryss1: null, lans1: null },
   windHeadingDegrees: null,
-  windMeasurement: {
-    referenceFrame: 'true-north',
-  } as CourseState['windMeasurement'],
 }
 
 const gps: FilteredGpsReading = {
@@ -71,7 +73,7 @@ describe('RaceDashboardView instrument layout', () => {
     const html = renderToStaticMarkup(
       <LanguageProvider language="sv" setLanguage={() => {}}>
         <RaceDashboardView
-          course={{ ...course, windHeadingDegrees: 180 }}
+          course={{ ...course, windHeadingDegrees: 180, windMeasurement: measurement(180) }}
           gps={{ ...gps, courseReliable: false, displayCourseDegrees: null, speedKnots: null }}
           compassDisplayMode="normal" laylineAlphaDegrees={90}
         />
@@ -87,7 +89,7 @@ describe('RaceDashboardView instrument layout', () => {
     const renderHeading = (compassDisplayMode: 'normal' | 'wind-relative', windReferenceFrame: string) => renderToStaticMarkup(
       <LanguageProvider language="sv" setLanguage={() => {}}>
         <RaceDashboardView
-          course={{ ...course, windHeadingDegrees: 90, windMeasurement: { referenceFrame: windReferenceFrame } as CourseState['windMeasurement'] }}
+          course={{ ...course, windHeadingDegrees: 90, windMeasurement: { ...measurement(90), referenceFrame: windReferenceFrame } as WindHeadingMeasurementResult }}
           gps={{
             ...gps,
             courseDegrees: 135,
@@ -110,7 +112,7 @@ describe('RaceDashboardView instrument layout', () => {
     const html = renderToStaticMarkup(
       <LanguageProvider language="sv" setLanguage={() => {}}>
         <RaceDashboardView
-          course={{ ...course, windHeadingDegrees: 90, windMeasurement: { referenceFrame: 'true-north' } as CourseState['windMeasurement'] }}
+          course={{ ...course, windHeadingDegrees: 90, windMeasurement: measurement(90) }}
           gps={gps}
           compassDisplayMode="normal"
           laylineAlphaDegrees={90}
@@ -136,15 +138,41 @@ describe('RaceDashboardView instrument layout', () => {
 })
 
 describe('wind-only VMG', () => {
+  it.each(['magnetic-north', 'mock', 'missing', 'poor', 'unknown', 'ok', 'unstable', 'mismatch', 'stale', 'unreliable'])('hides wind VMG and invalid scale for %s', (condition) => {
+    const good = measurement(90)
+    const windMeasurement = condition === 'missing' ? undefined : {
+      ...good,
+      referenceFrame: condition === 'magnetic-north' || condition === 'mock' ? condition : good.referenceFrame,
+      quality: ['poor', 'unknown', 'ok', 'unstable'].includes(condition) ? condition : good.quality,
+      headingDegrees: condition === 'mismatch' ? 91 : 90,
+    } as WindHeadingMeasurementResult
+    const currentTime = Date.now()
+    const currentGps = { ...gps, courseDegrees: 90, displayCourseDegrees: 90,
+      courseReliable: condition !== 'unreliable', timestamp: currentTime - (condition === 'stale' ? 5_001 : 0),
+      presentationTimestamp: currentTime - (condition === 'stale' ? 5_001 : 0) }
+    const html = renderToStaticMarkup(
+      <LanguageProvider language="sv" setLanguage={() => {}}>
+        <RaceDashboardView course={{ ...course, windHeadingDegrees: 90, windMeasurement }} gps={currentGps}
+          compassDisplayMode="wind-relative" laylineAlphaDegrees={90} />
+      </LanguageProvider>,
+    )
+    expect(html).toContain('<span class="metric-value">--</span><span class="metric-label">VMG</span>')
+    if (condition !== 'stale' && condition !== 'unreliable') {
+      expect(html).toContain('wind-shift-origin">—°')
+      expect(html).toContain('<span class="metric-value">090°</span>')
+    }
+    expect(html).not.toContain('wind-cue-dot active')
+    expect(html).not.toContain('wind-shift-marker')
+  })
   it.each([null, 42])('ignores legacy marks with wind %s and never offers VMC or layline', (windHeadingDegrees) => {
-    const legacyCourse: CourseState = { ...course, windHeadingDegrees, points: {
+    const legacyCourse: CourseState = { ...course, windHeadingDegrees, windMeasurement: windHeadingDegrees === null ? undefined : measurement(windHeadingDegrees), points: {
       ...course.points,
       kryss1: { latitude: 59.31, longitude: 18, quality: 'good' },
       lans1: { latitude: 59.29, longitude: 18, quality: 'good' },
     } }
     const html = renderToStaticMarkup(
       <LanguageProvider language="sv" setLanguage={() => {}}>
-        <RaceDashboardView course={legacyCourse} gps={gps} compassDisplayMode="normal" laylineAlphaDegrees={90} />
+        <RaceDashboardView course={legacyCourse} gps={{ ...gps, timestamp: Date.now(), presentationTimestamp: Date.now() }} compassDisplayMode="normal" laylineAlphaDegrees={90} />
       </LanguageProvider>,
     )
     expect(html).toContain(`<span class="metric-value">${windHeadingDegrees === null ? '--' : '5,5'}</span><span class="metric-label">VMG</span>`)

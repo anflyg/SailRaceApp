@@ -9,6 +9,7 @@ import { RecordedRaceAnalysis } from '../features/analysis/RecordedRaceAnalysis'
 import { calculateRollPitchRelativeToCalibration } from '../domain/motion'
 import { getPointQuality } from '../domain/gps'
 import { calculateVelocityMadeGood, getCourseAxisHeading } from '../domain/navigation'
+import { isFreshReliableGps, isUsableWindReference } from '../domain/windReference'
 import { getManualModeConfig, MANUAL_FIXTURES } from './manualMode'
 import {
   createSimulationGpsSource,
@@ -173,6 +174,8 @@ export function AppShell() {
   const liveGps = manualMode.enabled ? MANUAL_FIXTURES.liveGps : liveGpsDevice
   const filteredGps = manualMode.enabled ? MANUAL_FIXTURES.filteredGps : filteredGpsDevice
   const simulationAppVmgKnots = simulationMode.scenario === 'wind-vmg' &&
+    isUsableWindReference(course.windHeadingDegrees, course.windMeasurement) &&
+    isFreshReliableGps(filteredGps, filteredGps.courseDegrees, filteredGps.timestamp) &&
     filteredGps.speedKnots !== null &&
     filteredGps.courseDegrees !== null &&
     course.windHeadingDegrees !== null
@@ -348,9 +351,10 @@ export function AppShell() {
     recordSampleIfDue({
       gps: filteredGps,
       course: courseDefinition,
+      windMeasurement: course.windMeasurement,
     })
     refreshActiveRace()
-  }, [activeView, courseDefinition, filteredGps, manualMode.enabled, refreshActiveRace])
+  }, [activeView, course.windMeasurement, courseDefinition, filteredGps, manualMode.enabled, refreshActiveRace])
 
   const getLiveGpsPosition = (): CoursePoint | null => {
     if (liveGps.latitude === null || liveGps.longitude === null) {

@@ -57,30 +57,8 @@ const scenarios = [
     expected: { plannedChecks: 7, speedPassed: 7, coursePassed: 7, laylinePassed: 7 },
     laylineCandidate: true,
   },
-  {
-    name: 'layline-warning',
-    label: 'LAYLINE WARNING',
-    timeoutMs: 55_000,
-    simulationRate: 1,
-    expected: { plannedChecks: 7, speedPassed: 7, coursePassed: 7 },
-    laylineWarning: true,
-  },
-  {
-    name: 'layline-reactive-tack',
-    label: 'LAYLINE REACTIVE TACK',
-    timeoutMs: 55_000,
-    simulationRate: 1,
-    expected: { plannedChecks: 13, speedPassed: 13, coursePassed: 13 },
-    reactiveTack: true,
-  },
-  {
-    name: 'upwind-to-k1',
-    label: 'UPWIND TO K1',
-    timeoutMs: 60_000,
-    simulationRate: 1,
-    expected: { plannedChecks: 15, speedPassed: 15, coursePassed: 15 },
-    upwindToK1: true,
-  },
+  // Active mark-based layline warnings and their reactive tack UI were retired;
+  // keep layline-candidate above to exercise the historical calculation.
   {
     name: 'speed-source-disagreement',
     label: 'SPEED SOURCE DISAGREEMENT',
@@ -100,6 +78,7 @@ const scenarios = [
 const scenariosToRun = process.env.SIMULATION_SCENARIO
   ? scenarios.filter((scenario) => scenario.name === process.env.SIMULATION_SCENARIO)
   : scenarios
+if (scenariosToRun.length === 0) throw new Error(`Unknown or retired simulation scenario: ${process.env.SIMULATION_SCENARIO}`)
 
 function sleep(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds))
@@ -537,8 +516,12 @@ async function validateDashboard(page, scenario) {
   }
   assertEqual(courseText, expectedCourse, `${scenario.label} dashboard course`)
 
+  if (scenario.name === 'layline-candidate') {
+    assertEqual(await page.locator('.velocity-made-good').getAttribute('aria-label'), 'VMG', 'retired layline countdown stays hidden')
+  }
+
   if (scenario.name === 'wind-vmg') {
-    const velocity = await page.getByLabel('VMG Vind').locator('.metric-value').textContent()
+    const velocity = await page.getByLabel('VMG', { exact: true }).locator('.metric-value').textContent()
     assertEqual(velocity, '4,2', 'WIND VMG dashboard value')
     return { speed: speedText, course: courseText, velocity }
   }
@@ -549,6 +532,13 @@ async function validateDashboard(page, scenario) {
 async function runScenario(browser, scenario) {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } })
   const page = await context.newPage()
+  if (scenario.name === 'wind-vmg') {
+    await page.addInitScript((rate) => {
+      const realNow = Date.now.bind(Date)
+      const origin = realNow()
+      Date.now = () => origin + (realNow() - origin) * rate
+    }, scenario.simulationRate ?? 10)
+  }
 
   try {
     const startedAt = Date.now()

@@ -7,6 +7,7 @@ import {
 } from '../../domain/windShiftInstrument'
 import type { CourseState, FilteredGpsReading } from '../../types'
 import { useTranslation } from '../../i18n/LanguageContext'
+import { isFreshReliableGps, isUsableWindReference } from '../../domain/windReference'
 
 const emptyOutput: WindInstrumentOutput = {
   state: createWindInstrumentState(),
@@ -27,7 +28,7 @@ export function useWindShiftInstrumentOutput(
   const stateRef = useRef(emptyOutput.state)
   const [output, setOutput] = useState(emptyOutput)
   const windHeading = course.windHeadingDegrees
-  const referenceFrame = course.windMeasurement?.referenceFrame
+  const referenceFrame = isUsableWindReference(windHeading, course.windMeasurement) ? 'true-north' : undefined
   const gpsHeading = gps.displayCourseDegrees
 
   useEffect(() => {
@@ -36,7 +37,7 @@ export function useWindShiftInstrumentOutput(
         nowMs: Date.now(),
         timestamp: gps.presentationTimestamp ?? gps.timestamp,
         courseDegrees: gpsHeading,
-        courseReliable: gps.courseReliable,
+        courseReliable: isFreshReliableGps(gps, gpsHeading, gps.presentationTimestamp ?? gps.timestamp),
         windHeadingDegrees: windHeading,
         windReferenceFrame: referenceFrame,
         alphaDegrees,
@@ -52,6 +53,7 @@ export function useWindShiftInstrumentOutput(
   }, [
     alphaDegrees,
     gps.courseReliable,
+    gps.speedKnots,
     gps.presentationTimestamp,
     gps.timestamp,
     gpsHeading,
