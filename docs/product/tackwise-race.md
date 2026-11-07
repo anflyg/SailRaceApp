@@ -16,12 +16,11 @@ In Sailing, FART, RIKTNING and VMG remain the dominant values and retain their e
 
 ## Course setup
 
-The app supports race-course preparation, including as applicable:
-- two-point start line,
-- windward marks/gates,
-- leeward marks/gates,
-- wind direction,
-- course-relative reference direction/coordinate system.
+New races use the A/B two-point start line and measured wind direction. Course retains the relevant schematic and wind measurement controls, but no longer offers K1/L1 mark buttons. K1/L1 are not used to prepare or execute new races.
+
+Mark-dependent layline guidance and VMC are retired from active sailing. Setup retains Slagvinkel (including its existing local persistence and internal Alpha naming) for the wind instruments, but has no layline on/off control. Sailing always shows wind VMG, or the existing `--` placeholder without a wind reference; it offers no VMC switch. Normal races never run layline countdowns, play layline sounds or generate new layline-tack events, including when an older saved layline setting was enabled. Do not show the old K1/L1-dependent start-line advantage in Course; no replacement bias algorithm is introduced.
+
+Existing recordings, saved marks, layline events, VMC sample fields, exports/imports, sync and analysis contracts remain compatible. Historical mark-based leg analysis is retained when saved marks exist. Races without marks are valid configurations; the analysis UI explains that GPS/wind-based leg identification is not yet available. The product direction is to identify upwind and downwind legs after the race from GPS and wind; this change does not implement that algorithm or a data migration.
 
 ## Start
 
@@ -35,8 +34,7 @@ During racing the interface prioritizes large, high-contrast, sunlight-readable 
 - speed in knots,
 - course/heading,
 - VMG,
-- course-relative direction where a course reference exists,
-- relevant mark/layline information as developed.
+- wind-relative course and the existing wind-shift instruments.
 
 ## Wind-relative course and wind-shift cues
 
@@ -50,7 +48,7 @@ Settings will offer the existing course display and a wind-relative course displ
 
 Here C is the existing filtered GPS course and W is the original wind-source direction set in Course; both must use compatible north references. For W=180°, C=135° displays 135°, C=180° displays 180°, C=225° displays 225°, and C=0° displays 0°. Do not apply half the tack angle to this large direction value. Preserve the existing size and layout of FART, RIKTNING and VMG.
 
-The Swedish setting label is **Slagvinkel** instead of Alpha. It means the full angle between the expected close-hauled courses on port and starboard tack. The full angle is used to calculate the expected course after a tack. Half the angle is used when estimating wind direction from a close-hauled course, with the appropriate tack sign. Keep the existing internal Alpha setting name; do not change existing layline calculations as part of this product decision.
+The Swedish setting label is **Slagvinkel** instead of Alpha. It means the full angle between the expected close-hauled courses on port and starboard tack. The full angle is used to calculate the expected course after a tack. Half the angle is used when estimating wind direction from a close-hauled course, with the appropriate tack sign. Keep the existing internal Alpha setting name. Retain legacy layline calculations for historical compatibility; active races no longer use layline guidance.
 
 With no wind direction recorded in Course, wind-relative compass mode and wind indicators are inactive; the ordinary compass remains available. The selected compass display mode is saved between app launches.
 

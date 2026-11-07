@@ -1,9 +1,14 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { LanguageProvider } from '../../i18n/LanguageContext'
 import { translations } from '../../i18n/translations'
 import type { CourseState, FilteredGpsReading } from '../../types'
 import { RaceDashboardView } from './RaceDashboardView'
+
+// Mounting the retired warning engine would reintroduce its countdown/background work.
+vi.mock('./useLaylineWarning', () => ({
+  useLaylineWarning: () => { throw new Error('Layline warnings must not run in Sailing') },
+}))
 
 const course: CourseState = {
   points: { startA: null, startB: null, kryss1: null, lans1: null },
@@ -30,7 +35,6 @@ describe('RaceDashboardView instrument layout', () => {
           course={course}
           gps={{ ...gps, speedKnots: null, courseDegrees: null, displayCourseDegrees: null, courseReliable: false, timestamp: null, presentationTimestamp: null }}
           compassDisplayMode="normal"
-          laylineEnabled={false}
           laylineAlphaDegrees={90}
         />
       </LanguageProvider>,
@@ -55,7 +59,7 @@ describe('RaceDashboardView instrument layout', () => {
     const html = renderToStaticMarkup(
       <LanguageProvider language={language} setLanguage={() => {}}>
         <RaceDashboardView course={course} gps={{ ...gps, speedKnots: null, courseDegrees: null }}
-          compassDisplayMode="normal" laylineEnabled={false} laylineAlphaDegrees={90} />
+          compassDisplayMode="normal" laylineAlphaDegrees={90} />
       </LanguageProvider>,
     )
     expect(html).toContain('aria-label="VMG"')
@@ -69,7 +73,7 @@ describe('RaceDashboardView instrument layout', () => {
         <RaceDashboardView
           course={{ ...course, windHeadingDegrees: 180 }}
           gps={{ ...gps, courseReliable: false, displayCourseDegrees: null, speedKnots: null }}
-          compassDisplayMode="normal" laylineEnabled={false} laylineAlphaDegrees={90}
+          compassDisplayMode="normal" laylineAlphaDegrees={90}
         />
       </LanguageProvider>,
     )
@@ -92,7 +96,6 @@ describe('RaceDashboardView instrument layout', () => {
             presentationTimestamp: Date.now(),
           }}
           compassDisplayMode={compassDisplayMode}
-          laylineEnabled={false}
           laylineAlphaDegrees={90}
         />
       </LanguageProvider>,
@@ -110,7 +113,6 @@ describe('RaceDashboardView instrument layout', () => {
           course={{ ...course, windHeadingDegrees: 90, windMeasurement: { referenceFrame: 'true-north' } as CourseState['windMeasurement'] }}
           gps={gps}
           compassDisplayMode="normal"
-          laylineEnabled={false}
           laylineAlphaDegrees={90}
         />
       </LanguageProvider>,
@@ -130,5 +132,27 @@ describe('RaceDashboardView instrument layout', () => {
     expect(html.match(/class="wind-cue-dot /g)).toHaveLength(6)
     expect(html).not.toContain('>Lyft<')
     expect(html).not.toContain('>Motvrid<')
+  })
+})
+
+describe('wind-only VMG', () => {
+  it.each([null, 42])('ignores legacy marks with wind %s and never offers VMC or layline', (windHeadingDegrees) => {
+    const legacyCourse: CourseState = { ...course, windHeadingDegrees, points: {
+      ...course.points,
+      kryss1: { latitude: 59.31, longitude: 18, quality: 'good' },
+      lans1: { latitude: 59.29, longitude: 18, quality: 'good' },
+    } }
+    const html = renderToStaticMarkup(
+      <LanguageProvider language="sv" setLanguage={() => {}}>
+        <RaceDashboardView course={legacyCourse} gps={gps} compassDisplayMode="normal" laylineAlphaDegrees={90} />
+      </LanguageProvider>,
+    )
+    expect(html).toContain(`<span class="metric-value">${windHeadingDegrees === null ? '--' : '5,5'}</span><span class="metric-label">VMG</span>`)
+    expect(html).toContain('<span class="metric-value">5,5</span>')
+    expect(html).toContain('<span class="metric-value">042°</span>')
+    expect(html).not.toContain('VMC')
+    expect(html).not.toContain('LAYLINE')
+    expect(html).not.toContain('role="button"')
+    expect(html).not.toContain('can-toggle')
   })
 })

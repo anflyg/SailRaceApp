@@ -154,7 +154,8 @@ export function AppShell() {
   const activeRaceIdRef = useRef(activeRaceId)
   const [courseGpsStatus, setCourseGpsStatus] = useState<string | null>(null)
   const [rollPitchCalibration, setRollPitchCalibration] = useState<RollPitchCalibration | null>(null)
-  const [laylineEnabled, setLaylineEnabled] = useState(() => simulationLaylineSettings?.enabled ?? loadAppSettings().layline.enabled)
+  // Legacy settings cannot re-enable layline warnings for a normal race.
+  const laylineEnabled = simulationLaylineSettings?.enabled ?? false
   const [laylineAlphaDegrees, setLaylineAlphaDegrees] = useState(() => simulationLaylineSettings?.alphaDegrees ?? loadAppSettings().layline.alphaDegrees)
   const [language, setLanguage] = useState<AppLanguage>(() => loadAppSettings().language)
   const [compassDisplayMode, setCompassDisplayMode] = useState<CompassDisplayMode>(() => loadAppSettings().compassDisplayMode)
@@ -444,9 +445,7 @@ export function AppShell() {
         rollPitch={rollPitch}
         isCalibrated={rollPitchCalibration !== null}
         onCalibrate={calibrateRollPitch}
-        laylineEnabled={laylineEnabled}
         laylineAlphaDegrees={laylineAlphaDegrees}
-        onLaylineEnabledChange={setLaylineEnabled}
         onLaylineAlphaDegreesChange={setLaylineAlphaDegrees}
         compassDisplayMode={compassDisplayMode}
         onCompassDisplayModeChange={setCompassDisplayMode}
@@ -486,9 +485,7 @@ export function AppShell() {
         course={course}
         gps={filteredGps}
         compassDisplayMode={compassDisplayMode}
-        laylineEnabled={laylineEnabled}
         laylineAlphaDegrees={laylineAlphaDegrees}
-        manualLaylineCountdownValue={manualMode.enabled ? manualMode.laylineCountdownValue : null}
       />
     ),
     analysis: <RecordedRaceAnalysis enabled={!manualMode.enabled && !simulationMode.enabled}
