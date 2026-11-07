@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { NavigationBar } from '../components/NavigationBar'
+import { EndRaceDialog } from '../components/EndRaceDialog'
 import { SetupView } from '../features/setup/SetupView'
 import { CourseSetupView } from '../features/course/CourseSetupView'
 import { StartTimerView } from '../features/timer/StartTimerView'
@@ -151,6 +152,7 @@ export function AppShell() {
   ))
   const [selectedCountdownMinutes, setSelectedCountdownMinutes] = useState<CountdownDuration>(5)
   const [isStartTimerRunning, setIsStartTimerRunning] = useState(false)
+  const [endRaceDialogOpen, setEndRaceDialogOpen] = useState(false)
   const [timerResetVersion, setTimerResetVersion] = useState(0)
   const [activeRaceId, setActiveRaceId] = useState<string | null>(() => getActiveRaceId())
   const [recordingMessageKey, setRecordingMessageKey] = useState<'recording.saved' | null>(null)
@@ -307,6 +309,7 @@ export function AppShell() {
   }, [])
 
   const handleStopRecording = useCallback(() => {
+    setEndRaceDialogOpen(false)
     const stoppedRace = stopActiveRace()
     setIsStartTimerRunning(false)
     setTimerResetVersion((version) => version + 1)
@@ -465,7 +468,7 @@ export function AppShell() {
         onFinish={handleTimerFinish}
         recordingActive={activeRaceId !== null}
         recordingMessageKey={recordingMessageKey}
-        onStopRecording={handleStopRecording}
+        onStopRecording={() => setEndRaceDialogOpen(true)}
       />
     ),
     race: (
@@ -479,7 +482,7 @@ export function AppShell() {
     analysis: <RecordedRaceAnalysis enabled={!manualMode.enabled && !simulationMode.enabled}
       recordingActive={activeRaceId !== null}
       recordingMessageKey={recordingMessageKey}
-      onStopRecording={handleStopRecording}
+      onStopRecording={() => setEndRaceDialogOpen(true)}
       initialRaceId={analysisValidationRace?.id ?? loggedRaceAnalysis?.race.id} initialRace={loggedRaceAnalysis?.race} />,
   }[activeView]
 
@@ -495,6 +498,7 @@ export function AppShell() {
       <main className="app-panel">
         {activeViewContent}
       </main>
+      {endRaceDialogOpen ? <EndRaceDialog onCancel={() => setEndRaceDialogOpen(false)} onConfirm={handleStopRecording} /> : null}
     </div>
     </LanguageProvider>
   )

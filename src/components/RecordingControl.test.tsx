@@ -1,8 +1,8 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { LanguageProvider } from '../i18n/LanguageContext'
 import { translations } from '../i18n/translations'
-import { confirmRecordingStop, RecordingControl } from './RecordingControl'
+import { RecordingControl } from './RecordingControl'
 
 describe('recording control', () => {
   it('shows the active state and a large, explicit stop action in both languages', () => {
@@ -43,22 +43,6 @@ describe('recording control', () => {
     expect(startControl).not.toContain('role="status"')
     expect(analysisControl).toContain(translations.sv['recording.active'])
     expect(analysisControl).toContain('role="status"')
-  })
-
-  it('does not stop when confirmation is cancelled', () => {
-    const onStop = vi.fn()
-    const confirm = vi.fn(() => false)
-
-    expect(confirmRecordingStop('Confirm stop?', onStop, confirm)).toBe(false)
-    expect(confirm).toHaveBeenCalledWith('Confirm stop?')
-    expect(onStop).not.toHaveBeenCalled()
-  })
-
-  it('stops only after confirmation', () => {
-    const onStop = vi.fn()
-
-    expect(confirmRecordingStop('Confirm stop?', onStop, () => true)).toBe(true)
-    expect(onStop).toHaveBeenCalledOnce()
   })
 
   it('shows the saved-in-library acknowledgement after stopping', () => {
