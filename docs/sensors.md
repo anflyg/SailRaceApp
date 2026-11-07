@@ -55,6 +55,11 @@ Reason: when the boat is moving, GPS course is stable and directly reflects over
 - The native plugin prefers Core Motion `xTrueNorthZVertical`.
 - If true north is unavailable it falls back to `xMagneticNorthZVertical`.
 - Magnetic fallback is documented but not declination-corrected yet.
+- Wind-dependent instruments and new recorded wind VMG require matching heading
+  metadata marked `true-north` and `good`, plus a reliable, fresh GPS course and
+  speed where GPS is used. `good` is a preliminary threshold, not a guarantee of
+  actual angular accuracy. Insufficient quality can leave new wind VMG samples
+  absent; historical recordings are not changed.
 
 Reason: low-speed GPS course is noisy; mast rake, bend, and roll require tilt-aware fused attitude.
 

@@ -12,6 +12,7 @@ import {
 } from './raceLogger'
 import { createRace, getRace, listRaces } from './raceStorage'
 import { createRaceExportFiles } from './raceExport'
+import type { WindHeadingMeasurementResult } from './sensors/windHeadingService'
 
 class MockStorage implements Storage {
   public get length(): number {
@@ -53,6 +54,41 @@ function stillGpsAt(timestamp: number) {
     courseReliable: true, timestamp, displayCourseDegrees: 45, presentationTimestamp: timestamp, sampleCount: 1,
   }
 }
+
+describe('recorded wind VMG quality', () => {
+  const at = new Date('2026-01-01T12:00:00.000Z')
+  const measurement: WindHeadingMeasurementResult = { headingDegrees: 0, selectedHeadingDegrees: 0,
+    selectedHeadingSource: 'back-vector-row', sampleCount: 40, referenceFrame: 'true-north', quality: 'good',
+    accuracyDegrees: 3, spreadDegrees: 2, nativeDebug: null }
+  const course = { windDirectionDegrees: 0, courseAxisDegrees: 45 }
+  const gps = { ...stillGpsAt(at.getTime()), speedKnots: 5, courseDegrees: 0, displayCourseDegrees: 0 }
+  it('records VMG for a matching good reference while preserving historical races and export', () => {
+    vi.stubGlobal('localStorage', new MockStorage())
+    const old = createRace({ date: at, name: 'Historical' })
+    const previous = getRace(old.id)
+    startRaceLogging({ countdownDurationSeconds: 60, course, windMeasurement: measurement, now: at })
+    const race = recordSampleIfDue({ gps, course, windMeasurement: measurement, now: at })!
+    expect(race.samples[0].vmgWindKnots).toBeCloseTo(5)
+    expect(race.samples[0].vmgCourseKnots).toBeCloseTo(5 * Math.SQRT1_2)
+    expect(getRace(old.id)).toEqual(previous)
+    expect(createRaceExportFiles(race).some((file) => file.content.includes('vmgWindKnots'))).toBe(true)
+  })
+  it.each(['missing', 'race-missing', 'magnetic', 'poor', 'mismatch', 'race-mismatch', 'wrap-mismatch', 'stale', 'unreliable'])('omits wind VMG but preserves GPS and course VMG: %s', (condition) => {
+    vi.stubGlobal('localStorage', new MockStorage())
+    const stored = condition === 'race-missing' ? undefined : condition === 'race-mismatch' ? { ...measurement, headingDegrees: 1, selectedHeadingDegrees: 1 } : measurement
+    const current = condition === 'missing' ? undefined : condition === 'magnetic' ? { ...measurement, referenceFrame: 'magnetic-north' as const } :
+      condition === 'poor' ? { ...measurement, quality: 'poor' as const } : condition === 'mismatch' ? { ...measurement, headingDegrees: 1 } :
+      condition === 'wrap-mismatch' ? { ...measurement, headingDegrees: 359, selectedHeadingDegrees: 359 } : measurement
+    startRaceLogging({ countdownDurationSeconds: 60, course, windMeasurement: stored, now: at })
+    const sampleGps = { ...gps, courseReliable: condition !== 'unreliable', timestamp: at.getTime() - (condition === 'stale' ? 5_001 : 0) }
+    const race = recordSampleIfDue({ gps: sampleGps, course, windMeasurement: current, now: at })!
+    const sample = race.samples[0]
+    expect(sample.vmgWindKnots).toBeUndefined()
+    expect(sample.vmgCourseKnots).toBeCloseTo(5 * Math.SQRT1_2)
+    expect(sample.cogDegrees).toBe(0)
+    expect(sample.latitude).toBe(gps.latitude)
+  })
+})
 
 describe('active race stop lifecycle', () => {
   it('starts a local race and lets a manual stop set endTime without changing samples or other saved races', () => {

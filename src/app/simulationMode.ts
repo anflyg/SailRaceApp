@@ -74,7 +74,7 @@ export function createSimulationGpsSource(scenario: SimulationScenario): Simulat
     case 'course-noise':
       return createSimulatedGpsSource(createSailingSimulator(COURSE_NOISE_SCENARIO))
     case 'wind-vmg':
-      return createSimulatedGpsSource(createSailingSimulator(WIND_VMG_SCENARIO))
+      return createSimulatedGpsSource(createSailingSimulator({ ...WIND_VMG_SCENARIO, startTimestamp: Date.now() }))
     case 'layline-candidate':
       return createSimulatedGpsSource(createSailingSimulator(LAYLINE_CANDIDATE_SCENARIO))
     case 'layline-warning':
@@ -100,7 +100,10 @@ function createEmptyCoursePoints(): CoursePointState {
 
 export function getSimulationCourseState(scenario: SimulationScenario | null): CourseState | null {
   if (scenario === 'wind-vmg') {
-    return { points: createEmptyCoursePoints(), windHeadingDegrees: 0 }
+    return { points: createEmptyCoursePoints(), windHeadingDegrees: 0, windMeasurement: {
+      headingDegrees: 0, selectedHeadingDegrees: 0, selectedHeadingSource: 'back-vector-row',
+      sampleCount: 40, referenceFrame: 'true-north', quality: 'good', accuracyDegrees: 2, spreadDegrees: 1, nativeDebug: null,
+    } }
   }
 
   if (scenario === 'layline-candidate' || scenario === 'layline-warning' || scenario === 'layline-reactive-tack' || scenario === 'upwind-to-k1') {

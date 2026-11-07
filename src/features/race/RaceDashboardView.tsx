@@ -2,7 +2,9 @@ import { formatDegrees, formatKnots, formatSignedKnots } from '../../domain/form
 import { calculateVelocityMadeGood } from '../../domain/navigation'
 import { useTranslation } from '../../i18n/LanguageContext'
 import { normalizeDegrees } from '../../domain/angles'
-import { getWindRelativeCourseDegrees } from '../../domain/windShiftInstrument'
+import { COURSE_SAMPLE_MAX_AGE_MS, getWindRelativeCourseDegrees } from '../../domain/windShiftInstrument'
+import { isFreshReliableGps, isUsableWindReference } from '../../domain/windReference'
+import { useEffect, useState } from 'react'
 import { WindShiftDots, WindShiftScale, useWindShiftInstrumentOutput } from './WindShiftInstruments'
 import type { CompassDisplayMode } from '../../services/appSettingsStorage'
 import type { CourseState, FilteredGpsReading } from '../../types'
@@ -22,19 +24,31 @@ export function RaceDashboardView({
 }: RaceDashboardViewProps) {
   const { t } = useTranslation()
   const speedKnots = gps.speedKnots
-  const windReferenceCompatible = course.windMeasurement?.referenceFrame === 'true-north'
+  const windReferenceCompatible = isUsableWindReference(course.windHeadingDegrees, course.windMeasurement)
+  const [freshnessTick, setFreshnessTick] = useState(0)
+  useEffect(() => {
+    const now = Date.now()
+    const times = [gps.timestamp, gps.presentationTimestamp].filter((value): value is number =>
+      typeof value === 'number' && Number.isFinite(value) && value + COURSE_SAMPLE_MAX_AGE_MS + 1 > now)
+    if (!times.length) return
+    const remaining = Math.min(...times) + COURSE_SAMPLE_MAX_AGE_MS + 1 - now
+    const timeout = window.setTimeout(() => setFreshnessTick((tick) => tick + 1), remaining)
+    return () => window.clearTimeout(timeout)
+  }, [gps.timestamp, gps.presentationTimestamp, freshnessTick])
+  const freshDisplayCourse = isFreshReliableGps(gps, gps.displayCourseDegrees, gps.presentationTimestamp ?? gps.timestamp)
+  const freshVmgCourse = isFreshReliableGps(gps, gps.courseDegrees, gps.timestamp)
   const windInstrumentOutput = useWindShiftInstrumentOutput(course, gps, laylineAlphaDegrees)
   const matchingWindReference = windReferenceCompatible && course.windHeadingDegrees !== null &&
     windInstrumentOutput.state.originWindHeadingDegrees === normalizeDegrees(course.windHeadingDegrees) &&
     windInstrumentOutput.state.alphaDegrees === laylineAlphaDegrees
   const courseHeading = compassDisplayMode === 'wind-relative' &&
     windReferenceCompatible && course.windHeadingDegrees !== null
-    ? isFreshReliableCourse(gps) && gps.displayCourseDegrees !== null
+    ? freshDisplayCourse && gps.displayCourseDegrees !== null
       ? getWindRelativeCourseDegrees(gps.displayCourseDegrees, course.windHeadingDegrees)
       : null
     : gps.displayCourseDegrees
   const hasDisplayCourse = courseHeading !== null
-  const velocityMadeGood = speedKnots !== null && gps.courseDegrees !== null && course.windHeadingDegrees !== null
+  const velocityMadeGood = windReferenceCompatible && freshVmgCourse && speedKnots !== null && gps.courseDegrees !== null && course.windHeadingDegrees !== null
     ? calculateVelocityMadeGood(speedKnots, gps.courseDegrees, course.windHeadingDegrees)
     : null
   const velocityValue = velocityMadeGood !== null ? formatSignedKnots(velocityMadeGood) : '--'
@@ -49,7 +63,7 @@ export function RaceDashboardView({
           <span className="metric-label">{t('sailing.speed')}</span>
         </div>
 
-        <WindShiftDots validReference={matchingWindReference && gps.displayCourseDegrees !== null && isFreshReliableCourse(gps)} output={windInstrumentOutput} />
+        <WindShiftDots validReference={matchingWindReference && freshDisplayCourse} output={windInstrumentOutput} />
 
         <div className="metric-box" aria-label={t('sailing.heading')}>
           <span className="metric-value">{hasDisplayCourse ? formatDegrees(courseHeading) : '--'}</span>
@@ -66,16 +80,9 @@ export function RaceDashboardView({
         <WindShiftScale
           validReference={matchingWindReference}
           output={windInstrumentOutput}
-          windHeadingDegrees={course.windHeadingDegrees}
+          windHeadingDegrees={windReferenceCompatible ? course.windHeadingDegrees : null}
         />
       </div>
     </section>
   )
-}
-
-function isFreshReliableCourse(gps: FilteredGpsReading): boolean {
-  const timestamp = gps.presentationTimestamp ?? gps.timestamp
-  if (!gps.courseReliable || timestamp === null || !Number.isFinite(timestamp)) return false
-  const ageMs = Date.now() - timestamp
-  return ageMs >= -1_000 && ageMs <= 5_000
 }

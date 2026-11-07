@@ -1,4 +1,5 @@
 import { calculateBearingDegrees, calculateVelocityMadeGood } from '../domain/navigation'
+import { isFreshReliableGps, isUsableWindReference } from '../domain/windReference'
 import {
   appendRaceEvent,
   appendRaceSample,
@@ -48,6 +49,7 @@ export type CountdownToken = { raceId: string; revision: number }
 export type RecordRaceSampleInput = {
   gps: FilteredGpsReading
   course?: CourseDefinition
+  windMeasurement?: WindHeadingMeasurementResult
   headingDegrees?: number
   now?: Date
 }
@@ -205,6 +207,7 @@ export function stopActiveRace({ now = new Date() }: { now?: Date } = {}): Race 
 export function recordSampleIfDue({
   gps,
   course,
+  windMeasurement,
   headingDegrees,
   now = new Date(),
 }: RecordRaceSampleInput): Race | null {
@@ -255,9 +258,9 @@ export function recordSampleIfDue({
     sample.headingDegrees = headingDegrees
   }
 
-  const velocityMadeGood = calculateSampleVelocityMadeGood(gps, course)
+  const velocityMadeGood = calculateSampleVelocityMadeGood(gps, course, windMeasurement, race, now)
   sample.vmgCourseKnots = velocityMadeGood.vmgCourseKnots
-  sample.vmgWindKnots = velocityMadeGood.vmgWindKnots
+  if (velocityMadeGood.vmgWindKnots !== undefined) sample.vmgWindKnots = velocityMadeGood.vmgWindKnots
   sample.windDirectionDegrees = course?.windDirectionDegrees
 
   const updatedRace = appendRaceSample(race.id, sample)
@@ -388,6 +391,9 @@ function getSampleIntervalMs(state: RaceLoggerState, sampleTime: Date): number {
 function calculateSampleVelocityMadeGood(
   gps: FilteredGpsReading,
   course: CourseDefinition | undefined,
+  windMeasurement: WindHeadingMeasurementResult | undefined,
+  race: Race,
+  now: Date,
 ): Pick<RaceSample, 'vmgCourseKnots' | 'vmgWindKnots'> {
   if (gps.speedKnots === null || gps.courseDegrees === null) {
     return {}
@@ -400,7 +406,10 @@ function calculateSampleVelocityMadeGood(
     vmgCourseKnots: vmgCourseReference !== undefined
       ? calculateVelocityMadeGood(gps.speedKnots, gps.courseDegrees, vmgCourseReference)
       : undefined,
-    vmgWindKnots: vmgWindReference !== undefined
+    vmgWindKnots: isUsableWindReference(vmgWindReference, windMeasurement) &&
+      isUsableWindReference(vmgWindReference, race.windMeasurement) &&
+      isUsableWindReference(race.course?.windDirectionDegrees, race.windMeasurement) &&
+      isFreshReliableGps(gps, gps.courseDegrees, gps.timestamp, now.getTime())
       ? calculateVelocityMadeGood(gps.speedKnots, gps.courseDegrees, vmgWindReference)
       : undefined,
   }

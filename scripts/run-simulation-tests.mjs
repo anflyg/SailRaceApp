@@ -538,7 +538,7 @@ async function validateDashboard(page, scenario) {
   assertEqual(courseText, expectedCourse, `${scenario.label} dashboard course`)
 
   if (scenario.name === 'wind-vmg') {
-    const velocity = await page.getByLabel('VMG Vind').locator('.metric-value').textContent()
+    const velocity = await page.getByLabel('VMG', { exact: true }).locator('.metric-value').textContent()
     assertEqual(velocity, '4,2', 'WIND VMG dashboard value')
     return { speed: speedText, course: courseText, velocity }
   }
@@ -549,6 +549,13 @@ async function validateDashboard(page, scenario) {
 async function runScenario(browser, scenario) {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } })
   const page = await context.newPage()
+  if (scenario.name === 'wind-vmg') {
+    await page.addInitScript((rate) => {
+      const realNow = Date.now.bind(Date)
+      const origin = realNow()
+      Date.now = () => origin + (realNow() - origin) * rate
+    }, scenario.simulationRate ?? 10)
+  }
 
   try {
     const startedAt = Date.now()
