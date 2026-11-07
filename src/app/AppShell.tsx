@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { NavigationBar } from '../components/NavigationBar'
+import { EndRaceDialog } from '../components/EndRaceDialog'
 import { SetupView } from '../features/setup/SetupView'
 import { CourseSetupView } from '../features/course/CourseSetupView'
 import { StartTimerView } from '../features/timer/StartTimerView'
@@ -26,17 +27,19 @@ import { useLiveGps } from '../hooks/useLiveGps'
 import { useWakeLock } from '../hooks/useWakeLock'
 import {
   markStartGun,
+  getActiveCountdownToken,
   getActiveRaceId,
+  pausePlannedStart,
   recordSampleIfDue,
   startRaceLogging,
   stopActiveRace,
+  updatePlannedStart,
 } from '../services/raceLogger'
+import type { CountdownToken } from '../services/raceLogger'
 import { loadAppSettings, saveAppSettings } from '../services/appSettingsStorage'
 import type { CompassDisplayMode } from '../services/appSettingsStorage'
-import { confirmRecordingStop } from '../components/RecordingControl'
 import { LanguageProvider } from '../i18n/LanguageContext'
 import type { AppLanguage } from '../i18n/translations'
-import { translations } from '../i18n/translations'
 import type {
   AppView,
   CountdownDuration,
@@ -149,8 +152,10 @@ export function AppShell() {
   ))
   const [selectedCountdownMinutes, setSelectedCountdownMinutes] = useState<CountdownDuration>(5)
   const [isStartTimerRunning, setIsStartTimerRunning] = useState(false)
+  const [endRaceDialogOpen, setEndRaceDialogOpen] = useState(false)
+  const [timerResetVersion, setTimerResetVersion] = useState(0)
   const [activeRaceId, setActiveRaceId] = useState<string | null>(() => getActiveRaceId())
-  const [recordingMessageKey, setRecordingMessageKey] = useState<'recording.saved' | 'recording.alreadyActive' | null>(null)
+  const [recordingMessageKey, setRecordingMessageKey] = useState<'recording.saved' | null>(null)
   const activeRaceIdRef = useRef(activeRaceId)
   const [courseGpsStatus, setCourseGpsStatus] = useState<string | null>(null)
   const [rollPitchCalibration, setRollPitchCalibration] = useState<RollPitchCalibration | null>(null)
@@ -277,14 +282,6 @@ export function AppShell() {
   }, [])
 
   const handleCountdownStart = useCallback((durationSeconds: number) => {
-    const currentRaceId = getActiveRaceId()
-    if (currentRaceId) {
-      activeRaceIdRef.current = currentRaceId
-      setActiveRaceId(currentRaceId)
-      setRecordingMessageKey('recording.alreadyActive')
-      return false
-    }
-
     const race = startRaceLogging({
       countdownDurationSeconds: durationSeconds,
       course: courseDefinition,
@@ -293,11 +290,11 @@ export function AppShell() {
     activeRaceIdRef.current = race.id
     setActiveRaceId(race.id)
     setRecordingMessageKey(null)
-    return true
+    return getActiveCountdownToken()
   }, [course, courseDefinition])
 
-  const handleStartGun = useCallback(() => {
-    markStartGun()
+  const handleStartGun = useCallback((token: CountdownToken) => {
+    return markStartGun(new Date(), token)?.id === token.raceId
   }, [])
 
   const refreshActiveRace = useCallback(() => {
@@ -312,20 +309,13 @@ export function AppShell() {
   }, [])
 
   const handleStopRecording = useCallback(() => {
+    setEndRaceDialogOpen(false)
     const stoppedRace = stopActiveRace()
+    setIsStartTimerRunning(false)
+    setTimerResetVersion((version) => version + 1)
     refreshActiveRace()
     if (stoppedRace) setRecordingMessageKey('recording.saved')
   }, [refreshActiveRace])
-
-  const handleTimerReset = useCallback(() => {
-    if (getActiveRaceId() && !confirmRecordingStop(
-      translations[language]['recording.confirmStop'],
-      handleStopRecording,
-    )) {
-      return false
-    }
-    return true
-  }, [handleStopRecording, language])
 
   useEffect(() => {
     const refreshWhenVisible = () => {
@@ -464,20 +454,21 @@ export function AppShell() {
     ),
     timer: (
       <StartTimerView
+        key={timerResetVersion}
         selectedMinutes={selectedCountdownMinutes}
         course={course}
         gps={liveGps}
         filteredGps={filteredGps}
         onSelectedMinutesChange={setSelectedCountdownMinutes}
         onCountdownStart={handleCountdownStart}
-        countdownBlockedMessageKey={recordingMessageKey === 'recording.alreadyActive' ? recordingMessageKey : null}
+        onCountdownResume={updatePlannedStart}
+        onCountdownPause={pausePlannedStart}
         onStartGun={handleStartGun}
-        onReset={handleTimerReset}
         onRunningChange={setIsStartTimerRunning}
         onFinish={handleTimerFinish}
         recordingActive={activeRaceId !== null}
         recordingMessageKey={recordingMessageKey}
-        onStopRecording={handleStopRecording}
+        onStopRecording={() => setEndRaceDialogOpen(true)}
       />
     ),
     race: (
@@ -491,7 +482,7 @@ export function AppShell() {
     analysis: <RecordedRaceAnalysis enabled={!manualMode.enabled && !simulationMode.enabled}
       recordingActive={activeRaceId !== null}
       recordingMessageKey={recordingMessageKey}
-      onStopRecording={handleStopRecording}
+      onStopRecording={() => setEndRaceDialogOpen(true)}
       initialRaceId={analysisValidationRace?.id ?? loggedRaceAnalysis?.race.id} initialRace={loggedRaceAnalysis?.race} />,
   }[activeView]
 
@@ -507,6 +498,7 @@ export function AppShell() {
       <main className="app-panel">
         {activeViewContent}
       </main>
+      {endRaceDialogOpen ? <EndRaceDialog onCancel={() => setEndRaceDialogOpen(false)} onConfirm={handleStopRecording} /> : null}
     </div>
     </LanguageProvider>
   )

@@ -1,9 +1,9 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { LanguageProvider } from '../../i18n/LanguageContext'
 import { translations } from '../../i18n/translations'
 import type { CourseState, FilteredGpsReading, LiveGpsReading } from '../../types'
-import { startCountdownIfAllowed, StartTimerView } from './StartTimerView'
+import { StartTimerView } from './StartTimerView'
 
 const course: CourseState = {
   points: { startA: null, startB: null, kryss1: null, lans1: null },
@@ -19,8 +19,8 @@ const filteredGps: FilteredGpsReading = {
   sampleCount: 0, displayCourseDegrees: null, presentationTimestamp: null,
 }
 
-describe('StartTimerView when an active race blocks a new countdown', () => {
-  it('shows the existing recording status and stop control in Start', () => {
+describe('StartTimerView recording controls', () => {
+  it('hides recording status and stop control while the timer is stopped, even when a recording is active', () => {
     const html = renderToStaticMarkup(
       <LanguageProvider language="sv" setLanguage={() => {}}>
         <StartTimerView selectedMinutes={5} course={course} gps={gps} filteredGps={filteredGps}
@@ -28,53 +28,19 @@ describe('StartTimerView when an active race blocks a new countdown', () => {
       </LanguageProvider>,
     )
     expect(html).toContain('5:00')
-    expect(html).toContain(translations.sv['recording.active'])
-    expect(html).toContain(translations.sv['recording.stop'])
+    expect(html).not.toContain(translations.sv['recording.active'])
+    expect(html).not.toContain(translations.sv['recording.stop'])
+    expect(html).not.toContain('recording-stop-button')
   })
 
-  it('keeps the saved recording status available after stopping', () => {
+  it('hides saved recording messages from Start while the timer is stopped', () => {
     const html = renderToStaticMarkup(
       <LanguageProvider language="sv" setLanguage={() => {}}>
         <StartTimerView selectedMinutes={5} course={course} gps={gps} filteredGps={filteredGps}
           onSelectedMinutesChange={() => {}} recordingMessageKey="recording.saved" />
       </LanguageProvider>,
     )
-    expect(html).toContain(translations.sv['recording.saved'])
     expect(html).not.toContain('recording-stop-button')
-  })
-
-  it('shows the translated explanation in the Start view', () => {
-    const html = renderToStaticMarkup(
-      <LanguageProvider language="sv" setLanguage={() => {}}>
-        <StartTimerView
-          selectedMinutes={5}
-          course={course}
-          gps={gps}
-          filteredGps={filteredGps}
-          onSelectedMinutesChange={() => {}}
-          countdownBlockedMessageKey="recording.alreadyActive"
-        />
-      </LanguageProvider>,
-    )
-
-    expect(html).toContain(translations.sv['recording.alreadyActive'])
-    expect(html).toContain('countdown-blocked-status')
-    expect(html).toContain('role="status"')
-  })
-
-  it('does not start or toggle the countdown when the recording guard rejects it', () => {
-    const requestStart = vi.fn(() => false)
-    const startCountdown = vi.fn()
-
-    expect(startCountdownIfAllowed(300, requestStart, startCountdown)).toBe(false)
-    expect(requestStart).toHaveBeenCalledWith(300)
-    expect(startCountdown).not.toHaveBeenCalled()
-  })
-
-  it('starts the countdown when there is no active recording guard', () => {
-    const startCountdown = vi.fn()
-
-    expect(startCountdownIfAllowed(300, undefined, startCountdown)).toBe(true)
-    expect(startCountdown).toHaveBeenCalledOnce()
+    expect(html).not.toContain(translations.sv['recording.saved'])
   })
 })

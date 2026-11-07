@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { formatMeters } from '../../domain/format'
 import { calculateStartMetrics } from '../../domain/startLine'
 import { useCountdown } from '../../hooks/useCountdown'
@@ -6,6 +6,7 @@ import type { CountdownDuration, CourseState, FilteredGpsReading, GeoPoint, Live
 import { useTranslation } from '../../i18n/LanguageContext'
 import type { TranslationKey } from '../../i18n/translations'
 import { RecordingControl } from '../../components/RecordingControl'
+import type { CountdownToken } from '../../services/raceLogger'
 
 const durations: CountdownDuration[] = [5, 4, 3, 2, 1]
 
@@ -22,25 +23,15 @@ interface StartTimerViewProps {
   gps: LiveGpsReading
   filteredGps: FilteredGpsReading
   onSelectedMinutesChange: (minutes: CountdownDuration) => void
-  onCountdownStart?: (durationSeconds: number) => boolean | void
-  countdownBlockedMessageKey?: TranslationKey | null
-  onStartGun?: () => void
-  onReset?: () => boolean | void
+  onCountdownStart?: (durationSeconds: number) => CountdownToken | null
+  onCountdownResume?: (remainingSeconds: number) => CountdownToken | null
+  onCountdownPause?: () => void
+  onStartGun?: (token: CountdownToken) => boolean
   onRunningChange?: (isRunning: boolean) => void
   onFinish?: () => void
   recordingActive?: boolean
   recordingMessageKey?: TranslationKey | null
   onStopRecording?: () => void
-}
-
-export function startCountdownIfAllowed(
-  durationSeconds: number,
-  onCountdownStart: StartTimerViewProps['onCountdownStart'],
-  startCountdown: () => void,
-): boolean {
-  if (onCountdownStart?.(durationSeconds) === false) return false
-  startCountdown()
-  return true
 }
 
 function getGpsPosition(gps: LiveGpsReading): GeoPoint | null {
@@ -81,13 +72,12 @@ export function StartTimerView({
   filteredGps,
   onSelectedMinutesChange,
   onCountdownStart,
-  countdownBlockedMessageKey = null,
+  onCountdownResume,
+  onCountdownPause,
   onStartGun,
-  onReset,
   onRunningChange,
   onFinish,
   recordingActive = false,
-  recordingMessageKey = null,
   onStopRecording = () => {},
 }: StartTimerViewProps) {
   const { t } = useTranslation()
@@ -95,6 +85,7 @@ export function StartTimerView({
   const longPressRef = useRef<number | null>(null)
   const longPressTriggered = useRef(false)
   const startGunMarkedRef = useRef(false)
+  const [countdownToken, setCountdownToken] = useState<CountdownToken | null>(null)
 
   useEffect(() => {
     reset(selectedMinutes * 60)
@@ -123,10 +114,11 @@ export function StartTimerView({
 
   useEffect(() => {
     if (status === 'running' && seconds <= 0 && !startGunMarkedRef.current) {
-      startGunMarkedRef.current = true
-      onStartGun?.()
+      if (countdownToken && onStartGun?.(countdownToken)) {
+        startGunMarkedRef.current = true
+      }
     }
-  }, [seconds, status, onStartGun])
+  }, [seconds, status, onStartGun, countdownToken])
 
   const handleDisplayPointerDown = () => {
     longPressTriggered.current = false
@@ -136,7 +128,8 @@ export function StartTimerView({
 
     longPressRef.current = window.setTimeout(() => {
       longPressTriggered.current = true
-      if (onReset?.() === false) return
+      onCountdownPause?.()
+      setCountdownToken(null)
       onRunningChange?.(false)
       startGunMarkedRef.current = false
       reset(selectedMinutes * 60)
@@ -154,13 +147,21 @@ export function StartTimerView({
     if (!longPressTriggered.current) {
       if (status === 'stopped') {
         startGunMarkedRef.current = false
-        startCountdownIfAllowed(selectedMinutes * 60, onCountdownStart, () => {
-          onRunningChange?.(true)
-          toggle()
-        })
+        setCountdownToken(onCountdownStart?.(seconds) ?? null)
+        onRunningChange?.(true)
+        toggle()
         return
       }
 
+      if (status === 'running') {
+        onCountdownPause?.()
+        setCountdownToken(null)
+      } else if (recordingActive) {
+        setCountdownToken(onCountdownResume?.(seconds) ?? null)
+      } else {
+        startGunMarkedRef.current = false
+        setCountdownToken(onCountdownStart?.(Math.max(0, seconds)) ?? null)
+      }
       onRunningChange?.(status !== 'running')
       toggle()
     }
@@ -232,17 +233,14 @@ export function StartTimerView({
         </div>
       ) : (
         <div className="button-grid timer-button-grid">
-          {countdownBlockedMessageKey ? (
-            <p className="countdown-blocked-status" role="status" aria-live="polite">
-              {t(countdownBlockedMessageKey)}
-            </p>
-          ) : null}
           {buttonSet.map((button) => (
             <button
               key={button.minutes}
               type="button"
               className={`duration-button ${selectedMinutes === button.minutes ? 'active' : ''}`}
               onClick={() => {
+                onCountdownPause?.()
+                setCountdownToken(null)
                 onSelectedMinutesChange(button.minutes)
                 reset(button.minutes * 60)
               }}
@@ -252,7 +250,9 @@ export function StartTimerView({
           ))}
         </div>
       )}
-      <RecordingControl active={recordingActive} messageKey={recordingMessageKey} onStop={onStopRecording} compact />
+      {isTimerRunning && recordingActive ? (
+        <RecordingControl active messageKey={null} onStop={onStopRecording} compact showStatus={false} />
+      ) : null}
     </section>
   )
 }

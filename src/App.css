@@ -1032,6 +1032,20 @@ button:focus-visible {
   min-height: 48px;
 }
 
+.end-race-dialog {
+  max-width: min(90vw, 420px);
+  padding: 20px;
+  border: 1px solid var(--theme-border);
+  border-radius: 14px;
+  background: #fff;
+  color: var(--theme-text);
+}
+
+.end-race-dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
+.end-race-dialog p { margin: 0 0 20px; }
+.end-race-dialog-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 12px; }
+.end-race-dialog-actions button { min-height: 44px; padding: 8px 12px; }
+
 .race-recording-footer {
   display: grid;
   flex: 0 0 auto;
@@ -2651,6 +2665,11 @@ button:focus-visible {
 .app-shell .timer-view .recording-control {
   min-height: 44px;
   padding: 0;
+}
+
+.app-shell .timer-view.timer-running-layout .recording-control {
+  align-self: flex-end;
+  width: auto;
 }
 
 .app-shell .analysis-segmented-control {
