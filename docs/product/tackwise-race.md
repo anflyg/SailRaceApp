@@ -26,6 +26,8 @@ Existing recordings, saved marks, layline events, VMC sample fields, exports/imp
 
 The app provides a sailing countdown timer. The original concept supports 5, 4, 3, 2 and 1 minute presets, tap to start/pause and long press to reset. Current implementation details take precedence where already established.
 
+Starting a countdown starts recording. Before the start gun, pausing, resetting or selecting a new countdown retains the same recording; resuming or restarting schedules a fresh start gun. After the gun, resuming the same countdown keeps the current recording, while starting a new countdown closes it and starts a new race. Stopping recording manually requires confirmation.
+
 Start-related capability may progressively include distance/time to line, line bias and related start guidance.
 
 ## Racing view

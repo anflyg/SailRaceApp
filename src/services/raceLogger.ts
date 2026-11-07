@@ -136,8 +136,8 @@ export function getActiveCountdownToken(): CountdownToken | null {
   return { raceId: state.activeRaceId, revision: state.countdownRevision ?? 0 }
 }
 
-// New timer integration must pass its captured token to reject stale callbacks.
-// The optional token preserves the existing timer until it is connected separately.
+// The timer must pass its captured token to reject stale callbacks. It remains
+// optional for existing service callers.
 export function markStartGun(now = new Date(), token?: CountdownToken): Race | null {
   const state = loadLoggerState()
 
