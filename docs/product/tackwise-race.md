@@ -12,7 +12,7 @@ Use a pure white (`#FFFFFF`) canvas across Setup, Course, Start, Sailing and Ana
 
 The five top-level destinations remain Setup, Course, Start, Sailing and Analysis. Present them as plain text tabs with a subtle blue underline on the selected tab. Preserve the navigation behavior and touch targets.
 
-In Sailing, FART, RIKTNING and VMG remain the dominant values and retain their existing numeric font family, weight, form and responsive size. Remove separate metric tiles. Set each small, consistently styled label left-aligned below its value in a reserved row, so it cannot overlap the number. Keep the six wind-shift indicators and their established order, outlines, colors and calculations. The bottom wind scale spans the available content width and retains its original wind degree and ±30° range. Recording status and the confirmed stop control appear on Start and Analysis; recording continues independently of the selected view.
+In Sailing, FART, RIKTNING and VMG remain the dominant values and retain their existing numeric font family, weight, form and responsive size. Remove separate metric tiles. Set each small, consistently styled label left-aligned below its value in a reserved row, so it cannot overlap the number. Keep the six wind-shift indicators and their established order, outlines, colors and calculations. The bottom wind scale spans the available content width and retains its original wind degree and ±30° range. On Start, show only the confirmed stop control while the countdown is actively running and a recording is active; hide the control and all recording status when the countdown is stopped or paused. Analysis keeps recording status and the confirmed stop control visible independently of countdown state. Recording continues independently of the selected view.
 
 ## Course setup
 
@@ -26,7 +26,7 @@ Existing recordings, saved marks, layline events, VMC sample fields, exports/imp
 
 The app provides a sailing countdown timer. The original concept supports 5, 4, 3, 2 and 1 minute presets, tap to start/pause and long press to reset. Current implementation details take precedence where already established.
 
-Starting a countdown starts recording. Before the start gun, pausing, resetting or selecting a new countdown retains the same recording; resuming or restarting schedules a fresh start gun. After the gun, resuming the same countdown keeps the current recording, while starting a new countdown closes it and starts a new race. Stopping recording manually requires confirmation.
+Starting a countdown starts recording. Before the start gun, pausing, resetting or selecting a new countdown retains the same recording; resuming or restarting schedules a fresh start gun. After the gun, resuming the same countdown keeps the current recording, while starting a new countdown closes it and starts a new race. Stopping recording manually requires confirmation. The Start view shows the red End recording control only during an active countdown with an active recording; it has no recording-status text. Analysis remains the place to inspect or stop an active recording when the countdown is paused or stopped.
 
 Start-related capability may progressively include distance/time to line, line bias and related start guidance.
 

@@ -78,7 +78,6 @@ export function StartTimerView({
   onRunningChange,
   onFinish,
   recordingActive = false,
-  recordingMessageKey = null,
   onStopRecording = () => {},
 }: StartTimerViewProps) {
   const { t } = useTranslation()
@@ -251,7 +250,9 @@ export function StartTimerView({
           ))}
         </div>
       )}
-      <RecordingControl active={recordingActive} messageKey={recordingMessageKey} onStop={onStopRecording} compact />
+      {isTimerRunning && recordingActive ? (
+        <RecordingControl active messageKey={null} onStop={onStopRecording} compact showStatus={false} />
+      ) : null}
     </section>
   )
 }

@@ -19,6 +19,25 @@ describe('recording control', () => {
     }
   })
 
+  it('can show only the stop action while keeping the default Analysis status available', () => {
+    const startControl = renderToStaticMarkup(
+      <LanguageProvider language="sv" setLanguage={() => {}}>
+        <RecordingControl active messageKey={null} onStop={() => {}} showStatus={false} />
+      </LanguageProvider>,
+    )
+    const analysisControl = renderToStaticMarkup(
+      <LanguageProvider language="sv" setLanguage={() => {}}>
+        <RecordingControl active messageKey={null} onStop={() => {}} />
+      </LanguageProvider>,
+    )
+
+    expect(startControl).toContain(translations.sv['recording.stop'])
+    expect(startControl).not.toContain(translations.sv['recording.active'])
+    expect(startControl).not.toContain('role="status"')
+    expect(analysisControl).toContain(translations.sv['recording.active'])
+    expect(analysisControl).toContain('role="status"')
+  })
+
   it('does not stop when confirmation is cancelled', () => {
     const onStop = vi.fn()
     const confirm = vi.fn(() => false)

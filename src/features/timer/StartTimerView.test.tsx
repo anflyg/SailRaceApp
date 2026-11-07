@@ -20,7 +20,7 @@ const filteredGps: FilteredGpsReading = {
 }
 
 describe('StartTimerView recording controls', () => {
-  it('shows the existing recording status and stop control in Start', () => {
+  it('hides recording status and stop control while the timer is stopped, even when a recording is active', () => {
     const html = renderToStaticMarkup(
       <LanguageProvider language="sv" setLanguage={() => {}}>
         <StartTimerView selectedMinutes={5} course={course} gps={gps} filteredGps={filteredGps}
@@ -28,18 +28,19 @@ describe('StartTimerView recording controls', () => {
       </LanguageProvider>,
     )
     expect(html).toContain('5:00')
-    expect(html).toContain(translations.sv['recording.active'])
-    expect(html).toContain(translations.sv['recording.stop'])
+    expect(html).not.toContain(translations.sv['recording.active'])
+    expect(html).not.toContain(translations.sv['recording.stop'])
+    expect(html).not.toContain('recording-stop-button')
   })
 
-  it('keeps the saved recording status available after stopping', () => {
+  it('hides saved recording messages from Start while the timer is stopped', () => {
     const html = renderToStaticMarkup(
       <LanguageProvider language="sv" setLanguage={() => {}}>
         <StartTimerView selectedMinutes={5} course={course} gps={gps} filteredGps={filteredGps}
           onSelectedMinutesChange={() => {}} recordingMessageKey="recording.saved" />
       </LanguageProvider>,
     )
-    expect(html).toContain(translations.sv['recording.saved'])
     expect(html).not.toContain('recording-stop-button')
+    expect(html).not.toContain(translations.sv['recording.saved'])
   })
 })

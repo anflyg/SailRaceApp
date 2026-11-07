@@ -16,11 +16,13 @@ export function RecordingControl({
   messageKey,
   onStop,
   compact = false,
+  showStatus = true,
 }: {
   active: boolean
   messageKey?: TranslationKey | null
   onStop: () => void
   compact?: boolean
+  showStatus?: boolean
 }) {
   const { t } = useTranslation()
 
@@ -31,7 +33,7 @@ export function RecordingControl({
 
   return (
     <div className={`recording-control${compact ? ' recording-control-compact' : ''}`}>
-      {status ? <p role="status" aria-live="polite">{status}</p> : null}
+      {showStatus && status ? <p role="status" aria-live="polite">{status}</p> : null}
       {active ? (
         <button
           type="button"
