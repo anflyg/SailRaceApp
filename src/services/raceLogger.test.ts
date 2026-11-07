@@ -1,10 +1,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   getActiveRaceId,
+  getActiveCountdownToken,
+  markStartGun,
+  pausePlannedStart,
   recordSampleIfDue,
   recordLaylineTackEventIfActive,
   startRaceLogging,
   stopActiveRace,
+  updatePlannedStart,
 } from './raceLogger'
 import { createRace, getRace, listRaces } from './raceStorage'
 import { createRaceExportFiles } from './raceExport'
@@ -83,13 +87,14 @@ describe('active race stop lifecycle', () => {
   it('auto-stops after the existing stillness interval while preserving the final sample', () => {
     vi.stubGlobal('localStorage', new MockStorage())
     const started = startRaceLogging({ countdownDurationSeconds: 300, now: new Date('2026-10-14T09:00:00.000Z') })
-    recordSampleIfDue({ gps: stillGpsAt(Date.parse('2026-10-14T09:00:00.000Z')) })
+    markStartGun(new Date('2026-10-14T09:05:00.000Z'))
+    recordSampleIfDue({ gps: stillGpsAt(Date.parse('2026-10-14T09:05:00.000Z')) })
 
-    const autoStopped = recordSampleIfDue({ gps: stillGpsAt(Date.parse('2026-10-14T09:10:00.000Z')) })
+    const autoStopped = recordSampleIfDue({ gps: stillGpsAt(Date.parse('2026-10-14T09:15:00.000Z')) })
 
-    expect(autoStopped?.endTime).toBe('2026-10-14T09:10:00.000Z')
+    expect(autoStopped?.endTime).toBe('2026-10-14T09:15:00.000Z')
     expect(autoStopped?.samples).toHaveLength(2)
-    expect(autoStopped?.samples.at(-1)?.timestamp).toBe('2026-10-14T09:10:00.000Z')
+    expect(autoStopped?.samples.at(-1)?.timestamp).toBe('2026-10-14T09:15:00.000Z')
     expect(getActiveRaceId()).toBeNull()
     expect(getRace(started.id)?.samples).toEqual(autoStopped?.samples)
   })
@@ -173,5 +178,128 @@ describe('race sample diagnostics round trip', () => {
     expect(files.find((file) => file.fileName.endsWith('.csv'))?.content).toContain('1.2')
     expect(files.find((file) => file.fileName.endsWith('.gpx'))?.content).toContain('aster:fusedSpeedKnots')
     stopActiveRace({ now: new Date('2026-08-18T18:01:00.000Z') })
+  })
+})
+
+describe('pre-start countdown synchronization', () => {
+  const base = Date.parse('2026-01-01T12:00:00.000Z')
+  const at = (seconds: number) => new Date(base + seconds * 1000)
+  const storedState = (storage: MockStorage) => JSON.parse(storage.getItem('aster-race:race-logger:v1')!)
+
+  it('reuses the 5:00 race for repeated resynchronizations and retains every sample', () => {
+    const storage = new MockStorage()
+    vi.stubGlobal('localStorage', storage)
+    const race = startRaceLogging({ countdownDurationSeconds: 300, now: at(0) })
+    const firstToken = getActiveCountdownToken()!
+    recordSampleIfDue({ gps: stillGpsAt(at(5).getTime()) })
+    pausePlannedStart()
+    expect(storedState(storage).scheduledStartTime).toBeUndefined()
+    expect(getActiveRaceId()).toBe(race.id)
+    const same = startRaceLogging({ countdownDurationSeconds: 240, now: at(60) })
+    expect(same.id).toBe(race.id)
+    expect(storedState(storage).scheduledStartTime).toBe(at(300).toISOString())
+    expect(getActiveCountdownToken()).not.toEqual(firstToken)
+    recordSampleIfDue({ gps: stillGpsAt(at(65).getTime()) })
+    const secondToken = updatePlannedStart(180, at(90))!
+    expect(storedState(storage).scheduledStartTime).toBe(at(270).toISOString())
+    recordSampleIfDue({ gps: stillGpsAt(at(95).getTime()) })
+    expect(getRace(race.id)?.samples).toHaveLength(3)
+    expect(getRace(race.id)?.endTime).toBeUndefined()
+    expect(listRaces()).toHaveLength(1)
+    expect(markStartGun(at(300), firstToken)).toBeNull()
+    expect(getRace(race.id)?.startGunTime).toBeUndefined()
+    expect(markStartGun(at(270), secondToken)?.startGunTime).toBe(at(270).toISOString())
+  })
+
+  it('rejects a cancelled, premature or stale callback and records the gun exactly once', () => {
+    const storage = new MockStorage()
+    vi.stubGlobal('localStorage', storage)
+    const race = startRaceLogging({ countdownDurationSeconds: 300, now: at(0) })
+    const cancelled = getActiveCountdownToken()!
+    pausePlannedStart()
+    expect(markStartGun(at(300), cancelled)).toBeNull()
+    const current = updatePlannedStart(60, at(301))!
+    expect(markStartGun(at(360), current)).toBeNull()
+    expect(markStartGun(at(361), cancelled)).toBeNull()
+    expect(markStartGun(at(361), current)?.startGunTime).toBe(at(361).toISOString())
+    expect(markStartGun(at(370), current)?.startGunTime).toBe(at(361).toISOString())
+    expect(getRace(race.id)?.startGunTime).toBe(at(361).toISOString())
+  })
+
+  it('does not use the old high-frequency start window when paused', () => {
+    vi.stubGlobal('localStorage', new MockStorage())
+    const race = startRaceLogging({ countdownDurationSeconds: 300, now: at(0) })
+    recordSampleIfDue({ gps: stillGpsAt(at(250).getTime()) })
+    pausePlannedStart()
+    expect(recordSampleIfDue({ gps: stillGpsAt(at(251).getTime()) })).toBeNull()
+    expect(getRace(race.id)?.samples).toHaveLength(1)
+    updatePlannedStart(50, at(250))
+    expect(recordSampleIfDue({ gps: stillGpsAt(at(251).getTime()) })?.samples).toHaveLength(2)
+  })
+
+  it('restores the active countdown token across a logger reload', async () => {
+    vi.stubGlobal('localStorage', new MockStorage())
+    const race = startRaceLogging({ countdownDurationSeconds: 300, now: at(0) })
+    const token = updatePlannedStart(240, at(20))!
+    vi.resetModules()
+    const restored = await import('./raceLogger')
+    expect(restored.getActiveRaceId()).toBe(race.id)
+    expect(restored.getActiveCountdownToken()).toEqual(token)
+    expect(restored.markStartGun(at(260), token)?.startGunTime).toBe(at(260).toISOString())
+    restored.stopActiveRace({ now: at(270) })
+  })
+
+  it('resumes the same post-gun countdown without creating a race and starts a new race only for a new countdown', () => {
+    vi.stubGlobal('localStorage', new MockStorage())
+    const first = startRaceLogging({ countdownDurationSeconds: 60, now: at(0) })
+    recordSampleIfDue({ gps: stillGpsAt(at(5).getTime()) })
+    const oldToken = getActiveCountdownToken()!
+    markStartGun(at(60), oldToken)
+    pausePlannedStart()
+    expect(updatePlannedStart(-5, at(65))).toBeNull()
+    expect(getActiveRaceId()).toBe(first.id)
+    expect(listRaces()).toHaveLength(1)
+    const second = startRaceLogging({ countdownDurationSeconds: 240, now: at(90) })
+    expect(second.id).not.toBe(first.id)
+    expect(getActiveRaceId()).toBe(second.id)
+    expect(getRace(first.id)).toMatchObject({ startGunTime: at(60).toISOString(), endTime: at(90).toISOString() })
+    expect(getRace(first.id)?.samples).toHaveLength(1)
+    expect(listRaces()).toHaveLength(2)
+    expect(markStartGun(at(330), oldToken)).toBeNull()
+    expect(getRace(second.id)?.startGunTime).toBeUndefined()
+    expect(stopActiveRace({ now: at(100) })?.id).toBe(second.id)
+    expect(getRace(second.id)?.endTime).toBe(at(100).toISOString())
+  })
+
+  it('does not auto-stop while awaiting a start, including when the clock is paused', () => {
+    vi.stubGlobal('localStorage', new MockStorage())
+    const race = startRaceLogging({ countdownDurationSeconds: 300, now: at(0) })
+    recordSampleIfDue({ gps: stillGpsAt(at(0).getTime()) })
+    recordSampleIfDue({ gps: stillGpsAt(at(700).getTime()) })
+    expect(getActiveRaceId()).toBe(race.id)
+    pausePlannedStart()
+    recordSampleIfDue({ gps: stillGpsAt(at(1200).getTime()) })
+    expect(getActiveRaceId()).toBe(race.id)
+    expect(getRace(race.id)?.samples).toHaveLength(3)
+    expect(getRace(race.id)?.endTime).toBeUndefined()
+    const token = updatePlannedStart(60, at(1200))!
+    markStartGun(at(1260), token)
+    recordSampleIfDue({ gps: stillGpsAt(at(1260).getTime()) })
+    recordSampleIfDue({ gps: stillGpsAt(at(1859).getTime()) })
+    expect(getActiveRaceId()).toBe(race.id)
+    recordSampleIfDue({ gps: stillGpsAt(at(1864).getTime()) })
+    expect(getActiveRaceId()).toBeNull()
+    expect(getRace(race.id)?.endTime).toBe(at(1864).toISOString())
+  })
+
+  it('rejects invalid schedules before changing the active race', () => {
+    vi.stubGlobal('localStorage', new MockStorage())
+    const race = startRaceLogging({ countdownDurationSeconds: 300, now: at(0) })
+    const token = getActiveCountdownToken()
+    expect(() => startRaceLogging({ countdownDurationSeconds: -1, now: at(1) })).toThrow(RangeError)
+    expect(() => updatePlannedStart(Number.NaN, at(1))).toThrow(RangeError)
+    expect(getActiveRaceId()).toBe(race.id)
+    expect(getActiveCountdownToken()).toEqual(token)
+    expect(getRace(race.id)?.endTime).toBeUndefined()
   })
 })

@@ -27,6 +27,7 @@ type RaceLoggerState = {
   activeRaceId: string | null
   countdownStartedAt?: string
   scheduledStartTime?: string
+  countdownRevision?: number
   startGunTime?: string
   lastSampleTime?: string
   lastGpsTimestamp?: number
@@ -40,6 +41,9 @@ export type StartRaceLoggingInput = {
   name?: string
   now?: Date
 }
+
+// A token identifies the particular countdown, including across resynchronizations.
+export type CountdownToken = { raceId: string; revision: number }
 
 export type RecordRaceSampleInput = {
   gps: FilteredGpsReading
@@ -69,9 +73,16 @@ export function startRaceLogging({
   name,
   now = new Date(),
 }: StartRaceLoggingInput): Race {
-  const currentActiveRaceId = getActiveRaceId()
+  validateCountdownDuration(countdownDurationSeconds, now)
+  const state = loadLoggerState()
+  const activeRace = state.activeRaceId ? getRace(state.activeRaceId) : null
 
-  if (currentActiveRaceId) {
+  if (activeRace && !activeRace.endTime && !activeRace.startGunTime) {
+    updatePlannedStart(countdownDurationSeconds, now)
+    return activeRace
+  }
+
+  if (state.activeRaceId) {
     stopActiveRace({ now })
   }
 
@@ -82,18 +93,52 @@ export function startRaceLogging({
     windMeasurement,
     name: name ?? createDefaultRaceName(now),
   })
-  const scheduledStartTime = new Date(now.getTime() + countdownDurationSeconds * 1000)
-
   saveLoggerState({
     activeRaceId: race.id,
-    countdownStartedAt: now.toISOString(),
-    scheduledStartTime: scheduledStartTime.toISOString(),
   })
+  updatePlannedStart(countdownDurationSeconds, now)
 
   return race
 }
 
-export function markStartGun(now = new Date()): Race | null {
+/** Reschedule a pre-start. A resumed post-gun countdown keeps its existing race. */
+export function updatePlannedStart(remainingSeconds: number, now = new Date()): CountdownToken | null {
+  const state = loadLoggerState()
+  if (!state.activeRaceId) return null
+  const race = getRace(state.activeRaceId)
+  if (!race) {
+    clearLoggerState()
+    return null
+  }
+  if (race.endTime || race.startGunTime) return null
+  validateCountdownDuration(remainingSeconds, now)
+
+  const revision = (state.countdownRevision ?? 0) + 1
+  saveLoggerState({
+    ...state,
+    countdownStartedAt: now.toISOString(),
+    scheduledStartTime: new Date(now.getTime() + remainingSeconds * 1000).toISOString(),
+    countdownRevision: revision,
+  })
+  return { raceId: race.id, revision }
+}
+
+/** Invalidate a paused or reset countdown without stopping its recording. */
+export function pausePlannedStart(): void {
+  const state = loadLoggerState()
+  if (!state.activeRaceId) return
+  saveLoggerState({ ...state, countdownStartedAt: undefined, scheduledStartTime: undefined })
+}
+
+export function getActiveCountdownToken(): CountdownToken | null {
+  const state = loadLoggerState()
+  if (!state.activeRaceId || !state.scheduledStartTime) return null
+  return { raceId: state.activeRaceId, revision: state.countdownRevision ?? 0 }
+}
+
+// New timer integration must pass its captured token to reject stale callbacks.
+// The optional token preserves the existing timer until it is connected separately.
+export function markStartGun(now = new Date(), token?: CountdownToken): Race | null {
   const state = loadLoggerState()
 
   if (!state.activeRaceId) {
@@ -116,12 +161,20 @@ export function markStartGun(now = new Date()): Race | null {
     return race
   }
 
+  if (!state.scheduledStartTime || (token &&
+    (token.raceId !== race.id || token.revision !== (state.countdownRevision ?? 0)))) return null
+  const scheduledTime = Date.parse(state.scheduledStartTime)
+  if (!Number.isFinite(scheduledTime) || now.getTime() < scheduledTime) return null
+
   const startGunTime = now.toISOString()
   const updatedRace = updateRace(race.id, { startGunTime })
 
   saveLoggerState({
     ...state,
     startGunTime,
+    scheduledStartTime: undefined,
+    countdownStartedAt: undefined,
+    belowStillSpeedSince: undefined,
   })
 
   return updatedRace
@@ -265,6 +318,14 @@ function createEmptyLoggerState(): RaceLoggerState {
   }
 }
 
+function validateCountdownDuration(seconds: number, now: Date): void {
+  const scheduledTime = now.getTime() + seconds * 1000
+  if (!Number.isFinite(seconds) || seconds < 0 || !Number.isFinite(scheduledTime) ||
+    !Number.isFinite(new Date(scheduledTime).getTime())) {
+    throw new RangeError('Invalid countdown duration or time')
+  }
+}
+
 function createDefaultRaceName(date: Date): string {
   return `Race ${new Intl.DateTimeFormat('sv-SE', {
     day: '2-digit',
@@ -368,6 +429,7 @@ function updateStillState(
   gps: FilteredGpsReading,
   sampleTime: Date,
 ): RaceLoggerState {
+  if (!state.startGunTime) return { ...state, belowStillSpeedSince: undefined }
   if (gps.speedKnots === null || gps.speedKnots >= STILL_SPEED_KNOTS) {
     return {
       ...state,
@@ -458,6 +520,10 @@ function normalizeLoggerState(value: unknown): RaceLoggerState {
 
   if (isString(value.scheduledStartTime)) {
     state.scheduledStartTime = value.scheduledStartTime
+  }
+
+  if (typeof value.countdownRevision === 'number' && Number.isSafeInteger(value.countdownRevision) && value.countdownRevision >= 0) {
+    state.countdownRevision = value.countdownRevision
   }
 
   if (isString(value.startGunTime)) {
