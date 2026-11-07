@@ -2667,10 +2667,13 @@ button:focus-visible {
   padding: 0;
 }
 
-.app-shell .timer-view.timer-running-layout .recording-control {
+.app-shell .timer-view .recording-control,
+.app-shell .race-view .recording-control {
   align-self: flex-end;
   width: auto;
 }
+
+.app-shell .race-view:has(.recording-control) { overflow-y: auto; }
 
 .app-shell .analysis-segmented-control {
   gap: 0;

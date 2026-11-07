@@ -30,6 +30,13 @@ const gps: FilteredGpsReading = {
 }
 
 describe('RaceDashboardView instrument layout', () => {
+  it('shows End race during an active recording', () => {
+    const html = renderToStaticMarkup(<LanguageProvider language="sv" setLanguage={() => {}}>
+      <RaceDashboardView course={course} gps={gps} compassDisplayMode="normal" laylineAlphaDegrees={90} recordingActive />
+    </LanguageProvider>)
+    expect(html).toContain(translations.sv['recording.stop'])
+    expect(html).toContain('recording-stop-button')
+  })
   it('keeps the instruments visible without a wind reference and does not show a recording control', () => {
     const html = renderToStaticMarkup(
       <LanguageProvider language="sv" setLanguage={() => {}}>
