@@ -17,7 +17,7 @@ interface RaceDashboardViewProps {
   laylineAlphaDegrees: number
   recordingActive?: boolean
   onStopRecording?: () => void
-  raceReference?: Race | null
+  raceReference?: Pick<Race, 'course' | 'windMeasurement'> | null
 }
 
 export function RaceDashboardView({

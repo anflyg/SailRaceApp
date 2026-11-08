@@ -43,8 +43,7 @@ describe('RaceDashboardView instrument layout', () => {
     expect(render(valid)).not.toContain('vmg-unavailable-reason')
     const mismatch = renderToStaticMarkup(<LanguageProvider language="sv" setLanguage={() => {}}>
       <RaceDashboardView course={valid} gps={fresh} compassDisplayMode="normal" laylineAlphaDegrees={90}
-        raceReference={{ id: 'synthetic', dayId: 'day', name: 'Test', createdAt: '', samples: [], events: [],
-          course: { windDirectionDegrees: 180 }, windMeasurement: measurement(180) }} />
+        raceReference={{ course: { windDirectionDegrees: 180 }, windMeasurement: measurement(180) }} />
     </LanguageProvider>)
     expect(mismatch).toContain('Vinden skiljer sig från racets referens')
   })
