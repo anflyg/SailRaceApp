@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { NavigationBar } from '../components/NavigationBar'
 import { EndRaceDialog } from '../components/EndRaceDialog'
+import { RaceRecoveryDialog } from '../components/RaceRecoveryDialog'
 import { SetupView } from '../features/setup/SetupView'
 import { CourseSetupView } from '../features/course/CourseSetupView'
 import { StartTimerView } from '../features/timer/StartTimerView'
@@ -156,6 +157,8 @@ export function AppShell() {
   const [endRaceDialogOpen, setEndRaceDialogOpen] = useState(false)
   const [timerResetVersion, setTimerResetVersion] = useState(0)
   const [activeRaceId, setActiveRaceId] = useState<string | null>(() => getActiveRaceId())
+  const [recoveryPending, setRecoveryPending] = useState(() => getActiveRaceId() !== null)
+  const recoveryResumedAtRef = useRef<number | null>(null)
   const [recordingMessageKey, setRecordingMessageKey] = useState<'recording.saved' | null>(null)
   const activeRaceIdRef = useRef(activeRaceId)
   const [courseGpsStatus, setCourseGpsStatus] = useState<string | null>(null)
@@ -166,7 +169,7 @@ export function AppShell() {
   const [language, setLanguage] = useState<AppLanguage>(() => loadAppSettings().language)
   const [compassDisplayMode, setCompassDisplayMode] = useState<CompassDisplayMode>(() => loadAppSettings().compassDisplayMode)
   const liveGpsDevice = useLiveGps(
-    !manualMode.enabled && activeView !== 'analysis',
+    !manualMode.enabled && (activeView !== 'analysis' || (activeRaceId !== null && !recoveryPending)),
     simulationGpsSource ?? undefined,
   )
   const filteredGpsDevice = useFilteredGps(liveGpsDevice)
@@ -314,11 +317,17 @@ export function AppShell() {
   const handleStopRecording = useCallback(() => {
     setEndRaceDialogOpen(false)
     const stoppedRace = stopActiveRace()
+    setRecoveryPending(false)
+    recoveryResumedAtRef.current = null
     setIsStartTimerRunning(false)
     setTimerResetVersion((version) => version + 1)
     refreshActiveRace()
     if (stoppedRace) setRecordingMessageKey('recording.saved')
   }, [refreshActiveRace])
+
+  useEffect(() => {
+    if (recoveryPending) pausePlannedStart()
+  }, [recoveryPending])
 
   useEffect(() => {
     const refreshWhenVisible = () => {
@@ -344,8 +353,13 @@ export function AppShell() {
   }, [refreshActiveRace])
 
   useEffect(() => {
-    if (manualMode.enabled || activeView === 'analysis') {
+    if (manualMode.enabled || activeRaceId === null || recoveryPending) {
       return
+    }
+
+    if (recoveryResumedAtRef.current !== null) {
+      if (filteredGps.timestamp === null || filteredGps.timestamp <= recoveryResumedAtRef.current) return
+      recoveryResumedAtRef.current = null
     }
 
     recordSampleIfDue({
@@ -354,7 +368,7 @@ export function AppShell() {
       windMeasurement: course.windMeasurement,
     })
     refreshActiveRace()
-  }, [activeView, course.windMeasurement, courseDefinition, filteredGps, manualMode.enabled, refreshActiveRace])
+  }, [activeRaceId, course.windMeasurement, courseDefinition, filteredGps, manualMode.enabled, recoveryPending, refreshActiveRace])
 
   const getLiveGpsPosition = (): CoursePoint | null => {
     if (liveGps.latitude === null || liveGps.longitude === null) {
@@ -481,6 +495,8 @@ export function AppShell() {
         gps={filteredGps}
         compassDisplayMode={compassDisplayMode}
         laylineAlphaDegrees={laylineAlphaDegrees}
+        recordingActive={activeRaceId !== null}
+        onStopRecording={() => setEndRaceDialogOpen(true)}
       />
     ),
     analysis: <RecordedRaceAnalysis enabled={!manualMode.enabled && !simulationMode.enabled}
@@ -502,6 +518,9 @@ export function AppShell() {
       <main className="app-panel">
         {activeViewContent}
       </main>
+      {recoveryPending && !endRaceDialogOpen ? <RaceRecoveryDialog
+        onContinue={() => { pausePlannedStart(); recoveryResumedAtRef.current = Date.now(); setRecoveryPending(false) }}
+        onEnd={() => setEndRaceDialogOpen(true)} /> : null}
       {endRaceDialogOpen ? <EndRaceDialog onCancel={() => setEndRaceDialogOpen(false)} onConfirm={handleStopRecording} /> : null}
     </div>
     </LanguageProvider>

@@ -250,7 +250,7 @@ export function StartTimerView({
           ))}
         </div>
       )}
-      {isTimerRunning && recordingActive ? (
+      {recordingActive ? (
         <RecordingControl active messageKey={null} onStop={onStopRecording} compact showStatus={false} />
       ) : null}
     </section>

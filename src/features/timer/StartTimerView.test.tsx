@@ -20,7 +20,7 @@ const filteredGps: FilteredGpsReading = {
 }
 
 describe('StartTimerView recording controls', () => {
-  it('hides recording status and stop control while the timer is stopped, even when a recording is active', () => {
+  it('shows the stop control without status while the timer is stopped and recording is active', () => {
     const html = renderToStaticMarkup(
       <LanguageProvider language="sv" setLanguage={() => {}}>
         <StartTimerView selectedMinutes={5} course={course} gps={gps} filteredGps={filteredGps}
@@ -29,8 +29,8 @@ describe('StartTimerView recording controls', () => {
     )
     expect(html).toContain('5:00')
     expect(html).not.toContain(translations.sv['recording.active'])
-    expect(html).not.toContain(translations.sv['recording.stop'])
-    expect(html).not.toContain('recording-stop-button')
+    expect(html).toContain(translations.sv['recording.stop'])
+    expect(html).toContain('recording-stop-button')
   })
 
   it('hides saved recording messages from Start while the timer is stopped', () => {

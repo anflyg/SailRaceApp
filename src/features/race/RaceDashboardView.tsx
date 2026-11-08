@@ -5,6 +5,7 @@ import { normalizeDegrees } from '../../domain/angles'
 import { COURSE_SAMPLE_MAX_AGE_MS, getWindRelativeCourseDegrees } from '../../domain/windShiftInstrument'
 import { isFreshReliableGps, isUsableWindReference } from '../../domain/windReference'
 import { useEffect, useState } from 'react'
+import { RecordingControl } from '../../components/RecordingControl'
 import { WindShiftDots, WindShiftScale, useWindShiftInstrumentOutput } from './WindShiftInstruments'
 import type { CompassDisplayMode } from '../../services/appSettingsStorage'
 import type { CourseState, FilteredGpsReading } from '../../types'
@@ -14,6 +15,8 @@ interface RaceDashboardViewProps {
   gps: FilteredGpsReading
   compassDisplayMode: CompassDisplayMode
   laylineAlphaDegrees: number
+  recordingActive?: boolean
+  onStopRecording?: () => void
 }
 
 export function RaceDashboardView({
@@ -21,6 +24,8 @@ export function RaceDashboardView({
   gps,
   compassDisplayMode,
   laylineAlphaDegrees,
+  recordingActive = false,
+  onStopRecording = () => {},
 }: RaceDashboardViewProps) {
   const { t } = useTranslation()
   const speedKnots = gps.speedKnots
@@ -83,6 +88,7 @@ export function RaceDashboardView({
           windHeadingDegrees={windReferenceCompatible ? course.windHeadingDegrees : null}
         />
       </div>
+      {recordingActive ? <RecordingControl active onStop={onStopRecording} compact showStatus={false} /> : null}
     </section>
   )
 }
