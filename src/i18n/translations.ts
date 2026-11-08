@@ -2,6 +2,7 @@ export type AppLanguage = 'sv' | 'en'
 
 export const translations = {
   sv: {
+    'sailing.vmgMissingWind': 'Vind ej satt', 'sailing.vmgNorth': 'Inkompatibel nordreferens', 'sailing.vmgQuality': 'Vindmätning underkänd', 'sailing.vmgGps': 'GPS-kurs otillförlitlig', 'sailing.vmgRaceMismatch': 'Vinden skiljer sig från racets referens',
     'cloud.expired': 'Testets uppladdningstid har gått ut. Tidigare testdata finns kvar.',
     'cloud.newTest': 'Starta nytt syntetiskt test',
     'cloud.newTestDescription': 'Starta ett separat test med fiktiva data. Det tidigare försöket bevaras. Tryck sedan på Ladda upp syntetiskt race.',
@@ -73,6 +74,7 @@ export const translations = {
     'analysis.noStartTime': 'Ingen starttid beräknad', 'analysis.earlyRisk': 'tidig / risk för tjuvstart', 'analysis.late': 'sen', 'analysis.onLine': '0 s på linjen', 'analysis.startStatusOk': 'Tydlig linjepassage hittades i startfönstret.', 'analysis.startStatusUncertain': 'Passagen hittades, men sample-gap eller GPS accuracy gör resultatet osäkert.', 'analysis.startLineMissing': 'Startlinje saknas.', 'analysis.startGunMissing': 'Startskott saknas.', 'analysis.notEnoughSamples': 'För få datapunkter i startfönstret.', 'analysis.noCrossing': 'Ingen tydlig linjepassage hittades.',
   },
   en: {
+    'sailing.vmgMissingWind': 'Wind not set', 'sailing.vmgNorth': 'Incompatible north reference', 'sailing.vmgQuality': 'Wind measurement rejected', 'sailing.vmgGps': 'GPS course unreliable', 'sailing.vmgRaceMismatch': 'Wind differs from race reference',
     'cloud.expired': 'The test upload has expired. Previous test data is retained.',
     'cloud.newTest': 'Start new synthetic test',
     'cloud.newTestDescription': 'Start a separate test with fictional data. The previous attempt is retained. Then press Upload synthetic race.',

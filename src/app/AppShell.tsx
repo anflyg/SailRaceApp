@@ -36,7 +36,9 @@ import {
   startRaceLogging,
   stopActiveRace,
   updatePlannedStart,
+  updatePreStartCourse,
 } from '../services/raceLogger'
+import { getRace } from '../services/raceStorage'
 import type { CountdownToken } from '../services/raceLogger'
 import { loadAppSettings, saveAppSettings } from '../services/appSettingsStorage'
 import type { CompassDisplayMode } from '../services/appSettingsStorage'
@@ -122,6 +124,17 @@ function getCourseDefinition(course: CourseState): CourseDefinition | undefined 
   return Object.keys(courseDefinition).length > 0 ? courseDefinition : undefined
 }
 
+function restoreCourse(race: import('../types').Race): CourseState {
+  const point = (value: { latitude: number; longitude: number } | undefined): CoursePoint | null =>
+    value ? { ...value, quality: 'poor' } : null
+  return {
+    points: { startA: point(race.course?.startLine?.port), startB: point(race.course?.startLine?.starboard),
+      kryss1: point(race.course?.windwardMark), lans1: point(race.course?.leewardMark) },
+    windHeadingDegrees: race.course?.windDirectionDegrees ?? null,
+    windMeasurement: race.windMeasurement,
+  }
+}
+
 export function AppShell() {
   const manualMode = useMemo(getManualModeConfig, [])
   const simulationMode = useMemo(() => getSimulationModeConfig(manualMode.enabled), [manualMode.enabled])
@@ -159,6 +172,7 @@ export function AppShell() {
   const [activeRaceId, setActiveRaceId] = useState<string | null>(() => getActiveRaceId())
   const [recoveryPending, setRecoveryPending] = useState(() => getActiveRaceId() !== null)
   const recoveryResumedAtRef = useRef<number | null>(null)
+  const skipRestoredCourseSync = useRef(false)
   const [recordingMessageKey, setRecordingMessageKey] = useState<'recording.saved' | null>(null)
   const activeRaceIdRef = useRef(activeRaceId)
   const [courseGpsStatus, setCourseGpsStatus] = useState<string | null>(null)
@@ -193,6 +207,11 @@ export function AppShell() {
     : calculateRollPitchRelativeToCalibration(deviceAttitude, rollPitchCalibration)
   const isNavigationLocked = isStartTimerRunning
   const courseDefinition = useMemo(() => getCourseDefinition(course), [course])
+
+  useEffect(() => {
+    if (skipRestoredCourseSync.current) { skipRestoredCourseSync.current = false; return }
+    if (activeRaceId && !recoveryPending) updatePreStartCourse(courseDefinition, course.windMeasurement)
+  }, [course, courseDefinition, activeRaceId, recoveryPending])
   useWakeLock(true)
 
   useEffect(() => {
@@ -496,6 +515,7 @@ export function AppShell() {
         compassDisplayMode={compassDisplayMode}
         laylineAlphaDegrees={laylineAlphaDegrees}
         recordingActive={activeRaceId !== null}
+        raceReference={activeRaceId ? getRace(activeRaceId) : null}
         onStopRecording={() => setEndRaceDialogOpen(true)}
       />
     ),
@@ -519,7 +539,7 @@ export function AppShell() {
         {activeViewContent}
       </main>
       {recoveryPending && !endRaceDialogOpen ? <RaceRecoveryDialog
-        onContinue={() => { pausePlannedStart(); recoveryResumedAtRef.current = Date.now(); setRecoveryPending(false) }}
+        onContinue={() => { const race = activeRaceId ? getRace(activeRaceId) : null; if (race) { skipRestoredCourseSync.current = true; setCourse(restoreCourse(race)) }; pausePlannedStart(); recoveryResumedAtRef.current = Date.now(); setRecoveryPending(false) }}
         onEnd={() => setEndRaceDialogOpen(true)} /> : null}
       {endRaceDialogOpen ? <EndRaceDialog onCancel={() => setEndRaceDialogOpen(false)} onConfirm={handleStopRecording} /> : null}
     </div>

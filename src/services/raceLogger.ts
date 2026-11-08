@@ -1,4 +1,5 @@
 import { calculateBearingDegrees, calculateVelocityMadeGood } from '../domain/navigation'
+import { shortestAngleDeltaDegrees } from '../domain/angles'
 import { isFreshReliableGps, isUsableWindReference } from '../domain/windReference'
 import {
   appendRaceEvent,
@@ -92,7 +93,7 @@ export function startRaceLogging({
     date: now,
     createdAt: now.toISOString(),
     course,
-    windMeasurement,
+    windMeasurement: matchingMeasurement(course, windMeasurement),
     name: name ?? createDefaultRaceName(now),
   })
   saveLoggerState({
@@ -101,6 +102,22 @@ export function startRaceLogging({
   updatePlannedStart(countdownDurationSeconds, now)
 
   return race
+}
+
+/** Update only the active pre-start snapshot; never rewrite a race after its gun. */
+export function updatePreStartCourse(course?: CourseDefinition, windMeasurement?: WindHeadingMeasurementResult): Race | null {
+  const id = loadLoggerState().activeRaceId
+  const race = id ? getRace(id) : null
+  if (!race || race.endTime || race.startGunTime) return null
+  return updateRace(race.id, { course, windMeasurement: matchingMeasurement(course, windMeasurement) })
+}
+
+function matchingMeasurement(course?: CourseDefinition, windMeasurement?: WindHeadingMeasurementResult): WindHeadingMeasurementResult | undefined {
+  const heading = course?.windDirectionDegrees
+  const matching = typeof heading === 'number' && Number.isFinite(heading) &&
+    typeof windMeasurement?.headingDegrees === 'number' && Number.isFinite(windMeasurement.headingDegrees) &&
+    Math.abs(shortestAngleDeltaDegrees(heading, windMeasurement.headingDegrees)) < 1e-6
+  return matching ? windMeasurement : undefined
 }
 
 /** Reschedule a pre-start. A resumed post-gun countdown keeps its existing race. */

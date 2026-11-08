@@ -9,6 +9,7 @@ import {
   startRaceLogging,
   stopActiveRace,
   updatePlannedStart,
+  updatePreStartCourse,
 } from './raceLogger'
 import { createRace, getRace, listRaces } from './raceStorage'
 import { createRaceExportFiles } from './raceExport'
@@ -87,6 +88,42 @@ describe('recorded wind VMG quality', () => {
     expect(sample.vmgCourseKnots).toBeCloseTo(5 * Math.SQRT1_2)
     expect(sample.cogDegrees).toBe(0)
     expect(sample.latitude).toBe(gps.latitude)
+  })
+})
+
+describe('pre-start course snapshot', () => {
+  it('updates and clears metadata without losing samples or changing the race, then locks it at the gun', () => {
+    vi.stubGlobal('localStorage', new MockStorage())
+    const at = new Date('2026-01-01T12:00:00Z')
+    const wind: WindHeadingMeasurementResult = { headingDegrees: 360, selectedHeadingDegrees: 0,
+      selectedHeadingSource: 'back-vector-row', sampleCount: 40, referenceFrame: 'true-north', quality: 'good',
+      accuracyDegrees: 3, spreadDegrees: 2, nativeDebug: null }
+    const race = startRaceLogging({ countdownDurationSeconds: 300, now: at })
+    recordSampleIfDue({ gps: stillGpsAt(at.getTime()), now: at })
+    const line = { port: { latitude: 1, longitude: 2 }, starboard: { latitude: 3, longitude: 4 } }
+    const course = { startLine: line, windDirectionDegrees: 0 }
+    expect(updatePreStartCourse(course, wind)?.windMeasurement).toEqual(wind)
+    const later = new Date(at.getTime() + 6000)
+    expect(recordSampleIfDue({ gps: { ...stillGpsAt(later.getTime()), speedKnots: 5, courseDegrees: 0 }, course, windMeasurement: wind, now: later })?.samples.at(-1)?.vmgWindKnots).toBeCloseTo(5)
+    expect(updatePreStartCourse({ ...course, startLine: { ...line, port: { latitude: 5, longitude: 6 } } }, wind)?.course?.startLine?.port.latitude).toBe(5)
+    pausePlannedStart()
+    expect(startRaceLogging({ countdownDurationSeconds: 240, now: at }).id).toBe(race.id)
+    expect(startRaceLogging({ countdownDurationSeconds: 180, now: at }).samples).toHaveLength(2)
+    expect(updatePreStartCourse({ startLine: line })?.windMeasurement).toBeUndefined()
+    updatePreStartCourse(course, wind)
+    markStartGun(new Date(at.getTime() + 180_000), getActiveCountdownToken()!)
+    expect(updatePreStartCourse(undefined)).toBeNull()
+    expect(getRace(race.id)?.course).toEqual(course)
+    expect(getRace(race.id)?.windMeasurement).toEqual(wind)
+    expect(getRace(race.id)?.samples).toHaveLength(2)
+  })
+  it('does not attach metadata belonging to another direction', () => {
+    vi.stubGlobal('localStorage', new MockStorage())
+    startRaceLogging({ countdownDurationSeconds: 300 })
+    const wind: WindHeadingMeasurementResult = { headingDegrees: 359, selectedHeadingDegrees: 359,
+      selectedHeadingSource: 'back-vector-row', sampleCount: 40, referenceFrame: 'true-north', quality: 'good',
+      accuracyDegrees: 3, spreadDegrees: 2, nativeDebug: null }
+    expect(updatePreStartCourse({ windDirectionDegrees: 0 }, wind)?.windMeasurement).toBeUndefined()
   })
 })
 

@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react'
 import { RecordingControl } from '../../components/RecordingControl'
 import { WindShiftDots, WindShiftScale, useWindShiftInstrumentOutput } from './WindShiftInstruments'
 import type { CompassDisplayMode } from '../../services/appSettingsStorage'
-import type { CourseState, FilteredGpsReading } from '../../types'
+import type { CourseState, FilteredGpsReading, Race } from '../../types'
 
 interface RaceDashboardViewProps {
   course: CourseState
@@ -17,6 +17,7 @@ interface RaceDashboardViewProps {
   laylineAlphaDegrees: number
   recordingActive?: boolean
   onStopRecording?: () => void
+  raceReference?: Race | null
 }
 
 export function RaceDashboardView({
@@ -26,6 +27,7 @@ export function RaceDashboardView({
   laylineAlphaDegrees,
   recordingActive = false,
   onStopRecording = () => {},
+  raceReference = null,
 }: RaceDashboardViewProps) {
   const { t } = useTranslation()
   const speedKnots = gps.speedKnots
@@ -53,7 +55,13 @@ export function RaceDashboardView({
       : null
     : gps.displayCourseDegrees
   const hasDisplayCourse = courseHeading !== null
-  const velocityMadeGood = windReferenceCompatible && freshVmgCourse && speedKnots !== null && gps.courseDegrees !== null && course.windHeadingDegrees !== null
+  const matchesRace = !raceReference || (isUsableWindReference(raceReference.course?.windDirectionDegrees, raceReference.windMeasurement) &&
+    isUsableWindReference(course.windHeadingDegrees, raceReference.windMeasurement))
+  const reason = course.windHeadingDegrees === null ? 'sailing.vmgMissingWind' :
+    course.windMeasurement && course.windMeasurement.referenceFrame !== 'true-north' ? 'sailing.vmgNorth' :
+    !windReferenceCompatible ? 'sailing.vmgQuality' :
+    !matchesRace ? 'sailing.vmgRaceMismatch' : !freshVmgCourse ? 'sailing.vmgGps' : null
+  const velocityMadeGood = windReferenceCompatible && matchesRace && freshVmgCourse && speedKnots !== null && gps.courseDegrees !== null && course.windHeadingDegrees !== null
     ? calculateVelocityMadeGood(speedKnots, gps.courseDegrees, course.windHeadingDegrees)
     : null
   const velocityValue = velocityMadeGood !== null ? formatSignedKnots(velocityMadeGood) : '--'
@@ -78,6 +86,7 @@ export function RaceDashboardView({
         <div className={`metric-box velocity-made-good ${velocityClassName}`} aria-label={velocityLabel}>
           <span className="metric-value">{velocityValue}</span>
           <span className="metric-label">{velocityLabel}</span>
+          {reason ? <span className="vmg-unavailable-reason">{t(reason)}</span> : null}
         </div>
       </div>
 
