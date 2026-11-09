@@ -111,3 +111,7 @@ Possible summary values include elapsed time, sailed distance, average/max speed
 - Screen behaviour suitable for active sailing use.
 - Minimal interaction while sailing.
 - GPS/race data treated as personal data.
+
+### Ban- och vindmetadata för en inspelning
+
+Under förstarten uppdateras det aktiva racets sparade startlinje och vindmätning när användaren ändrar eller rensar Bana, även när nedräkningen är pausad. Omsynkronisering behåller race och prover. Efter startskottet låses racets referens; aktuell vind som skiljer sig från den sparade referensen ger ingen vind-VMG i nya prover. Efter appomstart återställs den sparade banan först när användaren väljer Fortsätt, och inga prover registreras före valet. VMG-vyn visar en kort orsak när vind eller GPS inte kan användas. En godkänd mätning garanterar inte vinkelprecision.

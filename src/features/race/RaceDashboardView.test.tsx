@@ -30,6 +30,23 @@ const gps: FilteredGpsReading = {
 }
 
 describe('RaceDashboardView instrument layout', () => {
+  it('explains unavailable VMG without changing the metric label', () => {
+    const fresh = { ...gps, timestamp: Date.now(), presentationTimestamp: Date.now() }
+    const render = (current: CourseState, currentGps = fresh) => renderToStaticMarkup(
+      <LanguageProvider language="sv" setLanguage={() => {}}><RaceDashboardView course={current} gps={currentGps}
+        compassDisplayMode="normal" laylineAlphaDegrees={90} /></LanguageProvider>)
+    expect(render(course)).toContain('Vind ej satt')
+    expect(render({ ...course, windHeadingDegrees: 90 })).toContain('Vindmätning underkänd')
+    expect(render({ ...course, windHeadingDegrees: 90, windMeasurement: { ...measurement(90), referenceFrame: 'magnetic-north' } })).toContain('Inkompatibel nordreferens')
+    const valid = { ...course, windHeadingDegrees: 90, windMeasurement: measurement(90) }
+    expect(render(valid, { ...fresh, courseReliable: false })).toContain('GPS-kurs otillförlitlig')
+    expect(render(valid)).not.toContain('vmg-unavailable-reason')
+    const mismatch = renderToStaticMarkup(<LanguageProvider language="sv" setLanguage={() => {}}>
+      <RaceDashboardView course={valid} gps={fresh} compassDisplayMode="normal" laylineAlphaDegrees={90}
+        raceReference={{ course: { windDirectionDegrees: 180 }, windMeasurement: measurement(180) }} />
+    </LanguageProvider>)
+    expect(mismatch).toContain('Vinden skiljer sig från racets referens')
+  })
   it('shows End race during an active recording', () => {
     const html = renderToStaticMarkup(<LanguageProvider language="sv" setLanguage={() => {}}>
       <RaceDashboardView course={course} gps={gps} compassDisplayMode="normal" laylineAlphaDegrees={90} recordingActive />

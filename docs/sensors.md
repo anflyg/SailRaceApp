@@ -109,3 +109,7 @@ Current TypeScript code defines:
 Core Motion `CMDeviceMotion` itself does not require an extra Info.plist usage
 description for this implementation. Location permission remains separate and is
 used for GPS.
+
+### Wind metadata during recording
+
+Before the start gun, the current course and its matching wind measurement are saved with the active race; clearing the wind removes its measurement. Recovery restores the saved reference only after explicit continuation. After the gun the race reference remains fixed: recorded wind VMG requires a matching good true-north measurement and fresh reliable GPS. Screen and recorded VMG are separately validated. The `good` quality threshold is preliminary and does not guarantee angular accuracy; physical-device validation remains necessary.

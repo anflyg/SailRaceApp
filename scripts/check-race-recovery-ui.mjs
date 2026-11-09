@@ -51,6 +51,14 @@ try {
   assert.equal(Object.keys(state.races).length, 1)
   const samplesBeforeRestart = state.races[first].samples.length
   assert.ok(samplesBeforeRestart > 0)
+  // Synthetic saved setup mimics a course measured after recording began.
+  await page.evaluate(id => {
+    const key = 'aster-race:race-storage:v1'
+    const storage = JSON.parse(localStorage.getItem(key))
+    storage.racesById[id].course = { startLine: { port: { latitude: 0, longitude: 0 }, starboard: { latitude: 0, longitude: 0.001 } }, windDirectionDegrees: 0 }
+    storage.racesById[id].windMeasurement = { headingDegrees: 0, selectedHeadingDegrees: 0, selectedHeadingSource: 'back-vector-row', sampleCount: 40, referenceFrame: 'true-north', quality: 'good', accuracyDegrees: 2, spreadDegrees: 1, nativeDebug: null }
+    localStorage.setItem(key, JSON.stringify(storage))
+  }, first)
   await reopen()
   await advance(20)
   state = await snapshot()
@@ -63,6 +71,9 @@ try {
   state = await snapshot()
   assert.equal(state.logger.activeRaceId, first)
   assert.ok(state.races[first].samples.length > samplesBeforeRestart)
+  assert.equal(state.races[first].course.windDirectionDegrees, 0)
+  assert.equal(state.races[first].windMeasurement.quality, 'good')
+  assert.ok(state.races[first].samples.slice(samplesBeforeRestart).some(sample => typeof sample.vmgWindKnots === 'number'), 'continued recording restores valid wind metadata')
   assert.ok(Date.parse(state.races[first].samples[samplesBeforeRestart].timestamp) > resumedAt, 'only GPS fixes after the recovery decision are recorded')
   await navigate('Start')
   assert.equal(await stop.count(), 1, 'stopped timer offers End race')
@@ -104,6 +115,13 @@ try {
   state = await snapshot()
   const gun = state.races[second].startGunTime
   assert.ok(gun)
+  await page.evaluate(([id, source]) => {
+    const key = 'aster-race:race-storage:v1'
+    const storage = JSON.parse(localStorage.getItem(key))
+    storage.racesById[id].course = storage.racesById[source].course
+    storage.racesById[id].windMeasurement = storage.racesById[source].windMeasurement
+    localStorage.setItem(key, JSON.stringify(storage))
+  }, [second, first])
   const secondCount = state.races[second].samples.length
   await reopen()
   await advance(10)
@@ -113,6 +131,8 @@ try {
   state = await snapshot()
   assert.equal(state.logger.activeRaceId, second, 'post-gun continuation keeps the race')
   assert.equal(state.races[second].startGunTime, gun)
+  assert.equal(state.races[second].course.windDirectionDegrees, 0)
+  assert.ok(state.races[second].samples.slice(secondCount).some(sample => typeof sample.vmgWindKnots === 'number'), 'post-gun continuation restores the saved wind reference')
   const continuedCount = state.races[second].samples.length
   assert.ok(continuedCount > secondCount)
   await reopen()
