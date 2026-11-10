@@ -9,7 +9,7 @@
   place-items: center;
   overflow: hidden;
   padding: max(28px, env(safe-area-inset-top, 0px)) 24px max(28px, env(safe-area-inset-bottom, 0px));
-  color: #080808;
+  color: #081E3A;
   background: #FFFFFF;
 }
 
@@ -18,6 +18,14 @@
   transition: opacity 300ms ease;
 }
 
+.aster-race-splash::before {
+  content: '';
+  position: absolute;
+  inset: auto 0 0;
+  height: 29.3%;
+  background: url('../../brand/source/tackwise-splash-waves.svg') center bottom / 100% 100% no-repeat;
+  pointer-events: none;
+}
 
 .aster-race-splash__content {
   position: relative;
@@ -32,15 +40,6 @@
   display: block;
   width: min(88vw, 420px);
   height: auto;
-}
-
-.aster-race-splash__product {
-  margin: 0;
-  color: #080808;
-  font-size: clamp(1.2rem, 5.6vw, 1.65rem);
-  font-weight: 500;
-  letter-spacing: 0.12em;
-  line-height: 1;
 }
 
 @media (min-width: 720px) {

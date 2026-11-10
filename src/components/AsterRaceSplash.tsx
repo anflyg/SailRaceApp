@@ -34,7 +34,6 @@ export default function AsterRaceSplash({ onComplete }: AsterRaceSplashProps) {
     >
       <div className="aster-race-splash__content">
         <img className="aster-race-splash__logo" src={tackwiseLogo} alt="TackWise" />
-        <p className="aster-race-splash__product">RACE</p>
       </div>
     </div>
   )
