@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="430" height="273" viewBox="0 659 430 273">
+<defs>
+  <linearGradient id="outerBlue" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0A84FF"/><stop offset="1" stop-color="#1164DB"/></linearGradient>
+  <linearGradient id="deepWave" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1056B3"/><stop offset="1" stop-color="#081E3A"/></linearGradient>
+  <linearGradient id="orangeWave" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#FF8A00"/><stop offset="1" stop-color="#FF9700"/></linearGradient>
+</defs>
+
+  <path fill="#06CFF5" d="M-5 809 C80 823 147 777 227 732 C300 691 367 692 435 692 L435 940 H-5Z"/>
+  <path fill="url(#orangeWave)" d="M246 765 C314 707 370 663 435 659 L435 733 C378 720 319 743 246 765Z"/>
+  <path fill="url(#outerBlue)" d="M-5 857 C99 849 174 802 243 761 C306 725 365 711 435 712 L435 940 H-5Z"/>
+  <path fill="#FFFFFF" d="M242 763 C311 721 373 696 435 695 L435 705 C370 707 312 735 242 763Z"/>
+  <path fill="url(#deepWave)" d="M-5 902 C96 898 171 863 261 834 C334 808 386 809 435 834 L435 940 H-5Z"/>
+
+</svg>

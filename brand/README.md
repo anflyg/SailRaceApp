@@ -1,34 +1,29 @@
-# TACKWISE brand assets
+# TackWise brand assets
 
-## Identity
+## Approved identity
 
-- **Brand name:** TACKWISE
-- **Tagline:** Race smarter.
-- **Products:** TackWise Race, TackWise Watch and TackWise Analysis
-- **Font:** Inter
+The shared mark combines two sails, a semicircular instrument arc that fades at both ends, inward-facing blue ticks, an orange north mark and a cyan-to-blue wave. The wordmark is **TackWise** and the tagline is **Race smarter.** (`RACE SMARTER` in artwork).
 
-## Canonical artwork
-
-`source/tackwise-symbol.svg` is the canonical two-sail symbol. All marks, tiles and native icon masters use that same geometry: petroleum left sail, tactical-orange right sail and the deliberate off-white separation between them.
-
-Use `tackwise-logo-stacked.svg` or `tackwise-logo-horizontal.svg` whenever the wordmark is legible. Use the symbol alone only where space is limited, including native app icons, Apple Watch and favicons.
-
-`*-tile` artwork is for product-family presentation and deliberately includes the product label below the symbol. Native OS icons are symbol-only so the mark remains legible at small sizes.
+The splash uses the stacked logo on an exact white `#FFFFFF` background with soft overlapping cyan, blue and navy waves along the bottom. An orange upper wave is separated from the blue by a narrow white line. Do not add a separate large `RACE` label below the tagline. The product remains TackWise Race in app metadata.
 
 ## Palette
 
 | Role | Hex |
 | --- | --- |
-| Background | `#F3F2ED` |
-| TackWise petroleum | `#006F94` |
-| Tactical orange | `#A84F00` |
-| Primary text | `#080808` |
-| Secondary text | `#42484D` |
+| Background | `#FFFFFF` |
+| Navy | `#081E3A` |
+| Blue | `#0A84FF` |
+| Cyan | `#22D3FF` |
+| Orange | `#FF8A00` |
 
-## Use guidance
+Use darker accessible variants for small text or controls when the bright blue or orange does not provide enough contrast. Functional green, red and other status colors retain their existing meanings.
 
-- Keep clear space equal to at least one quarter of the symbol height on every side.
-- Do not stretch, crop or distort the logo.
-- Do not add glow, neon effects, halo circles, dark-navy gradients or decorative grids.
-- Preserve the flat, high-contrast Nordic sailing-instrument presentation.
-- Generate raster exports from the canonical SVG sources; do not redraw the sail geometry independently.
+## Artwork and variants
+
+- `source/tackwise-symbol.svg` is the light-canvas symbol master: navy sails, fading navy instrument arc and blue ticks.
+- `source/tackwise-native-icon.svg` is the dark, full-bleed app-icon master with white sails, a navy background, cyan ticks and no text.
+- `source/tackwise-logo-stacked.svg` and `source/tackwise-logo-horizontal.svg` use the shared symbol with the wordmark and tagline.
+- `source/tackwise-race-splash.svg` is the full white React/native splash artwork; `source/tackwise-splash-waves.svg` is its responsive bottom-wave overlay, including the white separation line.
+- Product tiles reuse the light symbol. OS icons remain symbol-only.
+
+Keep the symbol geometry and proportions consistent across variants. Generate raster exports and iOS assets from the corresponding SVG masters, preserve the existing asset-catalog dimensions, and do not stretch or crop the mark. Keep launch-screen and React splash backgrounds exactly white for a clean transition.

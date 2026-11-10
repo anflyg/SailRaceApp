@@ -1,6 +1,45 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" fill="none">
-  <rect width="1024" height="1024" fill="#F3F2ED"/>
-  <g transform="translate(-12.7 -93.55) scale(3.3)">
-    <path fill="#006F94" d="M42 294 209 73c10 52 5 145-34 221H42Z"/><path fill="#A84F00" d="M231 106c45 45 62 121 45 188-24-18-49-27-73-29 25-64 31-119 28-159Z"/>
-  </g>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+<defs>
+  <linearGradient id="arcLight" x1="0" y1="0" x2="1" y2="0" objectBoundingBox="true">
+    <stop offset="0" stop-color="#0B5A9B" stop-opacity="0"/>
+    <stop offset=".12" stop-color="#0B5A9B" stop-opacity=".90"/>
+    <stop offset=".36" stop-color="#2B7CAC"/>
+    <stop offset=".5" stop-color="#0B609F"/>
+    <stop offset=".75" stop-color="#105A98"/>
+    <stop offset=".88" stop-color="#0B5A9B" stop-opacity=".90"/>
+    <stop offset="1" stop-color="#0B5A9B" stop-opacity="0"/>
+  </linearGradient>
+  <linearGradient id="arcDark" x1="0" y1="0" x2="1" y2="0" objectBoundingBox="true">
+    <stop offset="0" stop-color="#C9EAFE" stop-opacity="0"/>
+    <stop offset=".15" stop-color="#8DBFE5" stop-opacity=".95"/>
+    <stop offset=".47" stop-color="#E6F4FC"/>
+    <stop offset=".7" stop-color="#8FC2E8"/>
+    <stop offset=".86" stop-color="#B2DDF9" stop-opacity=".95"/>
+    <stop offset="1" stop-color="#B2DDF9" stop-opacity="0"/>
+  </linearGradient>
+  <linearGradient id="logoWave" x1="0" y1="0" x2="1" y2="0" objectBoundingBox="true">
+    <stop offset="0" stop-color="#07D3F0"/>
+    <stop offset=".45" stop-color="#22C5F4"/>
+    <stop offset="1" stop-color="#087AEE"/>
+  </linearGradient>
+  <linearGradient id="outerBlue" x1="0" y1="0" x2="0" y2="1" objectBoundingBox="true">
+    <stop offset="0" stop-color="#0A84FF"/>
+    <stop offset="1" stop-color="#1164DB"/>
+  </linearGradient>
+  <linearGradient id="deepWave" x1="0" y1="0" x2="0" y2="1" objectBoundingBox="true">
+    <stop offset="0" stop-color="#1056B3"/>
+    <stop offset="1" stop-color="#081E3A"/>
+  </linearGradient>
+  <linearGradient id="orangeWave" x1="0" y1="0" x2="1" y2="0" objectBoundingBox="true">
+    <stop offset="0" stop-color="#FF8A00"/>
+    <stop offset="1" stop-color="#FF9700"/>
+  </linearGradient>
+</defs><rect width="1024" height="1024" fill="#081E3A"/>
+<g transform="translate(38 105) scale(1.85)"><g id="symbol">
+        <path d="M53 291 A203 203 0 0 1 459 291" stroke="url(#arcDark)" stroke-width="15" stroke-linecap="round" fill="none"/>
+        <line x1="88.4" y1="251.3" x2="74.8" y2="248.2" stroke="#22D3FF" stroke-width="7" /><line x1="102.7" y1="211.9" x2="90.3" y2="205.6" stroke="#22D3FF" stroke-width="7" /><line x1="126.2" y1="177.2" x2="115.6" y2="168.0" stroke="#22D3FF" stroke-width="7" /><line x1="157.3" y1="149.1" x2="149.3" y2="137.6" stroke="#22D3FF" stroke-width="7" /><line x1="194.4" y1="129.4" x2="189.3" y2="116.4" stroke="#22D3FF" stroke-width="7" /><line x1="317.6" y1="129.4" x2="322.7" y2="116.4" stroke="#22D3FF" stroke-width="7" /><line x1="354.7" y1="149.1" x2="362.7" y2="137.6" stroke="#22D3FF" stroke-width="7" /><line x1="385.8" y1="177.2" x2="396.4" y2="168.0" stroke="#22D3FF" stroke-width="7" /><line x1="409.3" y1="211.9" x2="421.7" y2="205.6" stroke="#22D3FF" stroke-width="7" /><line x1="423.6" y1="251.3" x2="437.2" y2="248.2" stroke="#22D3FF" stroke-width="7" />
+        <path d="M247 87 H267 L265 144 H249Z" fill="#FF8A00" />
+        <path d="M101 355 C175 309 250 227 305 161 C311 231 300 298 269 324 C216 315 160 328 101 355Z" fill="#FFFFFF"/>
+        <path d="M324 209 C360 256 376 302 382 341 C351 327 327 321 288 323 C317 289 323 244 324 209Z" fill="#FFFFFF"/>
+        <path d="M84 379 C171 329 233 337 304 361 C355 378 400 375 435 352 C412 389 363 400 317 395 C242 390 193 352 84 379Z" fill="url(#logoWave)"/>
+      </g></g></svg>

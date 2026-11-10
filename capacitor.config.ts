@@ -6,7 +6,7 @@ const config: CapacitorConfig = {
   webDir: process.env.TACKWISE_NATIVE_TEST_BUILD === '1' ? 'dist-native-test' : 'dist',
   // Auth bridge calls contain credentials; suppress native bridge argument logging.
   loggingBehavior: 'none',
-  backgroundColor: '#F3F2ED',
+  backgroundColor: '#FFFFFF',
 };
 
 export default config;
