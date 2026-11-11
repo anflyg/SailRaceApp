@@ -90,6 +90,8 @@ Only measurements explicitly marked `true-north` enable these instruments. Magne
 
 Wind VMG, wind-relative course and wind-shift instruments require a matching finite wind heading and measurement metadata with `true-north` and `good` quality. `good` is a preliminary acceptance threshold, not a guarantee of physical angular accuracy. GPS-based values additionally require a reliable, valid course and speed and a GPS timestamp no more than five seconds old. Without a usable wind reference, use the ordinary compass, show neutral indicators and an unset wind scale, and omit wind VMG. New race samples can therefore lack wind VMG; existing recordings and exports remain unchanged.
 
+Course shows whether the current wind measurement is **approved or not approved for VMG**, using the same `isUsableWindReference` validation as the live and recorded VMG paths. A rejected measurement shows its reason and available heading, spread, reported accuracy and quality, plus a direct remeasurement action. Explain that sample spread describes stability while heading accuracy is sensor-reported uncertainty: stable samples can still have poor reported accuracy. An approved wind reference confirms only the wind-quality gate; fresh, reliable GPS course and speed are checked separately for each VMG value. Show the same assessment from restored race metadata after the sailor resumes a saved race. This is an eligibility status, not a guarantee of absolute angle precision.
+
 ## Race recording
 
 Race telemetry is recorded locally and must not depend on cloud availability. Recorded data may include timestamp, position, accuracy, speed, course over ground, heading, sensor-derived values, course configuration and race events.

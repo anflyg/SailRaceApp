@@ -1,6 +1,7 @@
 import { normalizeDegrees, shortestAngleDeltaDegrees } from '../../domain/angles'
 import { formatDegrees, formatSignedDegrees } from '../../domain/format'
 import { getGpsStatusDisplay, getStartLineQuality } from '../../domain/gps'
+import { assessWindReference } from '../../domain/windReference'
 import {
   getCourseDisplayReference,
   type CourseDisplayReference,
@@ -15,7 +16,7 @@ interface CourseSetupViewProps {
   course: CourseState
   gps: LiveGpsReading
   onToggleCoursePoint: (key: CoursePointKey) => void
-  onToggleWindHeading: (headingDegrees: number) => void
+  onWindHeadingChange: (headingDegrees: number | null) => void
   onWindMeasurement: (measurement: WindHeadingMeasurementResult | null) => void
   onClearCourse: () => void
   gpsStatusMessage: string | null
@@ -49,12 +50,12 @@ export function CourseSetupView({
   course,
   gps,
   onToggleCoursePoint,
-  onToggleWindHeading,
+  onWindHeadingChange,
   onWindMeasurement,
   onClearCourse,
   gpsStatusMessage,
 }: CourseSetupViewProps) {
-  const { t } = useTranslation()
+  const { t, language } = useTranslation()
   const {
     status: windMeasurementStatus,
     lastMeasurement,
@@ -68,26 +69,53 @@ export function CourseSetupView({
     ? shortestAngleDeltaDegrees(course.windHeadingDegrees, displayReference.headingDegrees)
     : null
   const referenceLabel = t(({ 'course-axis': 'course.courseReference', 'start-line': 'course.startLineReference', 'north-fallback': 'course.north' } as const)[displayReference.kind] as TranslationKey)
-  const qualityKey = lastMeasurement?.quality === 'good' && lastMeasurement.accuracyDegrees !== null && lastMeasurement.accuracyDegrees <= 5
-    ? 'course.qualityVeryGood'
-    : ({ good: 'course.qualityGood', ok: 'course.qualityQuestionable', poor: 'course.qualityPoor', unstable: 'course.qualityUnstable', unknown: 'course.qualityUnknown' } as const)[lastMeasurement?.quality ?? 'unknown']
-  const windMeasurementSummary = lastMeasurement
-    ? `${t('course.windSet')}: ${formatDegrees(lastMeasurement.headingDegrees)} · ${t('course.quality')}: ${t(qualityKey)} · ${t('course.source')}: ${lastMeasurement.selectedHeadingSource}`
+  const measurementForDisplay = lastMeasurement ?? course.windMeasurement
+  const windAssessment = assessWindReference(course.windHeadingDegrees, measurementForDisplay)
+  const qualityKey = ({ good: 'course.qualityGood', ok: 'course.qualityQuestionable', poor: 'course.qualityPoor', unstable: 'course.qualityUnstable', unknown: 'course.qualityUnknown' } as const)[measurementForDisplay?.quality ?? 'unknown']
+  const windMeasurementSummary = measurementForDisplay
+    ? `${t('course.windSet')}: ${formatDegrees(measurementForDisplay.headingDegrees)} · ${t('course.quality')}: ${t(qualityKey)} · ${t('course.source')}: ${measurementForDisplay.selectedHeadingSource}`
     : null
   const isMeasuringWind = windMeasurementStatus === 'measuring'
+  const feedbackReasonKey = ({
+    missing: 'course.windRejectedMissing',
+    'north-reference': 'course.windRejectedNorth',
+    quality: 'course.windRejectedQuality',
+    metadata: 'course.windRejectedMetadata',
+  } as const)[windAssessment.rejectionReason ?? 'missing']
+
+  const formatMeasurementValue = (value: number | null | undefined, digits = 1) =>
+    typeof value === 'number' && Number.isFinite(value)
+      ? value.toFixed(digits).replace('.', language === 'sv' ? ',' : '.')
+      : '—'
+  const measurementValues = measurementForDisplay
+    ? t('course.windMeasurementValues', {
+      direction: `${formatMeasurementValue(measurementForDisplay.headingDegrees)}°`,
+      spread: `${formatMeasurementValue(measurementForDisplay.spreadDegrees, 2)}°`,
+      accuracy: `${formatMeasurementValue(measurementForDisplay.accuracyDegrees)}°`,
+      quality: t(qualityKey),
+    })
+    : null
 
   const handleWindArrowClick = async () => {
     if (course.windHeadingDegrees !== null) {
       resetWindHeadingMeasurement()
       onWindMeasurement(null)
-      onToggleWindHeading(0)
+      onWindHeadingChange(null)
       return
     }
 
     const measuredHeading = await measureWindHeading()
 
     if (measuredHeading !== null) {
-      onToggleWindHeading(normalizeDegrees(measuredHeading.headingDegrees))
+      onWindHeadingChange(normalizeDegrees(measuredHeading.headingDegrees))
+      onWindMeasurement(measuredHeading)
+    }
+  }
+
+  const handleMeasureAgain = async () => {
+    const measuredHeading = await measureWindHeading()
+    if (measuredHeading !== null) {
+      onWindHeadingChange(normalizeDegrees(measuredHeading.headingDegrees))
       onWindMeasurement(measuredHeading)
     }
   }
@@ -97,11 +125,11 @@ export function CourseSetupView({
     onClearCourse()
   }
 
-  const windStatusMessage = {
-    measuring: t('course.measuringWind'), success: t('course.windSet'), unstable: t('course.windUnstable'), error: t('course.windMeasurementFailed'), unavailable: t('course.windMeasurementFailed'),
-    idle: null,
-  }[windMeasurementStatus]
-  const statusMessage = windStatusMessage ?? (gpsStatusMessage === 'gps-position-unavailable' ? t('course.gpsPositionUnavailable') : gpsStatusMessage)
+  const statusMessage = isMeasuringWind
+    ? t('course.measuringWind')
+    : windMeasurementStatus === 'error' || windMeasurementStatus === 'unavailable'
+      ? t('course.windMeasurementFailed')
+      : gpsStatusMessage === 'gps-position-unavailable' ? t('course.gpsPositionUnavailable') : gpsStatusMessage
   const gpsStatus = getGpsStatusDisplay(gps)
   const startLineQuality = getStartLineQuality(course.points.startA, course.points.startB)
 
@@ -150,12 +178,37 @@ export function CourseSetupView({
             {statusMessage}
           </p>
         ) : null}
+        <div className={`course-wind-feedback ${windAssessment.usable ? 'approved' : 'rejected'}`} role="status" aria-live="polite">
+          <strong className="course-wind-feedback-title">
+            {windAssessment.usable ? t('course.windApproved') : t('course.windNotApproved')}
+          </strong>
+          {windAssessment.usable ? (
+            <>
+              {measurementValues ? <p className="course-wind-measurement-values">{measurementValues}</p> : null}
+              <p className="course-wind-feedback-note">{t('course.windStabilityAccuracyHelp')}</p>
+              <p className="course-wind-feedback-note">{t('course.windGpsSeparate')}</p>
+            </>
+          ) : (
+            <>
+              <p className="course-wind-feedback-note">{t(feedbackReasonKey)}</p>
+              {measurementForDisplay ? (
+                <>
+                  {measurementValues ? <p className="course-wind-measurement-values">{measurementValues}</p> : null}
+                  <p className="course-wind-feedback-note">{t('course.windStabilityAccuracyHelp')}</p>
+                </>
+              ) : null}
+              <button type="button" className="wind-remeasure-button" onClick={handleMeasureAgain} disabled={isMeasuringWind}>
+                {t(measurementForDisplay ? 'course.windMeasureAgain' : 'course.windMeasure')}
+              </button>
+            </>
+          )}
+        </div>
         <div className="course-display-debug" aria-label={t('course.debug')}>
           {windMeasurementSummary ? (
             <span>{windMeasurementSummary}</span>
           ) : null}
-          {lastMeasurement?.nativeDebug ? (
-            <span>{t('course.trueHeading')}: {lastMeasurement.nativeDebug.clTrueHeadingDegrees === null ? '—' : formatDegrees(lastMeasurement.nativeDebug.clTrueHeadingDegrees)} · {t('course.magneticHeading')}: {lastMeasurement.nativeDebug.clMagneticHeadingDegrees === null ? '—' : formatDegrees(lastMeasurement.nativeDebug.clMagneticHeadingDegrees)}</span>
+          {measurementForDisplay?.nativeDebug ? (
+            <span>{t('course.trueHeading')}: {measurementForDisplay.nativeDebug.clTrueHeadingDegrees === null ? '—' : formatDegrees(measurementForDisplay.nativeDebug.clTrueHeadingDegrees)} · {t('course.magneticHeading')}: {measurementForDisplay.nativeDebug.clMagneticHeadingDegrees === null ? '—' : formatDegrees(measurementForDisplay.nativeDebug.clMagneticHeadingDegrees)}</span>
           ) : null}
           <span>{t('course.reference')}: {referenceLabel}</span>
           {windRelativeDisplayAngle !== null ? (
