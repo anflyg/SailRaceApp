@@ -434,6 +434,19 @@ button:focus-visible {
   opacity: 0.6;
 }
 
+@media (max-width: 520px) {
+  .app-shell .view-section.course-view {
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+  }
+
+  .app-shell .course-schematic {
+    flex-shrink: 0;
+    min-height: 220px;
+  }
+}
+
 .course-mark,
 .course-arrow {
   position: absolute;
