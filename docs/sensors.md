@@ -60,6 +60,16 @@ Reason: when the boat is moving, GPS course is stable and directly reflects over
   speed where GPS is used. `good` is a preliminary threshold, not a guarantee of
   actual angular accuracy. Insufficient quality can leave new wind VMG samples
   absent; historical recordings are not changed.
+- Course communicates whether the stored wind reference passes the same shared
+  `isUsableWindReference` gate used by screen and recorded VMG. A rejected
+  measurement retains and displays available direction, circular spread,
+  reported heading accuracy and quality for diagnosis, and offers remeasurement.
+  Spread measures consistency across the sample window; `accuracyDegrees` is
+  sensor-reported heading uncertainty. Low spread does not cancel poor reported
+  accuracy. Passing the wind gate does not certify absolute angle precision or
+  GPS quality: fresh reliable GPS course and speed are checked separately for
+  each VMG value. The feedback uses existing local measurement metadata and
+  adds no sensor stream, telemetry, logging or persisted fields.
 
 Reason: low-speed GPS course is noisy; mast rake, bend, and roll require tilt-aware fused attitude.
 

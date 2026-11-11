@@ -55,7 +55,7 @@ export function useWindHeadingMeasurement(): WindHeadingMeasurementState {
           setStatus('unstable')
           setError(measurementError.message)
           setLastMeasurement(measurementError.result)
-          return null
+          return measurementError.result
         }
 
         setStatus('error')

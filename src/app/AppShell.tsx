@@ -453,11 +453,8 @@ export function AppShell() {
     }))
   }
 
-  const toggleWindHeading = (headingDegrees: number) => {
-    setCourse((current) => ({
-      ...current,
-      windHeadingDegrees: current.windHeadingDegrees === null ? headingDegrees : null,
-    }))
+  const setWindHeading = (headingDegrees: number | null) => {
+    setCourse((current) => ({ ...current, windHeadingDegrees: headingDegrees }))
   }
 
   const setWindMeasurement = (measurement: WindHeadingMeasurementResult | null) => {
@@ -499,7 +496,7 @@ export function AppShell() {
         course={course}
         gps={liveGps}
         onToggleCoursePoint={toggleCoursePoint}
-        onToggleWindHeading={toggleWindHeading}
+        onWindHeadingChange={setWindHeading}
         onWindMeasurement={setWindMeasurement}
         onClearCourse={clearCourse}
         gpsStatusMessage={courseGpsStatus}

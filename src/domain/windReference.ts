@@ -23,6 +23,20 @@ export function isUsableWindReference(
     Math.abs(shortestAngleDeltaDegrees(measurement.headingDegrees, measurement.selectedHeadingDegrees)) < 1e-6
 }
 
+export type WindReferenceRejectionReason = 'missing' | 'north-reference' | 'quality' | 'metadata'
+
+export function assessWindReference(
+  heading: number | null | undefined,
+  measurement: WindHeadingMeasurementResult | null | undefined,
+): { usable: boolean; rejectionReason: WindReferenceRejectionReason | null } {
+  const usable = isUsableWindReference(heading, measurement)
+  if (usable) return { usable: true, rejectionReason: null }
+  if (!validAngle(heading) || !measurement) return { usable: false, rejectionReason: 'missing' }
+  if (measurement.referenceFrame !== 'true-north') return { usable: false, rejectionReason: 'north-reference' }
+  if (measurement.quality !== 'good') return { usable: false, rejectionReason: 'quality' }
+  return { usable: false, rejectionReason: 'metadata' }
+}
+
 export function isFreshReliableGps(
   gps: FilteredGpsReading,
   course: number | null,
