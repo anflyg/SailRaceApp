@@ -92,6 +92,8 @@ Wind VMG, wind-relative course and wind-shift instruments require a matching fin
 
 Course shows whether the current wind measurement is **approved or not approved for VMG**, using the same `isUsableWindReference` validation as the live and recorded VMG paths. A rejected measurement shows its reason and available heading, spread, reported accuracy and quality, plus a direct remeasurement action. Explain that sample spread describes stability while heading accuracy is sensor-reported uncertainty: stable samples can still have poor reported accuracy. An approved wind reference confirms only the wind-quality gate; fresh, reliable GPS course and speed are checked separately for each VMG value. Show the same assessment from restored race metadata after the sailor resumes a saved race. This is an eligibility status, not a guarantee of absolute angle precision.
 
+New measurements require 30 distinct, fresh motion samples, each covered by a fresh valid CLHeading accuracy observation, and consistent north reference and matrix source. If a series cannot meet these requirements, Course asks the sailor to measure again. Existing saved references remain compatible and are assessed using their existing metadata; they cannot be retrospectively proven fresh.
+
 ## Race recording
 
 Race telemetry is recorded locally and must not depend on cloud availability. Recorded data may include timestamp, position, accuracy, speed, course over ground, heading, sensor-derived values, course configuration and race events.
