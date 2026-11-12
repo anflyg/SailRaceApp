@@ -21,7 +21,7 @@ function renderSetup(language: 'sv' | 'en') {
   )
 }
 
-describe('SetupView compass settings', () => {
+describe('SetupView settings', () => {
   it('shows Swedish compass options and the Slagvinkel label', () => {
     const html = renderSetup('sv')
     expect(html).toContain('KOMPASS')
@@ -41,5 +41,29 @@ describe('SetupView compass settings', () => {
     expect(html).toContain('Wind-relative')
     expect(html).toContain('TACK ANGLE')
     expect(html).toContain('Decrease tack angle')
+  })
+
+  it('shows the About section after account controls in Swedish without inventing an app version', () => {
+    const html = renderSetup('sv')
+    const accountIndex = html.indexOf('Inloggning')
+    const aboutIndex = html.indexOf('Om TackWise')
+
+    expect(aboutIndex).toBeGreaterThan(accountIndex)
+    expect(html).toContain('Produkt')
+    expect(html).toContain('TackWise Race')
+    expect(html).toContain('Appversion')
+    expect(html).toContain('Inte tillgänglig')
+    expect(html).toContain('Race smarter.')
+    expect(html).not.toMatch(/\b\d+\.\d+\.\d+\s+\(\d+\)/)
+  })
+
+  it('shows the About section labels in English', () => {
+    const html = renderSetup('en')
+
+    expect(html).toContain('About TackWise')
+    expect(html).toContain('Product')
+    expect(html).toContain('App version')
+    expect(html).toContain('Unavailable')
+    expect(html).toContain('Race smarter.')
   })
 })
