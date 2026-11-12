@@ -1,6 +1,8 @@
+import { useEffect, useState } from 'react'
 import { AccountPanel } from '../../components/AccountPanel'
 import { formatSignedDegrees } from '../../domain/format'
 import { getGpsStatusDisplay } from '../../domain/gps'
+import { formatInstalledAppVersion, getInstalledAppInfo } from '../../services/installedAppInfo'
 import {
   clampLaylineAlphaDegrees,
   type CompassDisplayMode,
@@ -40,6 +42,7 @@ export function SetupView({
   onCompassDisplayModeChange,
 }: SetupViewProps) {
   const { language, setLanguage, t } = useTranslation()
+  const [installedAppVersion, setInstalledAppVersion] = useState<string | null>(null)
   const gpsStatus = getGpsStatusDisplay(gps)
   const canCalibrate = attitude.rollDegrees !== null && attitude.pitchDegrees !== null
   const systemStatusIssues = [
@@ -50,6 +53,14 @@ export function SetupView({
   const systemStatusLabel = systemStatusIssues.length === 0
     ? t('status.allSensorsOk')
     : systemStatusIssues.join(' · ')
+
+  useEffect(() => {
+    let active = true
+    void getInstalledAppInfo().then(info => {
+      if (active) setInstalledAppVersion(formatInstalledAppVersion(info))
+    })
+    return () => { active = false }
+  }, [])
 
   return (
     <section className="view-section setup-view">
@@ -128,6 +139,14 @@ export function SetupView({
         </div>
       </div>
       <AccountPanel />
+      <section className="setup-about" aria-labelledby="setup-about-heading">
+        <h2 className="setup-section-heading" id="setup-about-heading">{t('setup.aboutTitle')}</h2>
+        <dl className="setup-about-details">
+          <div><dt>{t('setup.aboutProduct')}</dt><dd>TackWise Race</dd></div>
+          <div><dt>{t('setup.aboutVersion')}</dt><dd>{installedAppVersion ?? t('setup.aboutVersionUnavailable')}</dd></div>
+          <div><dt>{t('setup.aboutTagline')}</dt><dd>Race smarter.</dd></div>
+        </dl>
+      </section>
     </section>
   )
 }

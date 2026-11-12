@@ -22,6 +22,10 @@ Mark-dependent layline guidance and VMC are retired from active sailing. Setup r
 
 Existing recordings, saved marks, layline events, VMC sample fields, exports/imports, sync and analysis contracts remain compatible. Historical mark-based leg analysis is retained when saved marks exist. Races without marks are valid configurations; the analysis UI explains that GPS/wind-based leg identification is not yet available. The product direction is to identify upwind and downwind legs after the race from GPS and wind; this change does not implement that algorithm or a data migration.
 
+## Settings and app information
+
+The bottom of Settings shows a subtle **About TackWise** section after account controls. It identifies the product as **TackWise Race**, shows the installed iOS app version and build from `CFBundleShortVersionString` and `CFBundleVersion` (for example, `0.1.0 (74)`), and displays the tagline **Race smarter.** The app version is read from the installed native bundle, never inferred from the web package version. Browser and simulation builds show an unavailable state when native metadata cannot be read; they do not display a fabricated version. This is display-only and adds no stored race data or network traffic.
+
 ## Start
 
 The app provides a sailing countdown timer. The original concept supports 5, 4, 3, 2 and 1 minute presets, tap to start/pause and long press to reset. Current implementation details take precedence where already established.

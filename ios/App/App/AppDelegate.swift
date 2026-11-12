@@ -62,6 +62,24 @@ class AppBridgeViewController: CAPBridgeViewController {
         super.capacitorDidLoad()
         bridge?.registerPluginInstance(WindHeadingPlugin())
         bridge?.registerPluginInstance(TackWiseAuthPlugin())
+        bridge?.registerPluginInstance(TackWiseAppInfoPlugin())
+    }
+}
+
+@objc(TackWiseAppInfoPlugin)
+public class TackWiseAppInfoPlugin: CAPPlugin, CAPBridgedPlugin {
+    public let identifier = "TackWiseAppInfoPlugin"
+    public let jsName = "TackWiseAppInfo"
+    public let pluginMethods: [CAPPluginMethod] = [
+        CAPPluginMethod(name: "getInfo", returnType: CAPPluginReturnPromise)
+    ]
+
+    @objc func getInfo(_ call: CAPPluginCall) {
+        let info = Bundle.main.infoDictionary ?? [:]
+        call.resolve([
+            "version": (info["CFBundleShortVersionString"] as? String).map { $0 as Any } ?? NSNull(),
+            "build": (info["CFBundleVersion"] as? String).map { $0 as Any } ?? NSNull()
+        ])
     }
 }
 
