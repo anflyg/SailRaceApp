@@ -6,7 +6,8 @@ import { COURSE_SAMPLE_MAX_AGE_MS, getWindRelativeCourseDegrees } from '../../do
 import { isFreshReliableGps, isUsableWindReference } from '../../domain/windReference'
 import { useEffect, useState } from 'react'
 import { RecordingControl } from '../../components/RecordingControl'
-import { WindShiftDots, WindShiftScale, useWindShiftInstrumentOutput } from './WindShiftInstruments'
+import { WindShiftDots, WindShiftScale, emptyOutput } from './WindShiftInstruments'
+import type { WindInstrumentOutput } from '../../domain/windShiftInstrument'
 import type { CompassDisplayMode } from '../../services/appSettingsStorage'
 import type { CourseState, FilteredGpsReading, Race } from '../../types'
 
@@ -15,6 +16,7 @@ interface RaceDashboardViewProps {
   gps: FilteredGpsReading
   compassDisplayMode: CompassDisplayMode
   laylineAlphaDegrees: number
+  windInstrumentOutput?: WindInstrumentOutput
   recordingActive?: boolean
   onStopRecording?: () => void
   raceReference?: Pick<Race, 'course' | 'windMeasurement'> | null
@@ -25,6 +27,7 @@ export function RaceDashboardView({
   gps,
   compassDisplayMode,
   laylineAlphaDegrees,
+  windInstrumentOutput = emptyOutput,
   recordingActive = false,
   onStopRecording = () => {},
   raceReference = null,
@@ -44,7 +47,6 @@ export function RaceDashboardView({
   }, [gps.timestamp, gps.presentationTimestamp, freshnessTick])
   const freshDisplayCourse = isFreshReliableGps(gps, gps.displayCourseDegrees, gps.presentationTimestamp ?? gps.timestamp)
   const freshVmgCourse = isFreshReliableGps(gps, gps.courseDegrees, gps.timestamp)
-  const windInstrumentOutput = useWindShiftInstrumentOutput(course, gps, laylineAlphaDegrees)
   const matchingWindReference = windReferenceCompatible && course.windHeadingDegrees !== null &&
     windInstrumentOutput.state.originWindHeadingDegrees === normalizeDegrees(course.windHeadingDegrees) &&
     windInstrumentOutput.state.alphaDegrees === laylineAlphaDegrees

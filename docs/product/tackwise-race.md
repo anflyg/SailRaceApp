@@ -76,7 +76,7 @@ This is a course-based wind estimate, not a directly measured true-wind value. T
 
 The first version does not add new persisted telemetry or cloud processing. Any later decision to save estimated shifts must first review the privacy inventory, export/deletion behavior and logging.
 
-### Start-gated, upwind-only wind estimation and cross-view continuity (approved 2026-11-12; not yet implemented)
+### Start-gated, upwind-only wind estimation and cross-view continuity
 
 A sailor may calibrate wind in Course and then maneuver freely along or parallel to the start line. An approved Course wind measurement immediately establishes the fixed scale origin and its green marker at 0°. The marker remains visible at 0° during prestart maneuvers, while all colored header/lift indicators stay inactive. Do not use any prestart GPS course samples to establish a tack reference.
 
@@ -91,8 +91,6 @@ The instrument's transient runtime state and the start-gun eligibility gate must
 Acceptance examples: with approved wind FROM 180° and Slagvinkel 90°, a stable initial starboard close-hauled GPS course near 135° can establish the first reference after the gun without a tack; a later course near 145° may produce a +10° green shift once valid. A downwind course of 0° yields wind-relative 180° and freezes the last accepted marker with no filled cues. Remaining on 135° before the gun must not start reference acquisition. Switching tabs during reference acquisition must not restart its timer.
 
 ### Current implementation behavior
-**Implementation snapshot (2026-11-12):** The details below describe the code as reviewed, **not** the approved start-gated/always-initialized/downwind-excluded/cross-view behavior above. Today the marker is withheld until an estimate exists, the instrument is scoped to the Sailing view, and the new start-gun/downwind eligibility rules are not fully enforced. This approved product decision is documentation only; implementation and testing remain pending.
-
 
 The compass mode is stored with the existing local app settings. If the selected mode is wind-relative but the Course wind reference is absent or not marked `true-north`, the large direction value falls back to the ordinary filtered GPS course. The wind indicator outlines and scale remain visible, with no indicator fills or estimated-wind marker until a compatible reference is available. The ordinary compass remains available.
 

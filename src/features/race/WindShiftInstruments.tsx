@@ -9,7 +9,7 @@ import type { CourseState, FilteredGpsReading } from '../../types'
 import { useTranslation } from '../../i18n/LanguageContext'
 import { isFreshReliableGps, isUsableWindReference } from '../../domain/windReference'
 
-const emptyOutput: WindInstrumentOutput = {
+export const emptyOutput: WindInstrumentOutput = {
   state: createWindInstrumentState(),
   liftDots: 0,
   headerDots: 0,
@@ -24,14 +24,21 @@ export function useWindShiftInstrumentOutput(
   course: CourseState,
   gps: FilteredGpsReading,
   alphaDegrees: number,
+  startGunTimeMs: number | null,
+  raceId: string | null,
 ): WindInstrumentOutput {
   const stateRef = useRef(emptyOutput.state)
   const [output, setOutput] = useState(emptyOutput)
   const windHeading = course.windHeadingDegrees
   const referenceFrame = isUsableWindReference(windHeading, course.windMeasurement) ? 'true-north' : undefined
   const gpsHeading = gps.displayCourseDegrees
+  const resetKey = useRef({ measurement: course.windMeasurement, raceId, eligibleAfter: 0 })
 
   useEffect(() => {
+    if (resetKey.current.measurement !== course.windMeasurement || resetKey.current.raceId !== raceId) {
+      stateRef.current = createWindInstrumentState()
+      resetKey.current = { measurement: course.windMeasurement, raceId, eligibleAfter: Date.now() }
+    }
     const update = () => {
       const next = stepWindInstrument(stateRef.current, {
         nowMs: Date.now(),
@@ -41,6 +48,7 @@ export function useWindShiftInstrumentOutput(
         windHeadingDegrees: windHeading,
         windReferenceFrame: referenceFrame,
         alphaDegrees,
+        startGunTimeMs: startGunTimeMs === null ? null : Math.max(startGunTimeMs, resetKey.current.eligibleAfter),
       })
       stateRef.current = next.state
       setOutput((current) => sameVisibleOutput(current, next) ? current : next)
@@ -52,6 +60,9 @@ export function useWindShiftInstrumentOutput(
     return () => window.clearInterval(interval)
   }, [
     alphaDegrees,
+    startGunTimeMs,
+    raceId,
+    course.windMeasurement,
     gps.courseReliable,
     gps.speedKnots,
     gps.presentationTimestamp,
@@ -120,5 +131,7 @@ function renderDots(activeCount: number) {
 
 function sameVisibleOutput(first: WindInstrumentOutput, second: WindInstrumentOutput): boolean {
   return first.liftDots === second.liftDots && first.headerDots === second.headerDots &&
-    first.scalePositionDegrees === second.scalePositionDegrees && first.isReferenced === second.isReferenced
+    first.scalePositionDegrees === second.scalePositionDegrees && first.isReferenced === second.isReferenced &&
+    first.state.originWindHeadingDegrees === second.state.originWindHeadingDegrees &&
+    first.state.alphaDegrees === second.state.alphaDegrees
 }
