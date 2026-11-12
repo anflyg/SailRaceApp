@@ -22,6 +22,10 @@ Mark-dependent layline guidance and VMC are retired from active sailing. Setup r
 
 Existing recordings, saved marks, layline events, VMC sample fields, exports/imports, sync and analysis contracts remain compatible. Historical mark-based leg analysis is retained when saved marks exist. Races without marks are valid configurations; the analysis UI explains that GPS/wind-based leg identification is not yet available. The product direction is to identify upwind and downwind legs after the race from GPS and wind; this change does not implement that algorithm or a data migration.
 
+## Settings and app information
+
+The bottom of Settings shows a subtle **About TackWise** section after account controls. It identifies the product as **TackWise Race**, shows the installed iOS app version and build from `CFBundleShortVersionString` and `CFBundleVersion` (for example, `0.1.0 (74)`), and displays the tagline **Race smarter.** The app version is read from the installed native bundle, never inferred from the web package version. Browser and simulation builds show an unavailable state when native metadata cannot be read; they do not display a fabricated version. This is display-only and adds no stored race data or network traffic.
+
 ## Start
 
 The app provides a sailing countdown timer. The original concept supports 5, 4, 3, 2 and 1 minute presets, tap to start/pause and long press to reset. Current implementation details take precedence where already established.
@@ -87,8 +91,8 @@ The instrument's transient runtime state and the start-gun eligibility gate must
 Acceptance examples: with approved wind FROM 180° and Slagvinkel 90°, a stable initial starboard close-hauled GPS course near 135° can establish the first reference after the gun without a tack; a later course near 145° may produce a +10° green shift once valid. A downwind course of 0° yields wind-relative 180° and freezes the last accepted marker with no filled cues. Remaining on 135° before the gun must not start reference acquisition. Switching tabs during reference acquisition must not restart its timer.
 
 ### Current implementation behavior
-
 **Implementation snapshot (2026-11-12):** The details below describe the code as reviewed, **not** the approved start-gated/always-initialized/downwind-excluded/cross-view behavior above. Today the marker is withheld until an estimate exists, the instrument is scoped to the Sailing view, and the new start-gun/downwind eligibility rules are not fully enforced. This approved product decision is documentation only; implementation and testing remain pending.
+
 
 The compass mode is stored with the existing local app settings. If the selected mode is wind-relative but the Course wind reference is absent or not marked `true-north`, the large direction value falls back to the ordinary filtered GPS course. The wind indicator outlines and scale remain visible, with no indicator fills or estimated-wind marker until a compatible reference is available. The ordinary compass remains available.
 
@@ -107,6 +111,8 @@ Only measurements explicitly marked `true-north` enable these instruments. Magne
 Wind VMG, wind-relative course and wind-shift instruments require a matching finite wind heading and measurement metadata with `true-north` and `good` quality. `good` is a preliminary acceptance threshold, not a guarantee of physical angular accuracy. GPS-based values additionally require a reliable, valid course and speed and a GPS timestamp no more than five seconds old. Without a usable wind reference, use the ordinary compass, show neutral indicators and an unset wind scale, and omit wind VMG. New race samples can therefore lack wind VMG; existing recordings and exports remain unchanged.
 
 Course shows whether the current wind measurement is **approved or not approved for VMG**, using the same `isUsableWindReference` validation as the live and recorded VMG paths. A rejected measurement shows its reason and available heading, spread, reported accuracy and quality, plus a direct remeasurement action. Explain that sample spread describes stability while heading accuracy is sensor-reported uncertainty: stable samples can still have poor reported accuracy. An approved wind reference confirms only the wind-quality gate; fresh, reliable GPS course and speed are checked separately for each VMG value. Show the same assessment from restored race metadata after the sailor resumes a saved race. This is an eligibility status, not a guarantee of absolute angle precision.
+
+New measurements require 30 distinct, fresh motion samples, each covered by a fresh valid CLHeading accuracy observation, and consistent north reference and matrix source. If a series cannot meet these requirements, Course asks the sailor to measure again. Existing saved references remain compatible and are assessed using their existing metadata; they cannot be retrospectively proven fresh.
 
 ## Race recording
 
