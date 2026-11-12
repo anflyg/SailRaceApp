@@ -67,9 +67,10 @@ export class WindHeadingMeasurementError extends Error {
   }
 }
 
-interface NativeWindHeadingSample {
+export interface NativeWindHeadingSample {
   headingDegrees: number | null
   referenceFrame: 'true-north' | 'magnetic-north'
+  motionTimestamp?: number | null
   accuracyDegrees?: number | null
   nativeDebug?: WindHeadingNativeDebug | null
   valid?: boolean
@@ -77,6 +78,7 @@ interface NativeWindHeadingSample {
 }
 
 interface WindHeadingNativePlugin {
+  beginBackVectorHeading(): Promise<void>
   getBackVectorHeading(): Promise<NativeWindHeadingSample>
   stopBackVectorHeading(): Promise<void>
 }
@@ -107,15 +109,6 @@ function getValidDebugData(nativeDebug: WindHeadingNativeDebug | null | undefine
   }
 
   return nativeDebug
-}
-
-function averageAccuracyDegrees(accuracySamples: number[]): number | null {
-  if (accuracySamples.length === 0) {
-    return null
-  }
-
-  const sum = accuracySamples.reduce((total, accuracyDegrees) => total + accuracyDegrees, 0)
-  return sum / accuracySamples.length
 }
 
 function getMeasurementQuality(
@@ -195,86 +188,97 @@ function createMeasurementResult({
   }
 }
 
-export async function measureWindHeading(): Promise<WindHeadingMeasurementResult | null> {
-  if (!Capacitor.isNativePlatform()) {
-    return measureMockHeading()
+// Native validates freshness in each clock domain. Timestamps are transient and never saved.
+export class WindMeasurementCollector {
+  private samples: number[] = []
+  private accuracyDegrees = 0
+  private lastMotionTimestamp: number | null = null
+  private referenceFrame: 'true-north' | 'magnetic-north' | null = null
+  private selectedHeadingSource: 'back-vector-row' | 'back-vector-column' | null = null
+  private latestNativeDebug: WindHeadingNativeDebug | null = null
+
+  add(sample: NativeWindHeadingSample): void {
+    const accuracy = getValidAccuracyDegrees(sample.accuracyDegrees)
+    const timestamp = sample.motionTimestamp
+    const source = sample.selectedHeadingSource
+    if (sample.valid === false || !isValidHeading(sample.headingDegrees) || accuracy === null ||
+        typeof timestamp !== 'number' || !Number.isFinite(timestamp) || timestamp < 0 ||
+        (this.lastMotionTimestamp !== null && timestamp <= this.lastMotionTimestamp) ||
+        (sample.referenceFrame !== 'true-north' && sample.referenceFrame !== 'magnetic-north') ||
+        (source !== 'back-vector-row' && source !== 'back-vector-column')) return
+
+    if ((this.referenceFrame !== null && this.referenceFrame !== sample.referenceFrame) ||
+        (this.selectedHeadingSource !== null && this.selectedHeadingSource !== source)) {
+      throw new WindHeadingMeasurementError('failed', 'wind_measurement_failed')
+    }
+    this.samples.push(normalizeDegrees(sample.headingDegrees))
+    this.lastMotionTimestamp = timestamp
+    this.referenceFrame = sample.referenceFrame
+    this.selectedHeadingSource = source
+    this.accuracyDegrees = Math.max(this.accuracyDegrees, accuracy)
+    this.latestNativeDebug = getValidDebugData(sample.nativeDebug)
   }
 
-  const samples: number[] = []
-  const accuracySamples: number[] = []
-  let latestNativeDebug: WindHeadingNativeDebug | null = null
-  let selectedHeadingSource: WindHeadingSource = 'back-vector-column'
-  let referenceFrame: WindHeadingReferenceFrame | null = null
-  const startedAt = Date.now()
+  finish(): WindHeadingMeasurementResult {
+    const { samples, referenceFrame, selectedHeadingSource } = this
+    if (samples.length < MIN_WIND_HEADING_SAMPLES || referenceFrame === null || selectedHeadingSource === null) {
+      throw new WindHeadingMeasurementError(
+        'insufficient-samples',
+        'wind_measurement_insufficient_samples',
+      )
+    }
 
+    const headingDegrees = averageAnglesDegrees(samples)
+
+    if (headingDegrees === null) {
+      throw new WindHeadingMeasurementError('failed', 'wind_measurement_failed')
+    }
+
+    const spreadDegrees = getCircularSpreadDegrees(samples, headingDegrees)
+
+    if (spreadDegrees === null) {
+      throw new WindHeadingMeasurementError('failed', 'wind_measurement_failed')
+    }
+
+    const result = createMeasurementResult({
+      headingDegrees,
+      selectedHeadingDegrees: headingDegrees,
+      selectedHeadingSource,
+      sampleCount: samples.length,
+      referenceFrame,
+      accuracyDegrees: this.accuracyDegrees,
+      spreadDegrees,
+      nativeDebug: this.latestNativeDebug,
+    })
+
+    if (result.quality === 'unstable') {
+      throw new WindHeadingMeasurementError(
+        'unstable',
+        'wind_measurement_unstable',
+        result,
+      )
+    }
+
+    return result
+  }
+}
+
+export async function measureWindHeading(): Promise<WindHeadingMeasurementResult | null> {
+  if (!Capacitor.isNativePlatform()) return measureMockHeading()
+
+  const collector = new WindMeasurementCollector()
   try {
+    await WindHeadingNative.beginBackVectorHeading()
+    const startedAt = Date.now()
     while (Date.now() - startedAt < WIND_HEADING_SAMPLE_DURATION_MS) {
-      const sample = await WindHeadingNative.getBackVectorHeading()
-
-      if (sample.valid !== false && isValidHeading(sample.headingDegrees)) {
-        samples.push(normalizeDegrees(sample.headingDegrees))
-        referenceFrame = sample.referenceFrame
-
-        const accuracyDegrees = getValidAccuracyDegrees(sample.accuracyDegrees)
-        const nativeDebug = getValidDebugData(sample.nativeDebug)
-
-        if (accuracyDegrees !== null) {
-          accuracySamples.push(accuracyDegrees)
-        }
-
-        if (nativeDebug !== null) {
-          latestNativeDebug = nativeDebug
-          selectedHeadingSource = nativeDebug.headings.backVectorHeadingRowDegrees !== null
-            ? 'back-vector-row'
-            : 'back-vector-column'
-        }
-      }
-
+      collector.add(await WindHeadingNative.getBackVectorHeading())
       await wait(WIND_HEADING_SAMPLE_INTERVAL_MS)
     }
-  } catch {
+    return collector.finish()
+  } catch (error) {
+    if (error instanceof WindHeadingMeasurementError) throw error
     throw new WindHeadingMeasurementError('failed', 'wind_measurement_failed')
   } finally {
     await WindHeadingNative.stopBackVectorHeading().catch(() => undefined)
   }
-
-  if (samples.length < MIN_WIND_HEADING_SAMPLES || referenceFrame === null) {
-    throw new WindHeadingMeasurementError(
-      'insufficient-samples',
-      'wind_measurement_insufficient_samples',
-    )
-  }
-
-  const headingDegrees = averageAnglesDegrees(samples)
-
-  if (headingDegrees === null) {
-    throw new WindHeadingMeasurementError('failed', 'wind_measurement_failed')
-  }
-
-  const spreadDegrees = getCircularSpreadDegrees(samples, headingDegrees)
-
-  if (spreadDegrees === null) {
-    throw new WindHeadingMeasurementError('failed', 'wind_measurement_failed')
-  }
-
-  const result = createMeasurementResult({
-    headingDegrees,
-    selectedHeadingDegrees: headingDegrees,
-    selectedHeadingSource,
-    sampleCount: samples.length,
-    referenceFrame,
-    accuracyDegrees: averageAccuracyDegrees(accuracySamples),
-    spreadDegrees,
-    nativeDebug: latestNativeDebug,
-  })
-
-  if (result.quality === 'unstable') {
-    throw new WindHeadingMeasurementError(
-      'unstable',
-      'wind_measurement_unstable',
-      result,
-    )
-  }
-
-  return result
 }

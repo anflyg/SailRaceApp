@@ -44,14 +44,25 @@ Reason: when the boat is moving, GPS course is stable and directly reflects over
 - Use fused device orientation from iOS Core Motion.
 - Compute heading from the phone back-facing vector projected to the horizontal plane.
 - The back-facing vector maps to boat bow heading by mount design.
-- The app samples for 5 seconds at about 10 Hz and requires at least 25 valid
-  samples.
+- The app samples for 4 seconds at about 10 Hz and requires at least 30 unique,
+  valid Core Motion samples. Motion timestamps are checked against system uptime
+  (at most 1 second old, never before measurement start or in the future).
+- Each accepted motion sample requires a valid CLHeading accuracy observation
+  made since this measurement began and no more than 2 seconds old. CLHeading
+  uses wall-clock `Date`, separately from motion uptime. One fresh heading
+  observation may cover multiple motion samples; the two-second window permits
+  a slower heading stream and ordinary update jitter without reusing a previous
+  measurement. Previous heading diagnostics
+  are cleared before each measurement. The highest accepted accuracy value is
+  used conservatively; missing or negative accuracy cannot qualify a sample.
+- All accepted samples must use the same north reference and back-vector matrix
+  source. A change rejects the series and the sailor can measure again.
 - Samples are averaged with circular averaging so headings around 0/359 degrees
   are handled correctly.
 - The app calculates circular spread from the shortest angular deviation to the
   mean heading.
-- If spread is greater than 10 degrees, the one-shot wind measurement is marked
-  unstable and the wind heading is not saved.
+- If spread is greater than 10 degrees, the measurement is marked unstable and
+  retained only as rejected diagnostic wind metadata; it cannot enable VMG.
 - The native plugin prefers Core Motion `xTrueNorthZVertical`.
 - If true north is unavailable it falls back to `xMagneticNorthZVertical`.
 - Magnetic fallback is documented but not declination-corrected yet.
@@ -70,6 +81,11 @@ Reason: when the boat is moving, GPS course is stable and directly reflects over
   GPS quality: fresh reliable GPS course and speed are checked separately for
   each VMG value. The feedback uses existing local measurement metadata and
   adds no sensor stream, telemetry, logging or persisted fields.
+- `CLHeading.headingAccuracy` describes Core Location heading and is an indirect
+  quality indicator for the fused Core Motion back vector, not proof of its
+  angular precision. Existing saved references lack freshness timestamps and
+  retain their previous acceptance behavior; only newly captured measurements
+  receive these freshness checks. Historic race data and exports are unchanged.
 
 Reason: low-speed GPS course is noisy; mast rake, bend, and roll require tilt-aware fused attitude.
 

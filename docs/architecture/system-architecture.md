@@ -25,6 +25,7 @@ Initial target architecture. Update this document when accepted design decisions
 - Offline-first race execution.
 - A previously active local race remains identifiable to the existing sync guard after app restart, but adding race GPS samples is held until the sailor explicitly resumes or ends it. The old planned start is invalidated; recovery never creates or deletes a race. Recording continues across app views once resumed.
 - Sailing wind-relative display and wind-shift cues are computed on-device from the shared filtered GPS course and the Course wind snapshot. They add no parallel course filter, sensor stream, persisted estimate, cloud processing or logging.
+- New wind captures validate transient motion uptime and Core Location heading timestamps in their own clock domains. Freshness information is not persisted or sent off-device; older saved wind references retain their existing acceptance semantics.
 - No permanently running application server required in the initial architecture.
 - Raw telemetry separated from relational metadata.
 - Opaque IDs rather than personal data in object names/keys.
