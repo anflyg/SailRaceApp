@@ -6,6 +6,7 @@ import { SetupView } from '../features/setup/SetupView'
 import { CourseSetupView } from '../features/course/CourseSetupView'
 import { StartTimerView } from '../features/timer/StartTimerView'
 import { RaceDashboardView } from '../features/race/RaceDashboardView'
+import { useWindShiftInstrumentOutput } from '../features/race/WindShiftInstruments'
 import { RecordedRaceAnalysis } from '../features/analysis/RecordedRaceAnalysis'
 import { calculateRollPitchRelativeToCalibration } from '../domain/motion'
 import { getPointQuality } from '../domain/gps'
@@ -179,6 +180,7 @@ export function AppShell() {
     const id = getActiveRaceId()
     return raceReference(id ? getRace(id) : null)
   })
+  const [startGunTimeMs, setStartGunTimeMs] = useState<number | null>(null)
   const [recoveryPending, setRecoveryPending] = useState(() => getActiveRaceId() !== null)
   const recoveryResumedAtRef = useRef<number | null>(null)
   const skipRestoredCourseSync = useRef(false)
@@ -199,6 +201,7 @@ export function AppShell() {
   const deviceAttitudeDevice = useDeviceAttitude(!manualMode.enabled && (activeView === 'setup' || activeView === 'race'))
   const liveGps = manualMode.enabled ? MANUAL_FIXTURES.liveGps : liveGpsDevice
   const filteredGps = manualMode.enabled ? MANUAL_FIXTURES.filteredGps : filteredGpsDevice
+  const windInstrumentOutput = useWindShiftInstrumentOutput(course, filteredGps, laylineAlphaDegrees, recoveryPending || activeRaceId === null ? null : startGunTimeMs, activeRaceId)
   const simulationAppVmgKnots = simulationMode.scenario === 'wind-vmg' &&
     isUsableWindReference(course.windHeadingDegrees, course.windMeasurement) &&
     isFreshReliableGps(filteredGps, filteredGps.courseDegrees, filteredGps.timestamp) &&
@@ -324,6 +327,7 @@ export function AppShell() {
       course: courseDefinition,
       windMeasurement: course.windMeasurement,
     })
+    if (activeRaceIdRef.current !== race.id) setStartGunTimeMs(null)
     activeRaceIdRef.current = race.id
     setActiveRaceId(race.id)
     setActiveRaceReference(raceReference(race))
@@ -332,7 +336,10 @@ export function AppShell() {
   }, [course, courseDefinition])
 
   const handleStartGun = useCallback((token: CountdownToken) => {
-    return markStartGun(new Date(), token)?.id === token.raceId
+    const race = markStartGun(new Date(), token)
+    if (race?.id !== token.raceId || !race.startGunTime) return false
+    setStartGunTimeMs(Date.parse(race.startGunTime))
+    return true
   }, [])
 
   const refreshActiveRace = useCallback(() => {
@@ -341,7 +348,9 @@ export function AppShell() {
     activeRaceIdRef.current = nextActiveRaceId
     setActiveRaceId(nextActiveRaceId)
     if (previousActiveRaceId !== nextActiveRaceId) {
-      setActiveRaceReference(raceReference(nextActiveRaceId ? getRace(nextActiveRaceId) : null))
+      const nextRace = nextActiveRaceId ? getRace(nextActiveRaceId) : null
+      setActiveRaceReference(raceReference(nextRace))
+      setStartGunTimeMs(nextRace?.startGunTime ? Date.parse(nextRace.startGunTime) : null)
     }
 
     if (previousActiveRaceId && !nextActiveRaceId) {
@@ -353,6 +362,7 @@ export function AppShell() {
     setEndRaceDialogOpen(false)
     const stoppedRace = stopActiveRace()
     setRecoveryPending(false)
+    setStartGunTimeMs(null)
     recoveryResumedAtRef.current = null
     setIsStartTimerRunning(false)
     setTimerResetVersion((version) => version + 1)
@@ -527,6 +537,7 @@ export function AppShell() {
         gps={filteredGps}
         compassDisplayMode={compassDisplayMode}
         laylineAlphaDegrees={laylineAlphaDegrees}
+        windInstrumentOutput={windInstrumentOutput}
         recordingActive={activeRaceId !== null}
         raceReference={activeRaceReference}
         onStopRecording={() => setEndRaceDialogOpen(true)}
@@ -552,7 +563,7 @@ export function AppShell() {
         {activeViewContent}
       </main>
       {recoveryPending && !endRaceDialogOpen ? <RaceRecoveryDialog
-        onContinue={() => { const race = activeRaceId ? getRace(activeRaceId) : null; if (race) { skipRestoredCourseSync.current = true; setCourse(restoreCourse(race)); setActiveRaceReference(raceReference(race)) }; pausePlannedStart(); recoveryResumedAtRef.current = Date.now(); setRecoveryPending(false) }}
+        onContinue={() => { const race = activeRaceId ? getRace(activeRaceId) : null; if (race) { skipRestoredCourseSync.current = true; setCourse(restoreCourse(race)); setActiveRaceReference(raceReference(race)); setStartGunTimeMs(race.startGunTime ? Date.parse(race.startGunTime) : null) }; pausePlannedStart(); recoveryResumedAtRef.current = Date.now(); setRecoveryPending(false) }}
         onEnd={() => setEndRaceDialogOpen(true)} /> : null}
       {endRaceDialogOpen ? <EndRaceDialog onCancel={() => setEndRaceDialogOpen(false)} onConfirm={handleStopRecording} /> : null}
     </div>

@@ -26,6 +26,7 @@ function sample(
     windHeadingDegrees: WIND,
     windReferenceFrame: 'true-north',
     alphaDegrees: ALPHA,
+    startGunTimeMs: 0,
     ...overrides,
   }
 }
@@ -51,6 +52,76 @@ function establish(tack: 'port' | 'starboard' = 'port', start = 100_000) {
 }
 
 describe('wind shift and tack instrument', () => {
+  it('centers approved wind before the gun and uses only post-gun samples for the first reference', () => {
+    let output = feed(createWindInstrumentState(), sample(100_000, 135, { startGunTimeMs: null }))
+    for (let second = 1; second <= 40; second += 1) {
+      output = feed(output.state, sample(100_000 + second * 1_000, second % 2 ? 135 : 225, { startGunTimeMs: null }))
+      expect(output.scalePositionDegrees).toBe(0)
+      expect(output.liftDots + output.headerDots).toBe(0)
+      expect(output.state.phase).toBe('seeking')
+    }
+    output = feed(output.state, sample(140_000, 135, { startGunTimeMs: 141_000 }))
+    expect(output.state.candidateSinceMs).toBeNull()
+    for (let second = 0; second <= 35; second += 1) {
+      output = feed(output.state, sample(141_000 + second * 1_000, 135, { startGunTimeMs: 141_000 }))
+      if (second < 35) expect(output.scalePositionDegrees).toBe(0)
+    }
+    expect(output.state.lockedCourseReferenceDegrees).toBe(135)
+    expect(output.isReferenced).toBe(true)
+    const lift = feed(output.state, sample(177_000, 145, { startGunTimeMs: 141_000 }))
+    expect(lift.scalePositionDegrees).toBe(10)
+    expect(lift.liftDots).toBe(1)
+    const header = feed(lift.state, sample(178_000, 125, { startGunTimeMs: 141_000 }))
+    expect(header.scalePositionDegrees).toBe(-10)
+    expect(header.headerDots).toBe(1)
+  })
+
+  it('starts acquisition when a usable wind reference arrives after the gun', () => {
+    let output = feed(createWindInstrumentState(), sample(100_000, 135, { windHeadingDegrees: null, startGunTimeMs: 90_000 }))
+    expect(output.scalePositionDegrees).toBeNull()
+    for (let second = 1; second <= 36; second += 1) {
+      output = feed(output.state, sample(100_000 + second * 1_000, 135, { startGunTimeMs: 90_000 }))
+    }
+    expect(output.isReferenced).toBe(true)
+    expect(output.state.tack).toBe('starboard')
+  })
+
+  it('freezes at both inclusive beam boundaries and requires a fresh reference after hysteresis', () => {
+    for (const boundary of [90, 270]) {
+      const initial = establish('starboard')
+      const lifted = feed(initial.output.state, sample(initial.nextTime + 1_000, 145))
+      const wind = lifted.estimatedWindHeadingDegrees!
+      let output = feed(lifted.state, sample(initial.nextTime + 2_000, normalizeDegrees(wind + boundary)))
+      expect(output.scalePositionDegrees).toBe(10)
+      expect(output.liftDots + output.headerDots).toBe(0)
+      expect(output.state.excluded).toBe(true)
+      output = feed(output.state, sample(initial.nextTime + 3_000, normalizeDegrees(wind + (boundary === 90 ? 86 : 274))))
+      expect(output.state.excluded).toBe(true)
+      output = feed(output.state, sample(initial.nextTime + 4_000, 145))
+      expect(output.state.phase).toBe('seeking')
+      expect(output.scalePositionDegrees).toBe(10)
+      for (let second = 5; second <= 39; second += 1) {
+        output = feed(output.state, sample(initial.nextTime + second * 1_000, 145))
+      }
+      expect(output.isReferenced).toBe(true)
+      expect(output.state.lockedCourseReferenceDegrees).toBe(145)
+    }
+  })
+
+  it('holds the accepted marker through unreliable GPS, ending and a new race', () => {
+    const initial = establish('starboard')
+    const lifted = feed(initial.output.state, sample(initial.nextTime + 1_000, 145))
+    const lost = feed(lifted.state, sample(initial.nextTime + 2_000, 0, { courseReliable: false }))
+    expect(lost.scalePositionDegrees).toBe(10)
+    expect(lost.liftDots + lost.headerDots).toBe(0)
+    const ended = feed(lost.state, sample(initial.nextTime + 3_000, 135, { startGunTimeMs: null }))
+    expect(ended.scalePositionDegrees).toBe(10)
+    expect(ended.isReferenced).toBe(false)
+    const newRace = feed(createWindInstrumentState(), sample(initial.nextTime + 4_000, 135, { startGunTimeMs: null }))
+    expect(newRace.scalePositionDegrees).toBe(0)
+    expect(newRace.state.phase).toBe('seeking')
+  })
+
   it('computes the approved wind-relative compass orientation', () => {
     expect(getWindRelativeCourseDegrees(135, 180)).toBe(135)
     expect(getWindRelativeCourseDegrees(180, 180)).toBe(180)

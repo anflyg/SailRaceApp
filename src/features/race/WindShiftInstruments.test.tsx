@@ -16,7 +16,7 @@ function instrumentAt(course: number) {
 
 function sample(timestamp: number, courseDegrees: number) {
   return { nowMs: timestamp, timestamp, courseDegrees, courseReliable: true,
-    windHeadingDegrees: 180, windReferenceFrame: 'true-north', alphaDegrees: 90 }
+    windHeadingDegrees: 180, windReferenceFrame: 'true-north', alphaDegrees: 90, startGunTimeMs: 0 }
 }
 
 function render(output: ReturnType<typeof instrumentAt>, validReference: boolean, wind: number | null) {

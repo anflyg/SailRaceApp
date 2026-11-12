@@ -29,6 +29,7 @@ export interface WindInstrumentInput {
   windHeadingDegrees: number | null
   windReferenceFrame: string | null | undefined
   alphaDegrees: number
+  startGunTimeMs?: number | null
 }
 
 export interface WindInstrumentState {
@@ -52,6 +53,7 @@ export interface WindInstrumentState {
   indicatorIsLift: boolean | null
   originWindHeadingDegrees: number | null
   alphaDegrees: number | null
+  excluded: boolean
 }
 
 export interface WindInstrumentOutput {
@@ -87,6 +89,7 @@ export function createWindInstrumentState(): WindInstrumentState {
     indicatorIsLift: null,
     originWindHeadingDegrees: null,
     alphaDegrees: null,
+    excluded: false,
   }
 }
 
@@ -116,11 +119,13 @@ export function stepWindInstrument(
     state = { ...state, originWindHeadingDegrees: origin, alphaDegrees: input.alphaDegrees }
   }
 
+  if (input.startGunTimeMs == null || !Number.isFinite(input.startGunTimeMs)) return createOutput(resetTack(state), origin)
+
   const timestamp = input.timestamp
   const course = input.courseDegrees
   const validCourse = input.courseReliable && isValidHeading(course) &&
     typeof timestamp === 'number' && Number.isFinite(timestamp) &&
-    timestamp <= input.nowMs + 1_000 && input.nowMs - timestamp <= COURSE_SAMPLE_MAX_AGE_MS
+    timestamp >= input.startGunTimeMs && timestamp <= input.nowMs + 1_000 && input.nowMs - timestamp <= COURSE_SAMPLE_MAX_AGE_MS
 
   if (!validCourse) {
     state = clearPendingCourseTransition(state)
@@ -128,12 +133,19 @@ export function stepWindInstrument(
   }
 
   const currentCourse = normalizeDegrees(course)
+  const relative = normalizeDegrees(currentCourse - (state.estimatedWindHeadingDegrees ?? origin))
+  const excluded = relative >= 90 && relative <= 270
+  const remainsExcluded = state.excluded && relative >= 85 && relative <= 275
+  if (excluded || remainsExcluded) {
+    state = { ...resetTack(state), excluded: true }
+    return createOutput(state, origin, currentCourse)
+  }
+  if (state.excluded) state = { ...state, excluded: false }
   if (state.lastSampleTimestamp === timestamp) {
     return createOutput(state, origin, currentCourse)
   }
   if (state.lastSampleTimestamp !== null && timestamp < state.lastSampleTimestamp) {
-    state = createWindInstrumentState()
-    state = { ...state, originWindHeadingDegrees: origin, alphaDegrees: input.alphaDegrees }
+    state = resetTack(state)
   }
 
   const gapMs = state.lastSampleTimestamp === null ? 0 : timestamp - state.lastSampleTimestamp
@@ -386,6 +398,11 @@ function updateIndicatorDotCount(previous: number, magnitude: number): number {
   return next
 }
 
+function resetTack(state: WindInstrumentState): WindInstrumentState {
+  return { ...createWindInstrumentState(), originWindHeadingDegrees: state.originWindHeadingDegrees,
+    alphaDegrees: state.alphaDegrees, estimatedWindHeadingDegrees: state.estimatedWindHeadingDegrees }
+}
+
 function clearPendingCourseTransition(state: WindInstrumentState): WindInstrumentState {
   if (state.phase === 'transition') {
     return { ...state, phase: 'steady', candidateTack: null, candidateSinceMs: null, transitionSinceMs: null, transitionTargetDegrees: null, transitionAlternativeTargetDegrees: null, transitionCrossedWindCorridor: false, indicatorDotCount: 0 }
@@ -405,7 +422,7 @@ function createOutput(
   const canShow = state.phase === 'steady' && state.tack !== null && state.lockedCourseReferenceDegrees !== null
   const liftDots = canShow && state.indicatorIsLift === true ? state.indicatorDotCount : 0
   const headerDots = canShow && state.indicatorIsLift === false ? state.indicatorDotCount : 0
-  const windHeading = state.estimatedWindHeadingDegrees
+  const windHeading = state.estimatedWindHeadingDegrees ?? state.originWindHeadingDegrees
   const shift = origin !== null && windHeading !== null
     ? shortestAngleDeltaDegrees(windHeading, origin)
     : null
