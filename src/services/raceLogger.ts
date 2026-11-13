@@ -241,7 +241,7 @@ export function recordSampleIfDue({
     return null
   }
 
-  const sampleTime = getSampleTime(gps, now)
+  const sampleTime = getSampleTime(gps, now, race, state)
 
   if (!isDueForSample(state, sampleTime)) {
     return null
@@ -355,12 +355,21 @@ function createDefaultRaceName(date: Date): string {
   }).format(date)}`
 }
 
-function getSampleTime(gps: FilteredGpsReading, now: Date): Date {
-  if (gps.timestamp !== null && Number.isFinite(gps.timestamp)) {
-    return new Date(gps.timestamp)
-  }
-
-  return now
+function getSampleTime(gps: FilteredGpsReading, now: Date, race: Race, state: RaceLoggerState): Date {
+  const gpsTime = gps.timestamp !== null && Number.isFinite(gps.timestamp) ? gps.timestamp : null
+  const nowTime = now.getTime()
+  const startTime = Date.parse(race.createdAt)
+  const endTime = race.endTime ? Date.parse(race.endTime) : null
+  const lastSampleTime = state.lastSampleTime ? Date.parse(state.lastSampleTime) : null
+  const gpsIsWithinRecording = gpsTime !== null && Number.isFinite(startTime) && gpsTime >= startTime &&
+    (endTime === null || !Number.isFinite(endTime) || gpsTime <= endTime)
+  const candidate = gpsIsWithinRecording ? gpsTime : nowTime
+  // Out-of-order GPS callbacks must not append a timestamp before an earlier
+  // persisted sample. Keep the point, using the callback's observation time.
+  const monotonicCandidate = lastSampleTime !== null && Number.isFinite(lastSampleTime) && candidate < lastSampleTime
+    ? nowTime
+    : candidate
+  return new Date(monotonicCandidate)
 }
 
 function isDueForSample(state: RaceLoggerState, sampleTime: Date): boolean {

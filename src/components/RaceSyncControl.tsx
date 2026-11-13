@@ -19,7 +19,9 @@ export function syncLabel(state: SyncState | null, error?: SyncErrorCode, mock=f
   if(code&&['intent_expired','issuance_uncertain','account_changed','race_conflict','artifact_missing','storage_unavailable','upload_expired','upload_not_found','invalid_request'].includes(code))return 'sync.manual'
   if(state?.status==='accepted')return mock?'sync.mockAccepted':'sync.accepted'
   if(state?.status==='blocked_entitlement')return 'sync.entitlement'
-  if(state?.status==='invalid'||code&&['invalid_race_payload','payload_too_large','unsupported_media_type'].includes(code))return 'sync.invalid'
+  if(code==='payload_too_large')return 'sync.invalidSize'
+  if(code==='unsupported_media_type')return 'sync.invalidFormat'
+  if(state?.status==='invalid'||code==='invalid_race_payload')return 'sync.invalid'
   if(code)return 'sync.retryAvailable'
   return state?'sync.ready':'sync.notSynchronized'
 }

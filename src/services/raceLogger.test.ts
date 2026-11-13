@@ -171,6 +171,34 @@ describe('active race stop lifecycle', () => {
     expect(getActiveRaceId()).toBeNull()
     expect(getRace(started.id)?.samples).toEqual(autoStopped?.samples)
   })
+
+  it('uses callback time for stale GPS fixes before recording or after the callback time', () => {
+    vi.stubGlobal('localStorage', new MockStorage())
+    const start = new Date('2026-10-14T10:00:00.000Z')
+    const race = startRaceLogging({ countdownDurationSeconds: 300, now: start })
+    const before = new Date(start.getTime() - 60_000)
+    const accepted = recordSampleIfDue({ gps: stillGpsAt(before.getTime()), now: start })!
+    expect(accepted.samples[0]?.timestamp).toBe(start.toISOString())
+    const lateFix = new Date(start.getTime() + 300_000)
+    const callbackTime = new Date(start.getTime() + 360_000)
+    const withLateFix = recordSampleIfDue({ gps: stillGpsAt(lateFix.getTime()), now: callbackTime })!
+    expect(withLateFix.samples.at(-1)?.timestamp).toBe(lateFix.toISOString())
+    stopActiveRace({ now: new Date(start.getTime() + 420_000) })
+    expect(getRace(race.id)?.samples.map(sample => sample.timestamp)).toEqual([start.toISOString(), lateFix.toISOString()])
+  })
+
+  it('keeps an out-of-order GPS point with a monotonic callback timestamp', () => {
+    vi.stubGlobal('localStorage', new MockStorage())
+    const start = new Date('2026-10-14T11:00:00.000Z')
+    const race = startRaceLogging({ countdownDurationSeconds: 300, now: start })
+    recordSampleIfDue({ gps: stillGpsAt(start.getTime() + 10_000), now: start })
+    const callbackTime = new Date(start.getTime() + 20_000)
+    const updated = recordSampleIfDue({ gps: stillGpsAt(start.getTime() + 5_000), now: callbackTime })!
+    expect(updated.samples).toHaveLength(2)
+    expect(updated.samples.at(-1)?.timestamp).toBe(callbackTime.toISOString())
+    stopActiveRace({ now: new Date(start.getTime() + 30_000) })
+    expect(getRace(race.id)?.samples).toHaveLength(2)
+  })
 })
 
 describe('recordLaylineTackEventIfActive', () => {

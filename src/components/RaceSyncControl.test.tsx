@@ -24,6 +24,10 @@ describe('race library sync status and honest rollout boundary',()=>{
       syncLabel({...state,status:'syncing'}),syncLabel({...state,status:'invalid'}),syncLabel({...state,status:'blocked_entitlement'}),syncLabel(state,'upstream_unavailable')]
     for(const key of keys){expect(translations.sv[key]).toBeTruthy();expect(translations.en[key]).toBeTruthy()}
     expect(syncLabel(state,'invalid_race_payload')).toBe('sync.invalid')
+    expect(syncLabel(state,'payload_too_large')).toBe('sync.invalidSize')
+    expect(syncLabel(state,'unsupported_media_type')).toBe('sync.invalidFormat')
+    expect(translations.sv['sync.invalidSize']).toContain('lokal data finns kvar')
+    expect(translations.sv['sync.invalidSize']).toContain('Exportera')
     expect(syncLabel(state,'account_changed')).toBe('sync.manual')
     expect(syncLabel(state,'uploads_disabled')).toBe('sync.uploadsDisabled')
   })
