@@ -218,7 +218,8 @@ export function stopActiveRace({ now = new Date() }: { now?: Date } = {}): Race 
     return race
   }
 
-  return updateRace(race.id, { endTime: now.toISOString() })
+  const lastSampleTime = state.lastSampleTime ? Date.parse(state.lastSampleTime) : Number.NEGATIVE_INFINITY
+  return updateRace(race.id, { endTime: new Date(Math.max(now.getTime(), lastSampleTime)).toISOString() })
 }
 
 export function recordSampleIfDue({
@@ -241,7 +242,7 @@ export function recordSampleIfDue({
     return null
   }
 
-  const sampleTime = getSampleTime(gps, now)
+  const sampleTime = getSampleTime(gps, now, race, state)
 
   if (!isDueForSample(state, sampleTime)) {
     return null
@@ -355,12 +356,19 @@ function createDefaultRaceName(date: Date): string {
   }).format(date)}`
 }
 
-function getSampleTime(gps: FilteredGpsReading, now: Date): Date {
-  if (gps.timestamp !== null && Number.isFinite(gps.timestamp)) {
-    return new Date(gps.timestamp)
-  }
-
-  return now
+function getSampleTime(gps: FilteredGpsReading, now: Date, race: Race, state: RaceLoggerState): Date {
+  const gpsTime = gps.timestamp !== null && Number.isFinite(gps.timestamp) ? gps.timestamp : null
+  const nowTime = now.getTime()
+  const startTime = Date.parse(race.createdAt)
+  const endTime = race.endTime ? Date.parse(race.endTime) : null
+  const lastSampleTime = state.lastSampleTime ? Date.parse(state.lastSampleTime) : null
+  const gpsIsWithinRecording = gpsTime !== null && Number.isFinite(startTime) && gpsTime >= startTime &&
+    (endTime === null || !Number.isFinite(endTime) || gpsTime <= endTime) && gpsTime <= nowTime &&
+    (!Number.isFinite(lastSampleTime) || gpsTime >= lastSampleTime!)
+  const candidate = gpsIsWithinRecording ? gpsTime! : nowTime
+  const lowerBound = Number.isFinite(startTime) ? startTime : Number.NEGATIVE_INFINITY
+  const monotonicCandidate = Math.max(candidate, lowerBound, Number.isFinite(lastSampleTime) ? lastSampleTime! : lowerBound)
+  return new Date(monotonicCandidate)
 }
 
 function isDueForSample(state: RaceLoggerState, sampleTime: Date): boolean {

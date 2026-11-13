@@ -164,6 +164,19 @@ describe('complete injected Worker synchronization',()=>{
     h.runtime.active=null;h.race.samples=[]
     expect((await h.engine.sync(h.race.id)).status).toBe('invalid');expect(h.worker.requests).toHaveLength(0)
   })
+  it.each([
+    ['out-of-range numeric value', (race: ReturnType<typeof harness>['race']) => { race.samples[0]!.latitude = 91 }],
+    ['non-finite numeric value', (race: ReturnType<typeof harness>['race']) => { race.samples[0]!.speedKnots = Number.NaN }],
+    ['chronology outside recording bounds', (race: ReturnType<typeof harness>['race']) => { race.samples[0]!.timestamp = '2025-12-31T23:59:00.000Z' }],
+  ])('retains the recording and sync references for %s',async(_label,mutate)=>{
+    const h=harness();mutate(h.race)
+    const state=await h.engine.sync(h.race.id)
+    expect(state).toMatchObject({status:'invalid',error:'invalid_race_payload'})
+    expect(h.worker.requests).toHaveLength(0)
+    expect(await h.store.state(h.race.id)).toMatchObject({status:'invalid',error:'invalid_race_payload'})
+    expect(await h.store.artifact(h.race.id)).toBeNull()
+    expect(h.race.samples).toHaveLength(3)
+  })
   it('defers sync if another recording is active or starts during identity creation',async()=>{
     const h=harness();h.runtime.active='another-local-race'
     expect((await h.engine.sync(h.race.id)).error).toBe('recording_active');expect(h.worker.requests).toHaveLength(0)
