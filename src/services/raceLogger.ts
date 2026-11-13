@@ -218,7 +218,8 @@ export function stopActiveRace({ now = new Date() }: { now?: Date } = {}): Race 
     return race
   }
 
-  return updateRace(race.id, { endTime: now.toISOString() })
+  const lastSampleTime = state.lastSampleTime ? Date.parse(state.lastSampleTime) : Number.NEGATIVE_INFINITY
+  return updateRace(race.id, { endTime: new Date(Math.max(now.getTime(), lastSampleTime)).toISOString() })
 }
 
 export function recordSampleIfDue({
@@ -362,13 +363,11 @@ function getSampleTime(gps: FilteredGpsReading, now: Date, race: Race, state: Ra
   const endTime = race.endTime ? Date.parse(race.endTime) : null
   const lastSampleTime = state.lastSampleTime ? Date.parse(state.lastSampleTime) : null
   const gpsIsWithinRecording = gpsTime !== null && Number.isFinite(startTime) && gpsTime >= startTime &&
-    (endTime === null || !Number.isFinite(endTime) || gpsTime <= endTime)
-  const candidate = gpsIsWithinRecording ? gpsTime : nowTime
-  // Out-of-order GPS callbacks must not append a timestamp before an earlier
-  // persisted sample. Keep the point, using the callback's observation time.
-  const monotonicCandidate = lastSampleTime !== null && Number.isFinite(lastSampleTime) && candidate < lastSampleTime
-    ? nowTime
-    : candidate
+    (endTime === null || !Number.isFinite(endTime) || gpsTime <= endTime) && gpsTime <= nowTime &&
+    (!Number.isFinite(lastSampleTime) || gpsTime >= lastSampleTime!)
+  const candidate = gpsIsWithinRecording ? gpsTime! : nowTime
+  const lowerBound = Number.isFinite(startTime) ? startTime : Number.NEGATIVE_INFINITY
+  const monotonicCandidate = Math.max(candidate, lowerBound, Number.isFinite(lastSampleTime) ? lastSampleTime! : lowerBound)
   return new Date(monotonicCandidate)
 }
 
