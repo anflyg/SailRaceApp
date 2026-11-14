@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { isUsableWindReference } from '../../domain/windReference'
-import { WindHeadingMeasurementError, WindMeasurementCollector, type NativeWindHeadingSample } from './windHeadingService'
+import { collectWindSamples, rememberRaceWindProof, WindHeadingMeasurementError, WindMeasurementCollector, type NativeWindHeadingSample } from './windHeadingService'
 
 const sample = (index: number, overrides: Partial<NativeWindHeadingSample> = {}): NativeWindHeadingSample => ({
   valid: true, headingDegrees: index % 2 ? 359 : 1, referenceFrame: 'true-north',
@@ -13,6 +13,31 @@ function addSamples(collector: WindMeasurementCollector, count: number, override
 }
 
 describe('new wind measurement series', () => {
+  it('collects distinct native frames within four seconds without overlapping bridge calls', async () => {
+    const collector = new WindMeasurementCollector()
+    let now = 0, inFlight = false
+    await collectWindSamples(collector, async () => {
+      expect(inFlight).toBe(false)
+      inFlight = true
+      now += 5 // Synthetic bridge latency; no claim about a physical device.
+      const frame = Math.floor(now * 30 / 1000)
+      const result = sample(frame, { motionTimestamp: 100 + frame / 30 })
+      inFlight = false
+      return result
+    }, () => now, async ms => { now += ms })
+    const diagnostics = collector.diagnostics('failed')
+    expect(now).toBe(4000)
+    expect(diagnostics.collectedSamples).toBe(134)
+    expect(diagnostics.acceptedSamples).toBe(120)
+    expect(diagnostics.coverageSeconds).toBeLessThan(4)
+  })
+
+  it('does not accept a bridge response delivered after the deadline', async () => {
+    const collector = new WindMeasurementCollector()
+    let now = 0
+    await collectWindSamples(collector, async () => { now = 4100; return sample(0) }, () => now, async ms => { now += ms })
+    expect(collector.diagnostics('insufficient-samples').acceptedSamples).toBe(0)
+  })
   it('accepts 30 unique samples across 359/0 with accuracy exactly 10°', () => {
     const collector = new WindMeasurementCollector()
     addSamples(collector, 30)
@@ -37,10 +62,10 @@ describe('new wind measurement series', () => {
 
   it('does not count a motion reading with missing accuracy after earlier valid readings', () => {
     const collector = new WindMeasurementCollector()
-    addSamples(collector, 29)
-    collector.add(sample(29, { accuracyDegrees: null }))
+    addSamples(collector, 11)
+    collector.add(sample(11, { accuracyDegrees: null }))
     expect(() => collector.finish()).toThrowError(expect.objectContaining({ reason: 'insufficient-samples' }))
-    expect(collector.diagnostics('insufficient-samples')).toMatchObject({ acceptedSamples: 29, missingAccuracySamples: 1, referenceFrame: 'true-north', accuracyDegrees: 10, spreadDegrees: expect.any(Number) })
+    expect(collector.diagnostics('insufficient-samples')).toMatchObject({ acceptedSamples: 11, missingAccuracySamples: 1, referenceFrame: 'true-north', accuracyDegrees: 10, spreadDegrees: expect.any(Number) })
   })
 
   it('reports absent compass accuracy without accepting its readings', () => {
@@ -91,7 +116,29 @@ describe('new wind measurement series', () => {
 
   it('rejects too few unique valid samples', () => {
     const collector = new WindMeasurementCollector()
-    addSamples(collector, 29)
+    addSamples(collector, 11)
     expect(() => collector.finish()).toThrowError(expect.objectContaining({ reason: 'insufficient-samples' }))
+  })
+
+  it('accepts twelve stable readings spanning at least 2.5 seconds without long gaps', () => {
+    const collector = new WindMeasurementCollector()
+    for (let i = 0; i < 12; i++) collector.add(sample(i, { motionTimestamp: 100 + i * 0.25 }))
+    const result = collector.finish()
+    expect(result.sampleCount).toBe(12)
+    expect(isUsableWindReference(result.headingDegrees, result)).toBe(true)
+    const restored = structuredClone(result)
+    expect(isUsableWindReference(restored.headingDegrees, restored)).toBe(false)
+    rememberRaceWindProof('race-new', result)
+    expect(isUsableWindReference(restored.headingDegrees, restored, 'race-new')).toBe(true)
+    expect(isUsableWindReference(restored.headingDegrees, restored, 'other-race')).toBe(false)
+    expect(isUsableWindReference(restored.headingDegrees, { ...restored, accuracyDegrees: 9 }, 'race-new')).toBe(false)
+    rememberRaceWindProof('race-new', undefined)
+    expect(isUsableWindReference(restored.headingDegrees, restored, 'race-new')).toBe(false)
+  })
+
+  it.each(['short span', 'long gap'])('rejects twelve readings with %s', kind => {
+    const collector = new WindMeasurementCollector()
+    for (let i = 0; i < 12; i++) collector.add(sample(i, { motionTimestamp: 100 + (kind === 'short span' ? i * 0.1 : i < 6 ? i * 0.1 : 102 + (i - 6) * 0.2) }))
+    expect(() => collector.finish()).toThrowError(expect.objectContaining({ reason: 'insufficient-coverage' }))
   })
 })

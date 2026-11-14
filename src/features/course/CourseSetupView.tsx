@@ -51,11 +51,12 @@ export function WindFailureDiagnostics({ diagnostics }: { diagnostics: WindHeadi
   const number = (value: number | null) => value === null ? '—' : `${value.toFixed(1).replace('.', language === 'sv' ? ',' : '.')}°`
   const frame = diagnostics.referenceFrame === 'true-north' ? t('course.windNorthTrue') :
     diagnostics.referenceFrame === 'magnetic-north' ? t('course.windNorthMagnetic') : t('course.windNorthUnknown')
-  const reason = ({ failed: 'course.windFailureGeneral', 'insufficient-samples': 'course.windFailureSamples', unstable: 'course.windFailureUnstable' } as const)[diagnostics.reason]
+  const reason = diagnostics.reason === 'completed' ? null : ({ failed: 'course.windFailureGeneral', 'insufficient-samples': 'course.windFailureSamples', 'insufficient-coverage': 'course.windFailureCoverage', unstable: 'course.windFailureUnstable' } as const)[diagnostics.reason]
   return <div className="course-wind-feedback-note" role="status">
-    <p>{t(reason)}</p>
-    <p>{t('course.windDiagnostics', { count: String(diagnostics.acceptedSamples), north: frame,
+    {reason ? <p>{t(reason)}</p> : null}
+    <p>{t('course.windDiagnostics', { count: String(diagnostics.acceptedSamples), collected: String(diagnostics.collectedSamples), north: frame,
       spread: number(diagnostics.spreadDegrees), accuracy: number(diagnostics.accuracyDegrees) })}</p>
+    {diagnostics.coverageSeconds !== null ? <p>{t('course.windCoverage', { coverage: diagnostics.coverageSeconds.toFixed(1), gap: diagnostics.maxGapSeconds?.toFixed(1) ?? '—' })}</p> : null}
     {diagnostics.missingAccuracySamples > 0 ? <p>{t('course.windMissingAccuracy', { count: String(diagnostics.missingAccuracySamples) })}</p> : null}
   </div>
 }
@@ -95,6 +96,7 @@ export function CourseSetupView({
     missing: 'course.windRejectedMissing',
     'north-reference': 'course.windRejectedNorth',
     quality: 'course.windRejectedQuality',
+    remeasure: 'course.windRejectedRemeasure',
     metadata: 'course.windRejectedMetadata',
   } as const)[windAssessment.rejectionReason ?? 'missing']
 

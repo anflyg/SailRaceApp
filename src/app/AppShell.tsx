@@ -126,8 +126,8 @@ function getCourseDefinition(course: CourseState): CourseDefinition | undefined 
   return Object.keys(courseDefinition).length > 0 ? courseDefinition : undefined
 }
 
-function raceReference(race: Race | null): Pick<Race, 'course' | 'windMeasurement'> | null {
-  return race ? { course: race.course, windMeasurement: race.windMeasurement } : null
+function raceReference(race: Race | null): Pick<Race, 'id' | 'course' | 'windMeasurement'> | null {
+  return race ? { id: race.id, course: race.course, windMeasurement: race.windMeasurement } : null
 }
 
 function restoreCourse(race: Race): CourseState {
@@ -176,7 +176,7 @@ export function AppShell() {
   const [endRaceDialogOpen, setEndRaceDialogOpen] = useState(false)
   const [timerResetVersion, setTimerResetVersion] = useState(0)
   const [activeRaceId, setActiveRaceId] = useState<string | null>(() => getActiveRaceId())
-  const [activeRaceReference, setActiveRaceReference] = useState<Pick<Race, 'course' | 'windMeasurement'> | null>(() => {
+  const [activeRaceReference, setActiveRaceReference] = useState<Pick<Race, 'id' | 'course' | 'windMeasurement'> | null>(() => {
     const id = getActiveRaceId()
     return raceReference(id ? getRace(id) : null)
   })

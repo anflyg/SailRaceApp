@@ -3,21 +3,28 @@ import { averageAnglesDegrees, getCircularSpreadDegrees, normalizeDegrees } from
 import { measureWindHeading as measureMockWindHeading } from './mockSensorService'
 
 export const WIND_HEADING_SAMPLE_DURATION_MS = 4000
-export const WIND_HEADING_SAMPLE_INTERVAL_MS = 100
-export const MIN_WIND_HEADING_SAMPLES = 30
+// Poll slightly faster than the native 30 Hz stream. The collector rejects
+// duplicate motion timestamps; only one bridge request is in flight at a time.
+export const WIND_HEADING_SAMPLE_INTERVAL_MS = 25
+export const MIN_WIND_HEADING_SAMPLES = 12
+export const MIN_WIND_HEADING_COVERAGE_SECONDS = 2.5
+export const MAX_WIND_HEADING_GAP_SECONDS = 0.75
 export const MAX_WIND_HEADING_SPREAD_DEGREES = 10
 
 export type WindHeadingReferenceFrame = 'true-north' | 'magnetic-north' | 'mock'
 export type WindHeadingQuality = 'good' | 'ok' | 'poor' | 'unstable' | 'unknown'
 export type WindHeadingSource = 'back-vector-row' | 'back-vector-column' | 'mock'
-export type WindHeadingMeasurementErrorReason = 'failed' | 'insufficient-samples' | 'unstable'
+export type WindHeadingMeasurementErrorReason = 'failed' | 'insufficient-samples' | 'insufficient-coverage' | 'unstable'
 export interface WindHeadingDiagnostics {
-  reason: WindHeadingMeasurementErrorReason
+  reason: WindHeadingMeasurementErrorReason | 'completed'
+  collectedSamples: number
   acceptedSamples: number
   missingAccuracySamples: number
   referenceFrame: WindHeadingReferenceFrame | null
   accuracyDegrees: number | null
   spreadDegrees: number | null
+  coverageSeconds: number | null
+  maxGapSeconds: number | null
 }
 
 export interface WindHeadingMatrixDebug {
@@ -57,6 +64,25 @@ export interface WindHeadingMeasurementResult {
   spreadDegrees: number | null
   quality: WindHeadingQuality
   nativeDebug: WindHeadingNativeDebug | null
+}
+
+// Proof lives only for this app process. A deserialized historical record has
+// no proof of the new coverage checks and retains the previous >=30 rule.
+const captureProof = new WeakMap<WindHeadingMeasurementResult, string>()
+const raceProof = new Map<string, string>()
+function proofKey(m: WindHeadingMeasurementResult): string {
+  return JSON.stringify([m.headingDegrees, m.selectedHeadingDegrees, m.selectedHeadingSource, m.sampleCount,
+    m.referenceFrame, m.accuracyDegrees, m.spreadDegrees, m.quality])
+}
+export function hasWindCaptureProof(m: WindHeadingMeasurementResult): boolean {
+  return captureProof.get(m) === proofKey(m)
+}
+export function rememberRaceWindProof(raceId: string, m: WindHeadingMeasurementResult | undefined): void {
+  if (m && hasWindCaptureProof(m)) raceProof.set(raceId, proofKey(m))
+  else raceProof.delete(raceId)
+}
+export function hasRaceWindProof(raceId: string | undefined, m: WindHeadingMeasurementResult): boolean {
+  return !!raceId && raceProof.get(raceId) === proofKey(m)
 }
 
 export class WindHeadingMeasurementError extends Error {
@@ -204,21 +230,27 @@ export class WindMeasurementCollector {
   private samples: number[] = []
   private accuracyDegrees = 0
   private lastMotionTimestamp: number | null = null
+  private firstMotionTimestamp: number | null = null
+  private maxGapSeconds = 0
   private referenceFrame: 'true-north' | 'magnetic-north' | null = null
   private selectedHeadingSource: 'back-vector-row' | 'back-vector-column' | null = null
   private latestNativeDebug: WindHeadingNativeDebug | null = null
   private missingAccuracySamples = 0
+  private collectedSamples = 0
   private observedReferenceFrame: 'true-north' | 'magnetic-north' | null = null
   private mixedReferenceFrames = false
 
-  diagnostics(reason: WindHeadingMeasurementErrorReason, spreadDegrees: number | null = null): WindHeadingDiagnostics {
+  diagnostics(reason: WindHeadingMeasurementErrorReason | 'completed', spreadDegrees: number | null = null): WindHeadingDiagnostics {
     const mean = averageAnglesDegrees(this.samples)
     const spread = spreadDegrees ?? (mean === null ? null : getCircularSpreadDegrees(this.samples, mean))
-    return { reason, acceptedSamples: this.samples.length, missingAccuracySamples: this.missingAccuracySamples,
-      referenceFrame: this.mixedReferenceFrames ? null : this.observedReferenceFrame, accuracyDegrees: this.samples.length ? this.accuracyDegrees : null, spreadDegrees: spread }
+    return { reason, collectedSamples: this.collectedSamples, acceptedSamples: this.samples.length, missingAccuracySamples: this.missingAccuracySamples,
+      referenceFrame: this.mixedReferenceFrames ? null : this.observedReferenceFrame, accuracyDegrees: this.samples.length ? this.accuracyDegrees : null, spreadDegrees: spread,
+      coverageSeconds: this.firstMotionTimestamp === null || this.lastMotionTimestamp === null ? null : this.lastMotionTimestamp - this.firstMotionTimestamp,
+      maxGapSeconds: this.samples.length < 2 ? null : this.maxGapSeconds }
   }
 
   add(sample: NativeWindHeadingSample): void {
+    this.collectedSamples++
     const accuracy = getValidAccuracyDegrees(sample.accuracyDegrees)
     const timestamp = sample.motionTimestamp
     const source = sample.selectedHeadingSource
@@ -238,6 +270,8 @@ export class WindMeasurementCollector {
       throw new WindHeadingMeasurementError('failed', 'wind_measurement_failed', null, this.diagnostics('failed'))
     }
     this.samples.push(normalizeDegrees(sample.headingDegrees))
+    if (this.lastMotionTimestamp !== null) this.maxGapSeconds = Math.max(this.maxGapSeconds, timestamp - this.lastMotionTimestamp)
+    if (this.firstMotionTimestamp === null) this.firstMotionTimestamp = timestamp
     this.lastMotionTimestamp = timestamp
     this.referenceFrame = sample.referenceFrame
     this.selectedHeadingSource = source
@@ -254,6 +288,12 @@ export class WindMeasurementCollector {
         null,
         this.diagnostics('insufficient-samples'),
       )
+    }
+
+    if (this.firstMotionTimestamp === null || this.lastMotionTimestamp === null ||
+        this.lastMotionTimestamp - this.firstMotionTimestamp < MIN_WIND_HEADING_COVERAGE_SECONDS ||
+        this.maxGapSeconds > MAX_WIND_HEADING_GAP_SECONDS) {
+      throw new WindHeadingMeasurementError('insufficient-coverage', 'wind_measurement_insufficient_coverage', null, this.diagnostics('insufficient-coverage'))
     }
 
     const headingDegrees = averageAnglesDegrees(samples)
@@ -288,22 +328,43 @@ export class WindMeasurementCollector {
       )
     }
 
+    captureProof.set(result, proofKey(result))
     return result
   }
 }
 
-export async function measureWindHeading(): Promise<WindHeadingMeasurementResult | null> {
+/** The deadline is monotonic; late bridge responses never enter the series. */
+export async function collectWindSamples(
+  collector: WindMeasurementCollector,
+  getSample: () => Promise<NativeWindHeadingSample>,
+  monotonicNow: () => number,
+  sleep: (milliseconds: number) => Promise<void>,
+): Promise<void> {
+  const deadline = monotonicNow() + WIND_HEADING_SAMPLE_DURATION_MS
+  while (monotonicNow() < deadline) {
+    const sample = await getSample()
+    const remaining = deadline - monotonicNow()
+    if (remaining <= 0) break
+    collector.add(sample)
+    await sleep(Math.min(WIND_HEADING_SAMPLE_INTERVAL_MS, remaining))
+  }
+}
+
+export async function measureWindHeading(onDiagnostics?: (diagnostics: WindHeadingDiagnostics) => void): Promise<WindHeadingMeasurementResult | null> {
   if (!Capacitor.isNativePlatform()) return measureMockHeading()
 
   const collector = new WindMeasurementCollector()
   try {
     await WindHeadingNative.beginBackVectorHeading()
-    const startedAt = Date.now()
-    while (Date.now() - startedAt < WIND_HEADING_SAMPLE_DURATION_MS) {
-      collector.add(await WindHeadingNative.getBackVectorHeading())
-      await wait(WIND_HEADING_SAMPLE_INTERVAL_MS)
-    }
-    return collector.finish()
+    // Stop at the deadline even if a bridge request is delayed. Any late
+    // response is ignored by collectWindSamples before it can reach add().
+    await Promise.race([
+      collectWindSamples(collector, () => WindHeadingNative.getBackVectorHeading(), () => performance.now(), wait),
+      wait(WIND_HEADING_SAMPLE_DURATION_MS),
+    ])
+    const result = collector.finish()
+    onDiagnostics?.(collector.diagnostics('completed', result.spreadDegrees))
+    return result
   } catch (error) {
     if (error instanceof WindHeadingMeasurementError) throw error
     throw new WindHeadingMeasurementError('failed', 'wind_measurement_failed', null, collector.diagnostics('failed'))

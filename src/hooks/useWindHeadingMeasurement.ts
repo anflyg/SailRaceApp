@@ -43,7 +43,7 @@ export function useWindHeadingMeasurement(): WindHeadingMeasurementState {
     setDiagnostics(null)
 
     try {
-      const result = await measureWindHeadingService()
+      const result = await measureWindHeadingService(setDiagnostics)
 
       if (!result) {
         setStatus('unavailable')

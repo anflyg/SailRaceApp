@@ -13,7 +13,7 @@ import {
 } from './raceLogger'
 import { createRace, getRace, listRaces } from './raceStorage'
 import { createRaceExportFiles } from './raceExport'
-import type { WindHeadingMeasurementResult } from './sensors/windHeadingService'
+import { WindMeasurementCollector, rememberRaceWindProof, type WindHeadingMeasurementResult } from './sensors/windHeadingService'
 
 class MockStorage implements Storage {
   public get length(): number {
@@ -63,6 +63,21 @@ describe('recorded wind VMG quality', () => {
     accuracyDegrees: 3, spreadDegrees: 2, nativeDebug: null }
   const course = { windDirectionDegrees: 0, courseAxisDegrees: 45 }
   const gps = { ...stillGpsAt(at.getTime()), speedKnots: 5, courseDegrees: 0, displayCourseDegrees: 0 }
+  it('records VMG for a covered 12-sample measurement only while its local proof exists', () => {
+    vi.stubGlobal('localStorage', new MockStorage())
+    const collector = new WindMeasurementCollector()
+    for (let i = 0; i < 12; i++) collector.add({ valid: true, headingDegrees: 0, referenceFrame: 'true-north',
+      selectedHeadingSource: 'back-vector-row', motionTimestamp: 100 + i * 0.25, accuracyDegrees: 3 })
+    const short = collector.finish()
+    const started = startRaceLogging({ countdownDurationSeconds: 60, course, windMeasurement: short, now: at })
+    expect(recordSampleIfDue({ gps, course, windMeasurement: short, now: at })?.samples[0].vmgWindKnots).toBeCloseTo(5)
+    rememberRaceWindProof(started.id, undefined) // Equivalent to loss of process-local proof after restart.
+    const later = new Date(at.getTime() + 6000)
+    const restored = structuredClone(short)
+    const next = recordSampleIfDue({ gps: { ...gps, timestamp: later.getTime() }, course, windMeasurement: restored, now: later })!
+    expect(next.samples[1].vmgWindKnots).toBeUndefined()
+    expect(next.samples).toHaveLength(2)
+  })
   it('records VMG for a matching good reference while preserving historical races and export', () => {
     vi.stubGlobal('localStorage', new MockStorage())
     const old = createRace({ date: at, name: 'Historical' })

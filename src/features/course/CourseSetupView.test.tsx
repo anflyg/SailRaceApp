@@ -59,8 +59,8 @@ describe('Course setup without mark preparation', () => {
 describe('wind VMG acceptance feedback in Course', () => {
   it.each(['sv', 'en'] as const)('shows transient failure diagnostics in %s', language => {
     const html = renderToStaticMarkup(<LanguageProvider language={language} setLanguage={() => {}}>
-      <WindFailureDiagnostics diagnostics={{ reason: 'insufficient-samples', acceptedSamples: 12, missingAccuracySamples: 20,
-        referenceFrame: 'true-north', accuracyDegrees: 4.5, spreadDegrees: null }} />
+      <WindFailureDiagnostics diagnostics={{ reason: 'insufficient-samples', collectedSamples: 32, acceptedSamples: 12, missingAccuracySamples: 20,
+        referenceFrame: 'true-north', accuracyDegrees: 4.5, spreadDegrees: null, coverageSeconds: null, maxGapSeconds: null }} />
     </LanguageProvider>)
     expect(html).toContain('12')
     expect(html).toContain('20')
@@ -107,6 +107,12 @@ describe('wind VMG acceptance feedback in Course', () => {
     expect(html).toContain('EJ GODKÄND FÖR VMG')
     expect(html).toContain('Vindmätning eller matchande metadata saknas')
     expect(html).toContain('Mät vind')
+  })
+
+  it('asks for a new measurement when a short saved result has no in-memory coverage proof', () => {
+    const html = renderCourse({ ...emptyCourse, windHeadingDegrees: 350.1, windMeasurement: measurement({ sampleCount: 12 }) })
+    expect(html).toContain('EJ GODKÄND FÖR VMG')
+    expect(html).toContain('Mät vind igen för att kontrollera tidsfördelningen efter omstart')
   })
 
   it('shows the saved acceptance status after a recovered race restores its wind metadata', () => {
