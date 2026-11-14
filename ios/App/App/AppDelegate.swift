@@ -289,18 +289,11 @@ public class WindHeadingPlugin: CAPPlugin, CAPBridgedPlugin {
         // - phone -Z/back side points toward the bow
         // - phone screen/front points toward the stern
         //
-        // We deliberately use the back vector, not the screen/front vector, so
-        // a measured wind "from" heading is not 180 degrees flipped by the
-        // physical mount. m13/m23 are the vertical-frame components of device Z;
-        // negating them gives device -Z/back. Only the horizontal components are
-        // used, so normal roll, pitch and mast rake should not create systematic
-        // heading error. If the horizontal component is too weak, the heading is
-        // invalid instead of returning a noisy value.
-        // Column-based interpretation:
-        // - +X/right edge: column 1
-        // - +Y/top edge: column 2
-        // - +Z/front/screen: column 3
-        // - -Z/back side: negated column 3
+        // The diagnostic column headings below are not the selected wind direction.
+        // Under the reference-to-device DCM convention, the inverse is its
+        // transpose, so device -Z projects to world (-m31, -m32, -m33).
+        // X is north and Y west; negate west to obtain clockwise bearing.
+        // Physical-device verification of the Core Motion convention is pending.
         let backVectorHeadingDegrees = headingDegreesFromComponents(
             northComponent: -rotationMatrix.m13,
             westComponent: -rotationMatrix.m23
@@ -318,11 +311,8 @@ public class WindHeadingPlugin: CAPPlugin, CAPBridgedPlugin {
             westComponent: rotationMatrix.m21
         )
 
-        // Row-based alternative interpretation (transposed matrix assumption).
-        // Useful for field diagnostics when heading appears systematically biased.
-        let backVectorHeadingRowDegrees = headingDegreesFromComponents(
-            northComponent: -rotationMatrix.m31,
-            westComponent: -rotationMatrix.m32
+        let backVectorHeadingRowDegrees = WindHeadingMath.backHeading(
+            m31: rotationMatrix.m31, m32: rotationMatrix.m32
         )
 
         return HeadingDiagnostics(
