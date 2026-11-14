@@ -11,6 +11,14 @@ export type WindHeadingReferenceFrame = 'true-north' | 'magnetic-north' | 'mock'
 export type WindHeadingQuality = 'good' | 'ok' | 'poor' | 'unstable' | 'unknown'
 export type WindHeadingSource = 'back-vector-row' | 'back-vector-column' | 'mock'
 export type WindHeadingMeasurementErrorReason = 'failed' | 'insufficient-samples' | 'unstable'
+export interface WindHeadingDiagnostics {
+  reason: WindHeadingMeasurementErrorReason
+  acceptedSamples: number
+  missingAccuracySamples: number
+  referenceFrame: WindHeadingReferenceFrame | null
+  accuracyDegrees: number | null
+  spreadDegrees: number | null
+}
 
 export interface WindHeadingMatrixDebug {
   m11: number
@@ -54,16 +62,19 @@ export interface WindHeadingMeasurementResult {
 export class WindHeadingMeasurementError extends Error {
   readonly reason: WindHeadingMeasurementErrorReason
   readonly result: WindHeadingMeasurementResult | null
+  readonly diagnostics: WindHeadingDiagnostics | null
 
   constructor(
     reason: WindHeadingMeasurementErrorReason,
     message: string,
     result: WindHeadingMeasurementResult | null = null,
+    diagnostics: WindHeadingDiagnostics | null = null,
   ) {
     super(message)
     this.name = 'WindHeadingMeasurementError'
     this.reason = reason
     this.result = result
+    this.diagnostics = diagnostics
   }
 }
 
@@ -196,11 +207,26 @@ export class WindMeasurementCollector {
   private referenceFrame: 'true-north' | 'magnetic-north' | null = null
   private selectedHeadingSource: 'back-vector-row' | 'back-vector-column' | null = null
   private latestNativeDebug: WindHeadingNativeDebug | null = null
+  private missingAccuracySamples = 0
+  private observedReferenceFrame: 'true-north' | 'magnetic-north' | null = null
+  private mixedReferenceFrames = false
+
+  diagnostics(reason: WindHeadingMeasurementErrorReason, spreadDegrees: number | null = null): WindHeadingDiagnostics {
+    const mean = averageAnglesDegrees(this.samples)
+    const spread = spreadDegrees ?? (mean === null ? null : getCircularSpreadDegrees(this.samples, mean))
+    return { reason, acceptedSamples: this.samples.length, missingAccuracySamples: this.missingAccuracySamples,
+      referenceFrame: this.mixedReferenceFrames ? null : this.observedReferenceFrame, accuracyDegrees: this.samples.length ? this.accuracyDegrees : null, spreadDegrees: spread }
+  }
 
   add(sample: NativeWindHeadingSample): void {
     const accuracy = getValidAccuracyDegrees(sample.accuracyDegrees)
     const timestamp = sample.motionTimestamp
     const source = sample.selectedHeadingSource
+    if (sample.referenceFrame === 'true-north' || sample.referenceFrame === 'magnetic-north') {
+      if (this.observedReferenceFrame && this.observedReferenceFrame !== sample.referenceFrame) this.mixedReferenceFrames = true
+      else this.observedReferenceFrame = sample.referenceFrame
+    }
+    if (sample.valid !== false && isValidHeading(sample.headingDegrees) && accuracy === null) this.missingAccuracySamples++
     if (sample.valid === false || !isValidHeading(sample.headingDegrees) || accuracy === null ||
         typeof timestamp !== 'number' || !Number.isFinite(timestamp) || timestamp < 0 ||
         (this.lastMotionTimestamp !== null && timestamp <= this.lastMotionTimestamp) ||
@@ -209,7 +235,7 @@ export class WindMeasurementCollector {
 
     if ((this.referenceFrame !== null && this.referenceFrame !== sample.referenceFrame) ||
         (this.selectedHeadingSource !== null && this.selectedHeadingSource !== source)) {
-      throw new WindHeadingMeasurementError('failed', 'wind_measurement_failed')
+      throw new WindHeadingMeasurementError('failed', 'wind_measurement_failed', null, this.diagnostics('failed'))
     }
     this.samples.push(normalizeDegrees(sample.headingDegrees))
     this.lastMotionTimestamp = timestamp
@@ -225,19 +251,21 @@ export class WindMeasurementCollector {
       throw new WindHeadingMeasurementError(
         'insufficient-samples',
         'wind_measurement_insufficient_samples',
+        null,
+        this.diagnostics('insufficient-samples'),
       )
     }
 
     const headingDegrees = averageAnglesDegrees(samples)
 
     if (headingDegrees === null) {
-      throw new WindHeadingMeasurementError('failed', 'wind_measurement_failed')
+      throw new WindHeadingMeasurementError('failed', 'wind_measurement_failed', null, this.diagnostics('failed'))
     }
 
     const spreadDegrees = getCircularSpreadDegrees(samples, headingDegrees)
 
     if (spreadDegrees === null) {
-      throw new WindHeadingMeasurementError('failed', 'wind_measurement_failed')
+      throw new WindHeadingMeasurementError('failed', 'wind_measurement_failed', null, this.diagnostics('failed'))
     }
 
     const result = createMeasurementResult({
@@ -256,6 +284,7 @@ export class WindMeasurementCollector {
         'unstable',
         'wind_measurement_unstable',
         result,
+        this.diagnostics('unstable', spreadDegrees),
       )
     }
 
@@ -277,7 +306,7 @@ export async function measureWindHeading(): Promise<WindHeadingMeasurementResult
     return collector.finish()
   } catch (error) {
     if (error instanceof WindHeadingMeasurementError) throw error
-    throw new WindHeadingMeasurementError('failed', 'wind_measurement_failed')
+    throw new WindHeadingMeasurementError('failed', 'wind_measurement_failed', null, collector.diagnostics('failed'))
   } finally {
     await WindHeadingNative.stopBackVectorHeading().catch(() => undefined)
   }

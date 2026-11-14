@@ -7,7 +7,7 @@ import {
   type CourseDisplayReference,
 } from '../../domain/navigation'
 import { useWindHeadingMeasurement } from '../../hooks/useWindHeadingMeasurement'
-import type { WindHeadingMeasurementResult } from '../../services/sensors/windHeadingService'
+import type { WindHeadingDiagnostics, WindHeadingMeasurementResult } from '../../services/sensors/windHeadingService'
 import type { CoursePoint, CoursePointKey, CourseState, LiveGpsReading } from '../../types'
 import { useTranslation } from '../../i18n/LanguageContext'
 import type { TranslationKey } from '../../i18n/translations'
@@ -46,6 +46,20 @@ function getCourseMarkClassName(kind: string, point: CoursePoint | null): string
   return `course-mark ${kind} ${point?.quality ?? 'unset'}`
 }
 
+export function WindFailureDiagnostics({ diagnostics }: { diagnostics: WindHeadingDiagnostics }) {
+  const { t, language } = useTranslation()
+  const number = (value: number | null) => value === null ? '—' : `${value.toFixed(1).replace('.', language === 'sv' ? ',' : '.')}°`
+  const frame = diagnostics.referenceFrame === 'true-north' ? t('course.windNorthTrue') :
+    diagnostics.referenceFrame === 'magnetic-north' ? t('course.windNorthMagnetic') : t('course.windNorthUnknown')
+  const reason = ({ failed: 'course.windFailureGeneral', 'insufficient-samples': 'course.windFailureSamples', unstable: 'course.windFailureUnstable' } as const)[diagnostics.reason]
+  return <div className="course-wind-feedback-note" role="status">
+    <p>{t(reason)}</p>
+    <p>{t('course.windDiagnostics', { count: String(diagnostics.acceptedSamples), north: frame,
+      spread: number(diagnostics.spreadDegrees), accuracy: number(diagnostics.accuracyDegrees) })}</p>
+    {diagnostics.missingAccuracySamples > 0 ? <p>{t('course.windMissingAccuracy', { count: String(diagnostics.missingAccuracySamples) })}</p> : null}
+  </div>
+}
+
 export function CourseSetupView({
   course,
   gps,
@@ -59,6 +73,7 @@ export function CourseSetupView({
   const {
     status: windMeasurementStatus,
     lastMeasurement,
+    diagnostics,
     measureWindHeading,
     resetWindHeadingMeasurement,
   } = useWindHeadingMeasurement()
@@ -178,6 +193,7 @@ export function CourseSetupView({
             {statusMessage}
           </p>
         ) : null}
+        {diagnostics ? <WindFailureDiagnostics diagnostics={diagnostics} /> : null}
         <div className={`course-wind-feedback ${windAssessment.usable ? 'approved' : 'rejected'}`} role="status" aria-live="polite">
           <strong className="course-wind-feedback-title">
             {windAssessment.usable ? t('course.windApproved') : t('course.windNotApproved')}
@@ -185,6 +201,7 @@ export function CourseSetupView({
           {windAssessment.usable ? (
             <>
               {measurementValues ? <p className="course-wind-measurement-values">{measurementValues}</p> : null}
+              {measurementForDisplay ? <p>{t('course.windSampleNorth', { count: String(measurementForDisplay.sampleCount), north: measurementForDisplay.referenceFrame === 'true-north' ? t('course.windNorthTrue') : measurementForDisplay.referenceFrame === 'magnetic-north' ? t('course.windNorthMagnetic') : t('course.windNorthUnknown') })}</p> : null}
               <p className="course-wind-feedback-note">{t('course.windStabilityAccuracyHelp')}</p>
               <p className="course-wind-feedback-note">{t('course.windGpsSeparate')}</p>
             </>
@@ -194,6 +211,7 @@ export function CourseSetupView({
               {measurementForDisplay ? (
                 <>
                   {measurementValues ? <p className="course-wind-measurement-values">{measurementValues}</p> : null}
+                  <p>{t('course.windSampleNorth', { count: String(measurementForDisplay.sampleCount), north: measurementForDisplay.referenceFrame === 'true-north' ? t('course.windNorthTrue') : measurementForDisplay.referenceFrame === 'magnetic-north' ? t('course.windNorthMagnetic') : t('course.windNorthUnknown') })}</p>
                   <p className="course-wind-feedback-note">{t('course.windStabilityAccuracyHelp')}</p>
                 </>
               ) : null}

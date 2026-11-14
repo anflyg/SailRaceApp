@@ -81,6 +81,11 @@ Reason: when the boat is moving, GPS course is stable and directly reflects over
   GPS quality: fresh reliable GPS course and speed are checked separately for
   each VMG value. The feedback uses existing local measurement metadata and
   adds no sensor stream, telemetry, logging or persisted fields.
+- An unsuccessful attempt also shows a transient on-device summary: accepted
+  sample count, observed north reference, available reported accuracy and
+  spread, and a failure category. A count of readings without current heading
+  accuracy can help identify a slow or unavailable compass; it does not identify
+  the cause or relax the sample checks. No raw readings are saved or sent.
 - `CLHeading.headingAccuracy` describes Core Location heading and is an indirect
   quality indicator for the fused Core Motion back vector, not proof of its
   angular precision. Existing saved references lack freshness timestamps and
