@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { LanguageProvider } from '../../i18n/LanguageContext'
 import type { WindHeadingMeasurementResult } from '../../services/sensors/windHeadingService'
 import type { CourseState, LiveGpsReading } from '../../types'
-import { CourseSetupView } from './CourseSetupView'
+import { CourseSetupView, WindFailureDiagnostics } from './CourseSetupView'
 
 const gps: LiveGpsReading = {
   status: 'idle', error: null, latitude: null, longitude: null, accuracyMeters: null,
@@ -57,6 +57,17 @@ describe('Course setup without mark preparation', () => {
 })
 
 describe('wind VMG acceptance feedback in Course', () => {
+  it.each(['sv', 'en'] as const)('shows transient failure diagnostics in %s', language => {
+    const html = renderToStaticMarkup(<LanguageProvider language={language} setLanguage={() => {}}>
+      <WindFailureDiagnostics diagnostics={{ reason: 'insufficient-samples', acceptedSamples: 12, missingAccuracySamples: 20,
+        referenceFrame: 'true-north', accuracyDegrees: 4.5, spreadDegrees: null }} />
+    </LanguageProvider>)
+    expect(html).toContain('12')
+    expect(html).toContain('20')
+    expect(html).toContain(language === 'sv' ? 'geografisk nord' : 'true north')
+    expect(html).toContain(language === 'sv' ? 'För få giltiga' : 'Too few valid')
+    expect(html).toContain(language === 'sv' ? '4,5°' : '4.5°')
+  })
   it('clearly approves a good, consistent true-north measurement and separates the GPS check', () => {
     const html = renderCourse({ ...emptyCourse, windHeadingDegrees: 350.1, windMeasurement: measurement() })
     expect(html).toContain('GODKÄND FÖR VMG')

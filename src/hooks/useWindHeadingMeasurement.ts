@@ -3,6 +3,7 @@ import {
   WindHeadingMeasurementError,
   measureWindHeading as measureWindHeadingService,
   type WindHeadingMeasurementResult,
+  type WindHeadingDiagnostics,
 } from '../services/sensors/windHeadingService'
 
 export type WindHeadingMeasurementStatus =
@@ -17,6 +18,7 @@ interface WindHeadingMeasurementState {
   status: WindHeadingMeasurementStatus
   error: string | null
   lastMeasurement: WindHeadingMeasurementResult | null
+  diagnostics: WindHeadingDiagnostics | null
   measureWindHeading: () => Promise<WindHeadingMeasurementResult | null>
   resetWindHeadingMeasurement: () => void
 }
@@ -25,17 +27,20 @@ export function useWindHeadingMeasurement(): WindHeadingMeasurementState {
   const [status, setStatus] = useState<WindHeadingMeasurementStatus>('idle')
   const [error, setError] = useState<string | null>(null)
   const [lastMeasurement, setLastMeasurement] = useState<WindHeadingMeasurementResult | null>(null)
+  const [diagnostics, setDiagnostics] = useState<WindHeadingDiagnostics | null>(null)
 
   const resetWindHeadingMeasurement = useCallback(() => {
     setStatus('idle')
     setError(null)
     setLastMeasurement(null)
+    setDiagnostics(null)
   }, [])
 
   const measureWindHeading = useCallback(async () => {
     setStatus('measuring')
     setError(null)
     setLastMeasurement(null)
+    setDiagnostics(null)
 
     try {
       const result = await measureWindHeadingService()
@@ -51,6 +56,7 @@ export function useWindHeadingMeasurement(): WindHeadingMeasurementState {
       return result
     } catch (measurementError) {
       if (measurementError instanceof WindHeadingMeasurementError) {
+        setDiagnostics(measurementError.diagnostics)
         if (measurementError.reason === 'unstable') {
           setStatus('unstable')
           setError(measurementError.message)
@@ -73,6 +79,7 @@ export function useWindHeadingMeasurement(): WindHeadingMeasurementState {
     status,
     error,
     lastMeasurement,
+    diagnostics,
     measureWindHeading,
     resetWindHeadingMeasurement,
   }

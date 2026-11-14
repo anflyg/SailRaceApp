@@ -40,6 +40,15 @@ describe('new wind measurement series', () => {
     addSamples(collector, 29)
     collector.add(sample(29, { accuracyDegrees: null }))
     expect(() => collector.finish()).toThrowError(expect.objectContaining({ reason: 'insufficient-samples' }))
+    expect(collector.diagnostics('insufficient-samples')).toMatchObject({ acceptedSamples: 29, missingAccuracySamples: 1, referenceFrame: 'true-north', accuracyDegrees: 10, spreadDegrees: expect.any(Number) })
+  })
+
+  it('reports absent compass accuracy without accepting its readings', () => {
+    const collector = new WindMeasurementCollector()
+    addSamples(collector, 40, { accuracyDegrees: null, referenceFrame: 'magnetic-north' })
+    try { collector.finish(); expect.fail('expected insufficient samples') } catch (error) {
+      expect(error).toMatchObject({ reason: 'insufficient-samples', diagnostics: { acceptedSamples: 0, missingAccuracySamples: 40, referenceFrame: 'magnetic-north', accuracyDegrees: null, spreadDegrees: null } })
+    }
   })
 
   it('does not count duplicate or out-of-order motion timestamps', () => {
