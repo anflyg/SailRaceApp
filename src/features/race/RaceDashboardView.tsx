@@ -19,7 +19,7 @@ interface RaceDashboardViewProps {
   windInstrumentOutput?: WindInstrumentOutput
   recordingActive?: boolean
   onStopRecording?: () => void
-  raceReference?: Pick<Race, 'course' | 'windMeasurement'> | null
+  raceReference?: Pick<Race, 'course' | 'windMeasurement'> & Partial<Pick<Race, 'id'>> | null
 }
 
 export function RaceDashboardView({
@@ -57,8 +57,8 @@ export function RaceDashboardView({
       : null
     : gps.displayCourseDegrees
   const hasDisplayCourse = courseHeading !== null
-  const matchesRace = !raceReference || (isUsableWindReference(raceReference.course?.windDirectionDegrees, raceReference.windMeasurement) &&
-    isUsableWindReference(course.windHeadingDegrees, raceReference.windMeasurement))
+  const matchesRace = !raceReference || (isUsableWindReference(raceReference.course?.windDirectionDegrees, raceReference.windMeasurement, raceReference.id) &&
+    isUsableWindReference(course.windHeadingDegrees, raceReference.windMeasurement, raceReference.id))
   const reason = course.windHeadingDegrees === null ? 'sailing.vmgMissingWind' :
     course.windMeasurement && course.windMeasurement.referenceFrame !== 'true-north' ? 'sailing.vmgNorth' :
     !windReferenceCompatible ? 'sailing.vmgQuality' :

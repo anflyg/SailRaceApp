@@ -44,8 +44,11 @@ Reason: when the boat is moving, GPS course is stable and directly reflects over
 - Use fused device orientation from iOS Core Motion.
 - Compute heading from the phone back-facing vector projected to the horizontal plane.
 - The back-facing vector maps to boat bow heading by mount design.
-- The app samples for 4 seconds at about 10 Hz and requires at least 30 unique,
-  valid Core Motion samples. Motion timestamps are checked against system uptime
+- The app collects for a fixed 4 seconds, with sequential bridge polling every
+  25 ms targeting the existing 30 Hz Core Motion stream. Actual accepted counts
+  depend on device timing. At least 12 unique valid samples must span at least
+  2.5 seconds, with no gap over 0.75 seconds between accepted samples. All
+  accepted samples contribute to mean and spread. Motion timestamps are checked against system uptime
   (at most 1 second old, never before measurement start or in the future).
 - Each accepted motion sample requires a valid CLHeading accuracy observation
   made since this measurement began and no more than 2 seconds old. CLHeading
@@ -91,6 +94,13 @@ Reason: when the boat is moving, GPS course is stable and directly reflects over
   angular precision. Existing saved references lack freshness timestamps and
   retain their previous acceptance behavior; only newly captured measurements
   receive these freshness checks. Historic race data and exports are unchanged.
+- Proof of the new sample-count and coverage checks is held only in memory and
+  bound to the current measurement and active race. For a newly captured result
+  with fewer than 30 samples, an app restart loses that proof and the sailor must
+  measure again before using it for live VMG. Existing 30-or-more-sample saved
+  references retain their previous eligibility rules. If a resumed race has
+  already started, its saved race reference remains locked; remeasurement does
+  not silently replace it. No new race fields or persisted certificate are added.
 
 Reason: low-speed GPS course is noisy; mast rake, bend, and roll require tilt-aware fused attitude.
 
