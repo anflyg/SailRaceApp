@@ -1,7 +1,7 @@
 import { shortestAngleDeltaDegrees } from './angles'
 import { COURSE_SAMPLE_MAX_AGE_MS } from './windShiftInstrument'
 import type { FilteredGpsReading } from '../types'
-import { hasRaceWindProof, hasWindCaptureProof, MIN_WIND_HEADING_SAMPLES, type WindHeadingMeasurementResult } from '../services/sensors/windHeadingService'
+import { MIN_WIND_HEADING_SAMPLES, type WindHeadingMeasurementResult } from '../services/sensors/windHeadingService'
 
 function validAngle(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 360
@@ -10,14 +10,12 @@ function validAngle(value: unknown): value is number {
 export function isUsableWindReference(
   heading: number | null | undefined,
   measurement: WindHeadingMeasurementResult | null | undefined,
-  raceId?: string,
+  _raceId?: string,
 ): heading is number {
   return validAngle(heading) && measurement?.referenceFrame === 'true-north' && measurement.quality === 'good' &&
     (measurement.selectedHeadingSource === 'back-vector-row' || measurement.selectedHeadingSource === 'back-vector-column') &&
     Number.isInteger(measurement.sampleCount) && measurement.sampleCount >= MIN_WIND_HEADING_SAMPLES &&
-    (measurement.sampleCount >= 30 || hasWindCaptureProof(measurement) || hasRaceWindProof(raceId, measurement)) &&
-    typeof measurement.accuracyDegrees === 'number' && Number.isFinite(measurement.accuracyDegrees) &&
-    measurement.accuracyDegrees >= 0 && measurement.accuracyDegrees <= 10 &&
+    measurement.qualityModel === 'core-motion-v1' &&
     typeof measurement.spreadDegrees === 'number' && Number.isFinite(measurement.spreadDegrees) &&
     measurement.spreadDegrees >= 0 && measurement.spreadDegrees <= 10 &&
     validAngle(measurement.headingDegrees) && validAngle(measurement.selectedHeadingDegrees) &&
@@ -36,8 +34,7 @@ export function assessWindReference(
   if (!validAngle(heading) || !measurement) return { usable: false, rejectionReason: 'missing' }
   if (measurement.referenceFrame !== 'true-north') return { usable: false, rejectionReason: 'north-reference' }
   if (measurement.quality !== 'good') return { usable: false, rejectionReason: 'quality' }
-  if (Number.isInteger(measurement.sampleCount) && measurement.sampleCount >= MIN_WIND_HEADING_SAMPLES &&
-      measurement.sampleCount < 30 && !hasWindCaptureProof(measurement)) return { usable: false, rejectionReason: 'remeasure' }
+  if (measurement.qualityModel !== 'core-motion-v1') return { usable: false, rejectionReason: 'remeasure' }
   return { usable: false, rejectionReason: 'metadata' }
 }
 

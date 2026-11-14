@@ -13,7 +13,7 @@ vi.mock('./useLaylineWarning', () => ({
 
 const measurement = (headingDegrees: number): WindHeadingMeasurementResult => ({
   headingDegrees, selectedHeadingDegrees: headingDegrees, selectedHeadingSource: 'back-vector-row',
-  sampleCount: 40, referenceFrame: 'true-north', quality: 'good', accuracyDegrees: 2, spreadDegrees: 1, nativeDebug: null,
+  qualityModel: 'core-motion-v1', sampleCount: 40, referenceFrame: 'true-north', quality: 'good', accuracyDegrees: 2, spreadDegrees: 1, nativeDebug: null,
 })
 const course: CourseState = {
   points: { startA: null, startB: null, kryss1: null, lans1: null },

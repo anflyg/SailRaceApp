@@ -50,57 +50,12 @@ Reason: when the boat is moving, GPS course is stable and directly reflects over
   2.5 seconds, with no gap over 0.75 seconds between accepted samples. All
   accepted samples contribute to mean and spread. Motion timestamps are checked against system uptime
   (at most 1 second old, never before measurement start or in the future).
-- Each accepted motion sample requires a valid CLHeading accuracy observation
-  made since this measurement began and no more than 2 seconds old. CLHeading
-  uses wall-clock `Date`, separately from motion uptime. One fresh heading
-  observation may cover multiple motion samples; the two-second window permits
-  a slower heading stream and ordinary update jitter without reusing a previous
-  measurement. Previous heading diagnostics
-  are cleared before each measurement. The highest accepted accuracy value is
-  used conservatively; missing or negative accuracy cannot qualify a sample.
-- All accepted samples must use the same north reference and back-vector matrix
-  source. A change rejects the series and the sailor can measure again.
-- Samples are averaged with circular averaging so headings around 0/359 degrees
-  are handled correctly.
-- The app calculates circular spread from the shortest angular deviation to the
-  mean heading.
-- If spread is greater than 10 degrees, the measurement is marked unstable and
-  retained only as rejected diagnostic wind metadata; it cannot enable VMG.
-- The native plugin prefers Core Motion `xTrueNorthZVertical`.
-- If true north is unavailable it falls back to `xMagneticNorthZVertical`.
-- Magnetic fallback is documented but not declination-corrected yet.
-- Wind-dependent instruments and new recorded wind VMG require matching heading
-  metadata marked `true-north` and `good`, plus a reliable, fresh GPS course and
-  speed where GPS is used. `good` is a preliminary threshold, not a guarantee of
-  actual angular accuracy. Insufficient quality can leave new wind VMG samples
-  absent; historical recordings are not changed.
-- Course communicates whether the stored wind reference passes the same shared
-  `isUsableWindReference` gate used by screen and recorded VMG. A rejected
-  measurement retains and displays available direction, circular spread,
-  reported heading accuracy and quality for diagnosis, and offers remeasurement.
-  Spread measures consistency across the sample window; `accuracyDegrees` is
-  sensor-reported heading uncertainty. Low spread does not cancel poor reported
-  accuracy. Passing the wind gate does not certify absolute angle precision or
-  GPS quality: fresh reliable GPS course and speed are checked separately for
-  each VMG value. The feedback uses existing local measurement metadata and
-  adds no sensor stream, telemetry, logging or persisted fields.
-- An unsuccessful attempt also shows a transient on-device summary: accepted
-  sample count, observed north reference, available reported accuracy and
-  spread, and a failure category. A count of readings without current heading
-  accuracy can help identify a slow or unavailable compass; it does not identify
-  the cause or relax the sample checks. No raw readings are saved or sent.
-- `CLHeading.headingAccuracy` describes Core Location heading and is an indirect
-  quality indicator for the fused Core Motion back vector, not proof of its
-  angular precision. Existing saved references lack freshness timestamps and
-  retain their previous acceptance behavior; only newly captured measurements
-  receive these freshness checks. Historic race data and exports are unchanged.
-- Proof of the new sample-count and coverage checks is held only in memory and
-  bound to the current measurement and active race. For a newly captured result
-  with fewer than 30 samples, an app restart loses that proof and the sailor must
-  measure again before using it for live VMG. Existing 30-or-more-sample saved
-  references retain their previous eligibility rules. If a resumed race has
-  already started, its saved race reference remains locked; remeasurement does
-  not silently replace it. No new race fields or persisted certificate are added.
+- The shared Core Motion stream is prepared for Setup, Course and Sailing while the app is active. It is stopped when these views no longer need it or the app backgrounds, and resumed on return. A wind capture reuses the stream and does not restart sensor fusion. Roll and pitch share the same manager.
+- Core Motion `xTrueNorthZVertical` is required for wind; magnetic or arbitrary frames cannot approve wind. True north requires available location services and a magnetometer. The mounted phone's back (-Z) points toward the bow. Its horizontal projection uses the existing row-based matrix calculation, with north X and west Y; heading is clockwise from north. A near-vertical back vector is invalid.
+- Every capture uses fresh, unique motion samples from its own four-second period, circular mean and circular spread. A spread above 10° is unstable. `CLHeading.headingAccuracy` is not a direct error estimate of the fused back vector and is not an acceptance requirement. Low spread indicates stability, not absolute geographic accuracy.
+- Successful captures persist `qualityModel: core-motion-v1` in local race metadata and local exports. Older unmarked wind measurements are not guaranteed compatible and require remeasurement for new wind VMG. Other race data and GPS tracks remain intact. The marker replaces process-local proof, including for covered captures with fewer than 30 samples. After the gun, the race wind snapshot remains locked.
+- The same wind gate serves Course, Sailing, recording and wind-shift instruments. Fresh reliable GPS course and speed remain separate prerequisites for VMG. A failed remeasurement retains the previous wind and tells the sailor.
+- Physical validation before release: mount the phone as described above; orient boat/phone toward wind, measure repeatedly at known geographic north, east, south and west and with representative roll/pitch, compare with an independently corrected true-north reference, test unstable motion, background/foreground and tab changes, then verify VMG on water. Record only non-identifying observations; do not log raw GPS or race data.
 
 Reason: low-speed GPS course is noisy; mast rake, bend, and roll require tilt-aware fused attitude.
 

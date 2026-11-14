@@ -4,7 +4,7 @@ import type { FilteredGpsReading } from '../types'
 import type { WindHeadingMeasurementResult } from '../services/sensors/windHeadingService'
 
 const wind: WindHeadingMeasurementResult = {
-  headingDegrees: 0, selectedHeadingDegrees: 0, selectedHeadingSource: 'back-vector-row',
+  qualityModel: 'core-motion-v1', headingDegrees: 0, selectedHeadingDegrees: 0, selectedHeadingSource: 'back-vector-row',
   sampleCount: 40, referenceFrame: 'true-north', quality: 'good', accuracyDegrees: 3, spreadDegrees: 2, nativeDebug: null,
 }
 const gps: FilteredGpsReading = {
@@ -33,10 +33,10 @@ describe('usable wind reference', () => {
     expect(isUsableWindReference(NaN, wind)).toBe(false)
     expect(isUsableWindReference(0, { ...wind, selectedHeadingDegrees: 1 })).toBe(false)
     expect(isUsableWindReference(0, { ...wind, headingDegrees: NaN })).toBe(false)
-    expect(isUsableWindReference(0, { ...wind, accuracyDegrees: null })).toBe(false)
-    expect(isUsableWindReference(0, { ...wind, accuracyDegrees: 11 })).toBe(false)
+    expect(isUsableWindReference(0, { ...wind, accuracyDegrees: null })).toBe(true)
+    expect(isUsableWindReference(0, { ...wind, accuracyDegrees: 11 })).toBe(true)
     expect(isUsableWindReference(0, { ...wind, spreadDegrees: 11 })).toBe(false)
-    expect(isUsableWindReference(0, { ...wind, sampleCount: 29 })).toBe(false)
+    expect(isUsableWindReference(0, { ...wind, sampleCount: 11 })).toBe(false)
     expect(isUsableWindReference(0, { ...wind, selectedHeadingSource: 'mock' })).toBe(false)
   })
   it('requires valid reliable GPS and a fresh timestamp', () => {

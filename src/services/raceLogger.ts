@@ -16,7 +16,6 @@ import type {
   RaceSample,
 } from '../types'
 import type { WindHeadingMeasurementResult } from './sensors/windHeadingService'
-import { rememberRaceWindProof } from './sensors/windHeadingService'
 
 const LOGGER_STATE_KEY = 'aster-race:race-logger:v1'
 const NORMAL_SAMPLE_INTERVAL_MS = 5000
@@ -97,7 +96,6 @@ export function startRaceLogging({
     windMeasurement: matchingMeasurement(course, windMeasurement),
     name: name ?? createDefaultRaceName(now),
   })
-  rememberRaceWindProof(race.id, matchingMeasurement(course, windMeasurement))
   saveLoggerState({
     activeRaceId: race.id,
   })
@@ -113,7 +111,6 @@ export function updatePreStartCourse(course?: CourseDefinition, windMeasurement?
   if (!race || race.endTime || race.startGunTime) return null
   const measurement = matchingMeasurement(course, windMeasurement)
   const updated = updateRace(race.id, { course, windMeasurement: measurement })
-  if (updated) rememberRaceWindProof(race.id, measurement)
   return updated
 }
 

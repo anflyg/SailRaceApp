@@ -1,7 +1,6 @@
 import UIKit
 import Capacitor
 import CoreMotion
-import CoreLocation
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -84,31 +83,20 @@ public class TackWiseAppInfoPlugin: CAPPlugin, CAPBridgedPlugin {
 }
 
 @objc(WindHeadingPlugin)
-public class WindHeadingPlugin: CAPPlugin, CAPBridgedPlugin, CLLocationManagerDelegate {
+public class WindHeadingPlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "WindHeadingPlugin"
     public let jsName = "WindHeading"
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "beginBackVectorHeading", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "getBackVectorHeading", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "getDeviceAttitude", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "stopBackVectorHeading", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "stopBackVectorHeading", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "stopDeviceAttitude", returnType: CAPPluginReturnPromise)
     ]
 
     private let motionManager = CMMotionManager()
     private var activeReferenceFrame: CMAttitudeReferenceFrame?
-    private lazy var locationManager: CLLocationManager = {
-        let manager = CLLocationManager()
-        manager.delegate = self
-        manager.headingFilter = kCLHeadingFilterNone
-        return manager
-    }()
-    private var latestHeadingAccuracyDegrees: Double?
-    private var latestTrueHeadingDegrees: Double?
-    private var latestMagneticHeadingDegrees: Double?
-    private var latestHeadingTimestamp: Date?
-    private var windMeasurementStartDate: Date?
     private var windMeasurementStartUptime: TimeInterval?
-    private let maxHeadingAgeSeconds: TimeInterval = 2
     private let maxMotionAgeSeconds: TimeInterval = 1
 
     private struct HeadingDiagnostics {
@@ -120,16 +108,7 @@ public class WindHeadingPlugin: CAPPlugin, CAPBridgedPlugin, CLLocationManagerDe
     }
 
     @objc func beginBackVectorHeading(_ call: CAPPluginCall) {
-        stopHeadingUpdatesIfAvailable()
-        motionManager.stopDeviceMotionUpdates()
-        activeReferenceFrame = nil
-        latestHeadingAccuracyDegrees = nil
-        latestTrueHeadingDegrees = nil
-        latestMagneticHeadingDegrees = nil
-        latestHeadingTimestamp = nil
-        windMeasurementStartDate = Date()
         windMeasurementStartUptime = ProcessInfo.processInfo.systemUptime
-        startHeadingUpdatesIfAvailable()
         call.resolve()
     }
 
@@ -158,7 +137,7 @@ public class WindHeadingPlugin: CAPPlugin, CAPBridgedPlugin, CLLocationManagerDe
                 "valid": false,
                 "headingDegrees": NSNull(),
                 "referenceFrame": selectedReferenceFrame.name,
-                "accuracyDegrees": headingAccuracyValue()
+                "accuracyDegrees": NSNull()
             ])
             return
         }
@@ -170,19 +149,15 @@ public class WindHeadingPlugin: CAPPlugin, CAPBridgedPlugin, CLLocationManagerDe
             rotationMatrix: rotationMatrix
         )
 
-        let selectedHeadingDegrees =
-            headingDiagnostics.backVectorHeadingRowDegrees ??
-            headingDiagnostics.backVectorHeadingDegrees
-        let selectedHeadingSource = headingDiagnostics.backVectorHeadingRowDegrees != nil
-            ? "back-vector-row"
-            : "back-vector-column"
+        let selectedHeadingDegrees = headingDiagnostics.backVectorHeadingRowDegrees
+        let selectedHeadingSource = "back-vector-row"
 
         guard let headingDegrees = selectedHeadingDegrees else {
             call.resolve([
                 "valid": false,
                 "headingDegrees": NSNull(),
                 "referenceFrame": selectedReferenceFrame.name,
-                "accuracyDegrees": headingAccuracyValue(),
+                "accuracyDegrees": NSNull(),
                 "selectedHeadingSource": selectedHeadingSource,
                 "nativeDebug": nativeDebug
             ])
@@ -194,7 +169,7 @@ public class WindHeadingPlugin: CAPPlugin, CAPBridgedPlugin, CLLocationManagerDe
             "headingDegrees": headingDegrees,
             "motionTimestamp": motion.timestamp,
             "referenceFrame": selectedReferenceFrame.name,
-            "accuracyDegrees": headingAccuracyValue(),
+            "accuracyDegrees": NSNull(),
             "selectedHeadingSource": selectedHeadingSource,
             "nativeDebug": nativeDebug
         ])
@@ -238,34 +213,15 @@ public class WindHeadingPlugin: CAPPlugin, CAPBridgedPlugin, CLLocationManagerDe
     }
 
     @objc func stopBackVectorHeading(_ call: CAPPluginCall) {
-        motionManager.stopDeviceMotionUpdates()
-        stopHeadingUpdatesIfAvailable()
-        activeReferenceFrame = nil
-        windMeasurementStartDate = nil
         windMeasurementStartUptime = nil
-        latestHeadingTimestamp = nil
-        latestHeadingAccuracyDegrees = nil
-        latestTrueHeadingDegrees = nil
-        latestMagneticHeadingDegrees = nil
         call.resolve()
     }
 
-    public func locationManager(_ manager: CLLocationManager, didUpdateHeading newHeading: CLHeading) {
-        guard let start = windMeasurementStartDate,
-              WindSampleFreshness.isFresh(newHeading.timestamp.timeIntervalSince1970,
-                  since: start.timeIntervalSince1970, now: Date().timeIntervalSince1970,
-                  maxAge: maxHeadingAgeSeconds) else {
-            latestHeadingTimestamp = nil
-            latestHeadingAccuracyDegrees = nil
-            latestTrueHeadingDegrees = nil
-            latestMagneticHeadingDegrees = nil
-            return
-        }
-        if let latestHeadingTimestamp = latestHeadingTimestamp, newHeading.timestamp < latestHeadingTimestamp { return }
-        latestHeadingTimestamp = newHeading.timestamp
-        latestHeadingAccuracyDegrees = validHeadingAccuracyDegrees(newHeading.headingAccuracy)
-        latestTrueHeadingDegrees = validLocationHeadingDegrees(newHeading.trueHeading)
-        latestMagneticHeadingDegrees = validLocationHeadingDegrees(newHeading.magneticHeading)
+    @objc func stopDeviceAttitude(_ call: CAPPluginCall) {
+        motionManager.stopDeviceMotionUpdates()
+        activeReferenceFrame = nil
+        windMeasurementStartUptime = nil
+        call.resolve()
     }
 
     private func preferredReferenceFrame() -> (frame: CMAttitudeReferenceFrame, name: String)? {
@@ -322,50 +278,9 @@ public class WindHeadingPlugin: CAPPlugin, CAPBridgedPlugin, CLLocationManagerDe
         activeReferenceFrame = referenceFrame
     }
 
-    private func startHeadingUpdatesIfAvailable() {
-        guard CLLocationManager.headingAvailable() else {
-            return
-        }
-
-        if locationManager.authorizationStatus == .notDetermined {
-            locationManager.requestWhenInUseAuthorization()
-        }
-
-        locationManager.startUpdatingHeading()
-    }
-
-    private func stopHeadingUpdatesIfAvailable() {
-        guard CLLocationManager.headingAvailable() else {
-            return
-        }
-
-        locationManager.stopUpdatingHeading()
-    }
-
-    private func headingAccuracyValue() -> Any {
-        if isCurrentHeadingFresh(), let latestHeadingAccuracyDegrees = latestHeadingAccuracyDegrees {
-            return latestHeadingAccuracyDegrees
-        }
-        return NSNull()
-    }
-
-    private func isCurrentHeadingFresh() -> Bool {
-        guard let start = windMeasurementStartDate, let timestamp = latestHeadingTimestamp else { return false }
-        return WindSampleFreshness.isFresh(timestamp.timeIntervalSince1970, since: start.timeIntervalSince1970,
-            now: Date().timeIntervalSince1970, maxAge: maxHeadingAgeSeconds)
-    }
-
-    private func validHeadingAccuracyDegrees(_ accuracyDegrees: Double) -> Double? {
-        if accuracyDegrees >= 0 && accuracyDegrees.isFinite {
-            return accuracyDegrees
-        }
-
-        return nil
-    }
-
     private func backVectorHeadingDegrees(from rotationMatrix: CMRotationMatrix) -> Double? {
         let diagnostics = headingDiagnostics(from: rotationMatrix)
-        return diagnostics.backVectorHeadingRowDegrees ?? diagnostics.backVectorHeadingDegrees
+        return diagnostics.backVectorHeadingRowDegrees
     }
 
     private func headingDiagnostics(from rotationMatrix: CMRotationMatrix) -> HeadingDiagnostics {
@@ -451,8 +366,8 @@ public class WindHeadingPlugin: CAPPlugin, CAPBridgedPlugin, CLLocationManagerDe
                 "topEdgeHeadingDegrees": optionalNumberOrNull(headingDiagnostics.topEdgeHeadingDegrees),
                 "rightEdgeHeadingDegrees": optionalNumberOrNull(headingDiagnostics.rightEdgeHeadingDegrees)
             ],
-            "clTrueHeadingDegrees": optionalNumberOrNull(currentTrueHeadingDegrees()),
-            "clMagneticHeadingDegrees": optionalNumberOrNull(currentMagneticHeadingDegrees()),
+            "clTrueHeadingDegrees": NSNull(),
+            "clMagneticHeadingDegrees": NSNull(),
             "matrix": [
                 "m11": rotationMatrix.m11,
                 "m12": rotationMatrix.m12,
@@ -465,14 +380,6 @@ public class WindHeadingPlugin: CAPPlugin, CAPBridgedPlugin, CLLocationManagerDe
                 "m33": rotationMatrix.m33
             ]
         ]
-    }
-
-    private func currentTrueHeadingDegrees() -> Double? {
-        return isCurrentHeadingFresh() ? latestTrueHeadingDegrees : nil
-    }
-
-    private func currentMagneticHeadingDegrees() -> Double? {
-        return isCurrentHeadingFresh() ? latestMagneticHeadingDegrees : nil
     }
 
     private func boatAttitudeDegrees(from gravity: CMAcceleration) -> (
@@ -501,14 +408,6 @@ public class WindHeadingPlugin: CAPPlugin, CAPBridgedPlugin, CLLocationManagerDe
 
     private func radiansToDegrees(_ radians: Double) -> Double {
         return radians * 180 / Double.pi
-    }
-
-    private func validLocationHeadingDegrees(_ headingDegrees: Double) -> Double? {
-        if headingDegrees >= 0 && headingDegrees.isFinite {
-            return headingDegrees
-        }
-
-        return nil
     }
 
     private func optionalNumberOrNull(_ value: Double?) -> Any {

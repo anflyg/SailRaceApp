@@ -198,7 +198,7 @@ export function AppShell() {
     simulationGpsSource ?? undefined,
   )
   const filteredGpsDevice = useFilteredGps(liveGpsDevice)
-  const deviceAttitudeDevice = useDeviceAttitude(!manualMode.enabled && (activeView === 'setup' || activeView === 'race'))
+  const deviceAttitudeDevice = useDeviceAttitude(!manualMode.enabled && (activeView === 'setup' || activeView === 'course' || activeView === 'race'))
   const liveGps = manualMode.enabled ? MANUAL_FIXTURES.liveGps : liveGpsDevice
   const filteredGps = manualMode.enabled ? MANUAL_FIXTURES.filteredGps : filteredGpsDevice
   const windInstrumentOutput = useWindShiftInstrumentOutput(course, filteredGps, laylineAlphaDegrees, recoveryPending || activeRaceId === null ? null : startGunTimeMs, activeRaceId)

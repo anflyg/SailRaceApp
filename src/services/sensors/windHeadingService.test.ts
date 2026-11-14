@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { isUsableWindReference } from '../../domain/windReference'
-import { collectWindSamples, rememberRaceWindProof, WindHeadingMeasurementError, WindMeasurementCollector, type NativeWindHeadingSample } from './windHeadingService'
+import { collectWindSamples, WindMeasurementCollector, type NativeWindHeadingSample } from './windHeadingService'
 
 const sample = (index: number, overrides: Partial<NativeWindHeadingSample> = {}): NativeWindHeadingSample => ({
   valid: true, headingDegrees: index % 2 ? 359 : 1, referenceFrame: 'true-north',
@@ -60,20 +60,12 @@ describe('new wind measurement series', () => {
     expect(() => unstable.finish()).toThrowError(expect.objectContaining({ reason: 'unstable' }))
   })
 
-  it('does not count a motion reading with missing accuracy after earlier valid readings', () => {
+  it('accepts stable true-north data without heading accuracy', () => {
     const collector = new WindMeasurementCollector()
-    addSamples(collector, 11)
-    collector.add(sample(11, { accuracyDegrees: null }))
-    expect(() => collector.finish()).toThrowError(expect.objectContaining({ reason: 'insufficient-samples' }))
-    expect(collector.diagnostics('insufficient-samples')).toMatchObject({ acceptedSamples: 11, missingAccuracySamples: 1, referenceFrame: 'true-north', accuracyDegrees: 10, spreadDegrees: expect.any(Number) })
-  })
-
-  it('reports absent compass accuracy without accepting its readings', () => {
-    const collector = new WindMeasurementCollector()
-    addSamples(collector, 40, { accuracyDegrees: null, referenceFrame: 'magnetic-north' })
-    try { collector.finish(); expect.fail('expected insufficient samples') } catch (error) {
-      expect(error).toMatchObject({ reason: 'insufficient-samples', diagnostics: { acceptedSamples: 0, missingAccuracySamples: 40, referenceFrame: 'magnetic-north', accuracyDegrees: null, spreadDegrees: null } })
-    }
+    addSamples(collector, 30, { accuracyDegrees: null })
+    const result = collector.finish()
+    expect(result.accuracyDegrees).toBeNull()
+    expect(isUsableWindReference(result.headingDegrees, structuredClone(result))).toBe(true)
   })
 
   it('does not count duplicate or out-of-order motion timestamps', () => {
@@ -82,12 +74,6 @@ describe('new wind measurement series', () => {
     for (let i = 0; i < 40; i++) collector.add(sample(0))
     collector.add(sample(0, { motionTimestamp: 99 }))
     expect(() => collector.finish()).toThrowError(expect.objectContaining({ reason: 'insufficient-samples' }))
-  })
-
-  it.each([null, -1, Number.NaN])('rejects missing or invalid heading accuracy %s', accuracyDegrees => {
-    const collector = new WindMeasurementCollector()
-    addSamples(collector, 30, { accuracyDegrees })
-    expect(() => collector.finish()).toThrowError(WindHeadingMeasurementError)
   })
 
   it.each([null, -1, Number.NaN])('rejects missing or invalid motion timestamps %s', motionTimestamp => {
@@ -105,15 +91,6 @@ describe('new wind measurement series', () => {
     expect(() => collector.add(sample(1, changed))).toThrowError(expect.objectContaining({ reason: 'failed' }))
   })
 
-  it('uses the worst fresh accuracy so poor readings cannot be averaged into good', () => {
-    const collector = new WindMeasurementCollector()
-    addSamples(collector, 29, { accuracyDegrees: 2 })
-    collector.add(sample(29, { accuracyDegrees: 54.4 }))
-    const result = collector.finish()
-    expect(result.quality).toBe('poor')
-    expect(isUsableWindReference(result.headingDegrees, result)).toBe(false)
-  })
-
   it('rejects too few unique valid samples', () => {
     const collector = new WindMeasurementCollector()
     addSamples(collector, 11)
@@ -127,13 +104,8 @@ describe('new wind measurement series', () => {
     expect(result.sampleCount).toBe(12)
     expect(isUsableWindReference(result.headingDegrees, result)).toBe(true)
     const restored = structuredClone(result)
-    expect(isUsableWindReference(restored.headingDegrees, restored)).toBe(false)
-    rememberRaceWindProof('race-new', result)
-    expect(isUsableWindReference(restored.headingDegrees, restored, 'race-new')).toBe(true)
-    expect(isUsableWindReference(restored.headingDegrees, restored, 'other-race')).toBe(false)
-    expect(isUsableWindReference(restored.headingDegrees, { ...restored, accuracyDegrees: 9 }, 'race-new')).toBe(false)
-    rememberRaceWindProof('race-new', undefined)
-    expect(isUsableWindReference(restored.headingDegrees, restored, 'race-new')).toBe(false)
+    expect(isUsableWindReference(restored.headingDegrees, restored)).toBe(true)
+    expect(isUsableWindReference(restored.headingDegrees, { ...restored, qualityModel: undefined })).toBe(false)
   })
 
   it.each(['short span', 'long gap'])('rejects twelve readings with %s', kind => {
