@@ -51,13 +51,12 @@ export function WindFailureDiagnostics({ diagnostics }: { diagnostics: WindHeadi
   const number = (value: number | null) => value === null ? '—' : `${value.toFixed(1).replace('.', language === 'sv' ? ',' : '.')}°`
   const frame = diagnostics.referenceFrame === 'true-north' ? t('course.windNorthTrue') :
     diagnostics.referenceFrame === 'magnetic-north' ? t('course.windNorthMagnetic') : t('course.windNorthUnknown')
-  const reason = diagnostics.reason === 'completed' ? null : ({ failed: 'course.windFailureGeneral', 'insufficient-samples': 'course.windFailureSamples', 'insufficient-coverage': 'course.windFailureCoverage', unstable: 'course.windFailureUnstable' } as const)[diagnostics.reason]
+  const reason = diagnostics.reason === 'failed' && diagnostics.referenceFrame !== 'true-north' ? 'course.windRejectedNorth' : diagnostics.reason === 'completed' ? null : ({ failed: 'course.windFailureGeneral', 'insufficient-samples': 'course.windFailureSamples', 'insufficient-coverage': 'course.windFailureCoverage', unstable: 'course.windFailureUnstable' } as const)[diagnostics.reason]
   return <div className="course-wind-feedback-note" role="status">
     {reason ? <p>{t(reason)}</p> : null}
     <p>{t('course.windDiagnostics', { count: String(diagnostics.acceptedSamples), collected: String(diagnostics.collectedSamples), north: frame,
-      spread: number(diagnostics.spreadDegrees), accuracy: number(diagnostics.accuracyDegrees) })}</p>
+      spread: number(diagnostics.spreadDegrees) })}</p>
     {diagnostics.coverageSeconds !== null ? <p>{t('course.windCoverage', { coverage: diagnostics.coverageSeconds.toFixed(1), gap: diagnostics.maxGapSeconds?.toFixed(1) ?? '—' })}</p> : null}
-    {diagnostics.missingAccuracySamples > 0 ? <p>{t('course.windMissingAccuracy', { count: String(diagnostics.missingAccuracySamples) })}</p> : null}
   </div>
 }
 
@@ -85,6 +84,7 @@ export function CourseSetupView({
     ? shortestAngleDeltaDegrees(course.windHeadingDegrees, displayReference.headingDegrees)
     : null
   const referenceLabel = t(({ 'course-axis': 'course.courseReference', 'start-line': 'course.startLineReference', 'north-fallback': 'course.north' } as const)[displayReference.kind] as TranslationKey)
+  const failed = windMeasurementStatus === 'error' || windMeasurementStatus === 'unavailable' || windMeasurementStatus === 'unstable'
   const measurementForDisplay = lastMeasurement ?? course.windMeasurement
   const windAssessment = assessWindReference(course.windHeadingDegrees, measurementForDisplay)
   const qualityKey = ({ good: 'course.qualityGood', ok: 'course.qualityQuestionable', poor: 'course.qualityPoor', unstable: 'course.qualityUnstable', unknown: 'course.qualityUnknown' } as const)[measurementForDisplay?.quality ?? 'unknown']
@@ -108,7 +108,6 @@ export function CourseSetupView({
     ? t('course.windMeasurementValues', {
       direction: `${formatMeasurementValue(measurementForDisplay.headingDegrees)}°`,
       spread: `${formatMeasurementValue(measurementForDisplay.spreadDegrees, 2)}°`,
-      accuracy: `${formatMeasurementValue(measurementForDisplay.accuracyDegrees)}°`,
       quality: t(qualityKey),
     })
     : null
@@ -195,7 +194,8 @@ export function CourseSetupView({
             {statusMessage}
           </p>
         ) : null}
-        {diagnostics ? <WindFailureDiagnostics diagnostics={diagnostics} /> : null}
+        {failed && course.windMeasurement ? <p role="status">{language === 'sv' ? 'Ommätningen misslyckades. Tidigare vind gäller tills en ny mätning godkänns.' : 'Remeasurement failed. The previous wind remains in use until a new measurement is approved.'}</p> : null}
+        {diagnostics && failed ? <WindFailureDiagnostics diagnostics={diagnostics} /> : null}
         <div className={`course-wind-feedback ${windAssessment.usable ? 'approved' : 'rejected'}`} role="status" aria-live="polite">
           <strong className="course-wind-feedback-title">
             {windAssessment.usable ? t('course.windApproved') : t('course.windNotApproved')}
@@ -206,6 +206,7 @@ export function CourseSetupView({
               {measurementForDisplay ? <p>{t('course.windSampleNorth', { count: String(measurementForDisplay.sampleCount), north: measurementForDisplay.referenceFrame === 'true-north' ? t('course.windNorthTrue') : measurementForDisplay.referenceFrame === 'magnetic-north' ? t('course.windNorthMagnetic') : t('course.windNorthUnknown') })}</p> : null}
               <p className="course-wind-feedback-note">{t('course.windStabilityAccuracyHelp')}</p>
               <p className="course-wind-feedback-note">{t('course.windGpsSeparate')}</p>
+              <button type="button" className="wind-remeasure-button" onClick={handleMeasureAgain} disabled={isMeasuringWind}>{t('course.windMeasureAgain')}</button>
             </>
           ) : (
             <>

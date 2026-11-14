@@ -12,7 +12,7 @@ interface NativeDeviceAttitudeSample {
 
 interface DeviceMotionNativePlugin {
   getDeviceAttitude(): Promise<NativeDeviceAttitudeSample>
-  stopBackVectorHeading(): Promise<void>
+  stopDeviceAttitude(): Promise<void>
 }
 
 const DeviceMotionNative = registerPlugin<DeviceMotionNativePlugin>('WindHeading')
@@ -69,5 +69,5 @@ export async function stopDeviceAttitude(): Promise<void> {
     return
   }
 
-  await DeviceMotionNative.stopBackVectorHeading().catch(() => undefined)
+  await DeviceMotionNative.stopDeviceAttitude().catch(() => undefined)
 }

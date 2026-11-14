@@ -13,7 +13,7 @@ import {
 } from './raceLogger'
 import { createRace, getRace, listRaces } from './raceStorage'
 import { createRaceExportFiles } from './raceExport'
-import { WindMeasurementCollector, rememberRaceWindProof, type WindHeadingMeasurementResult } from './sensors/windHeadingService'
+import { WindMeasurementCollector, type WindHeadingMeasurementResult } from './sensors/windHeadingService'
 
 class MockStorage implements Storage {
   public get length(): number {
@@ -58,24 +58,23 @@ function stillGpsAt(timestamp: number) {
 
 describe('recorded wind VMG quality', () => {
   const at = new Date('2026-01-01T12:00:00.000Z')
-  const measurement: WindHeadingMeasurementResult = { headingDegrees: 0, selectedHeadingDegrees: 0,
+  const measurement: WindHeadingMeasurementResult = { qualityModel: 'core-motion-v1', headingDegrees: 0, selectedHeadingDegrees: 0,
     selectedHeadingSource: 'back-vector-row', sampleCount: 40, referenceFrame: 'true-north', quality: 'good',
     accuracyDegrees: 3, spreadDegrees: 2, nativeDebug: null }
   const course = { windDirectionDegrees: 0, courseAxisDegrees: 45 }
   const gps = { ...stillGpsAt(at.getTime()), speedKnots: 5, courseDegrees: 0, displayCourseDegrees: 0 }
-  it('records VMG for a covered 12-sample measurement only while its local proof exists', () => {
+  it('records VMG for a covered 12-sample measurement after serialization', () => {
     vi.stubGlobal('localStorage', new MockStorage())
     const collector = new WindMeasurementCollector()
     for (let i = 0; i < 12; i++) collector.add({ valid: true, headingDegrees: 0, referenceFrame: 'true-north',
       selectedHeadingSource: 'back-vector-row', motionTimestamp: 100 + i * 0.25, accuracyDegrees: 3 })
     const short = collector.finish()
-    const started = startRaceLogging({ countdownDurationSeconds: 60, course, windMeasurement: short, now: at })
+    startRaceLogging({ countdownDurationSeconds: 60, course, windMeasurement: short, now: at })
     expect(recordSampleIfDue({ gps, course, windMeasurement: short, now: at })?.samples[0].vmgWindKnots).toBeCloseTo(5)
-    rememberRaceWindProof(started.id, undefined) // Equivalent to loss of process-local proof after restart.
     const later = new Date(at.getTime() + 6000)
     const restored = structuredClone(short)
     const next = recordSampleIfDue({ gps: { ...gps, timestamp: later.getTime() }, course, windMeasurement: restored, now: later })!
-    expect(next.samples[1].vmgWindKnots).toBeUndefined()
+    expect(next.samples[1].vmgWindKnots).toBeCloseTo(5)
     expect(next.samples).toHaveLength(2)
   })
   it('records VMG for a matching good reference while preserving historical races and export', () => {
@@ -110,7 +109,7 @@ describe('pre-start course snapshot', () => {
   it('updates and clears metadata without losing samples or changing the race, then locks it at the gun', () => {
     vi.stubGlobal('localStorage', new MockStorage())
     const at = new Date('2026-01-01T12:00:00Z')
-    const wind: WindHeadingMeasurementResult = { headingDegrees: 360, selectedHeadingDegrees: 0,
+    const wind: WindHeadingMeasurementResult = { qualityModel: 'core-motion-v1', headingDegrees: 360, selectedHeadingDegrees: 0,
       selectedHeadingSource: 'back-vector-row', sampleCount: 40, referenceFrame: 'true-north', quality: 'good',
       accuracyDegrees: 3, spreadDegrees: 2, nativeDebug: null }
     const race = startRaceLogging({ countdownDurationSeconds: 300, now: at })
@@ -135,7 +134,7 @@ describe('pre-start course snapshot', () => {
   it('does not attach metadata belonging to another direction', () => {
     vi.stubGlobal('localStorage', new MockStorage())
     startRaceLogging({ countdownDurationSeconds: 300 })
-    const wind: WindHeadingMeasurementResult = { headingDegrees: 359, selectedHeadingDegrees: 359,
+    const wind: WindHeadingMeasurementResult = { qualityModel: 'core-motion-v1', headingDegrees: 359, selectedHeadingDegrees: 359,
       selectedHeadingSource: 'back-vector-row', sampleCount: 40, referenceFrame: 'true-north', quality: 'good',
       accuracyDegrees: 3, spreadDegrees: 2, nativeDebug: null }
     expect(updatePreStartCourse({ windDirectionDegrees: 0 }, wind)?.windMeasurement).toBeUndefined()

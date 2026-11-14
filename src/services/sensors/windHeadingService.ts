@@ -55,6 +55,7 @@ export interface WindHeadingNativeDebug {
 }
 
 export interface WindHeadingMeasurementResult {
+  qualityModel?: 'core-motion-v1'
   headingDegrees: number
   selectedHeadingDegrees: number
   selectedHeadingSource: WindHeadingSource
@@ -64,25 +65,6 @@ export interface WindHeadingMeasurementResult {
   spreadDegrees: number | null
   quality: WindHeadingQuality
   nativeDebug: WindHeadingNativeDebug | null
-}
-
-// Proof lives only for this app process. A deserialized historical record has
-// no proof of the new coverage checks and retains the previous >=30 rule.
-const captureProof = new WeakMap<WindHeadingMeasurementResult, string>()
-const raceProof = new Map<string, string>()
-function proofKey(m: WindHeadingMeasurementResult): string {
-  return JSON.stringify([m.headingDegrees, m.selectedHeadingDegrees, m.selectedHeadingSource, m.sampleCount,
-    m.referenceFrame, m.accuracyDegrees, m.spreadDegrees, m.quality])
-}
-export function hasWindCaptureProof(m: WindHeadingMeasurementResult): boolean {
-  return captureProof.get(m) === proofKey(m)
-}
-export function rememberRaceWindProof(raceId: string, m: WindHeadingMeasurementResult | undefined): void {
-  if (m && hasWindCaptureProof(m)) raceProof.set(raceId, proofKey(m))
-  else raceProof.delete(raceId)
-}
-export function hasRaceWindProof(raceId: string | undefined, m: WindHeadingMeasurementResult): boolean {
-  return !!raceId && raceProof.get(raceId) === proofKey(m)
 }
 
 export class WindHeadingMeasurementError extends Error {
@@ -148,31 +130,9 @@ function getValidDebugData(nativeDebug: WindHeadingNativeDebug | null | undefine
   return nativeDebug
 }
 
-function getMeasurementQuality(
-  accuracyDegrees: number | null,
-  spreadDegrees: number | null,
-): WindHeadingQuality {
-  if (spreadDegrees === null) {
-    return 'unknown'
-  }
-
-  if (spreadDegrees > MAX_WIND_HEADING_SPREAD_DEGREES) {
-    return 'unstable'
-  }
-
-  if (accuracyDegrees === null) {
-    return 'unknown'
-  }
-
-  if (accuracyDegrees <= 10) {
-    return 'good'
-  }
-
-  if (accuracyDegrees <= 20) {
-    return 'ok'
-  }
-
-  return 'poor'
+function getMeasurementQuality(spreadDegrees: number | null): WindHeadingQuality {
+  if (spreadDegrees === null) return 'unknown'
+  return spreadDegrees > MAX_WIND_HEADING_SPREAD_DEGREES ? 'unstable' : 'good'
 }
 
 async function measureMockHeading(): Promise<WindHeadingMeasurementResult> {
@@ -210,9 +170,10 @@ function createMeasurementResult({
   selectedHeadingDegrees,
   selectedHeadingSource,
 }: Omit<WindHeadingMeasurementResult, 'quality'>): WindHeadingMeasurementResult {
-  const quality = getMeasurementQuality(accuracyDegrees, spreadDegrees)
+  const quality = getMeasurementQuality(spreadDegrees)
 
   return {
+    qualityModel: 'core-motion-v1',
     headingDegrees,
     selectedHeadingDegrees,
     selectedHeadingSource,
@@ -228,7 +189,7 @@ function createMeasurementResult({
 // Native validates freshness in each clock domain. Timestamps are transient and never saved.
 export class WindMeasurementCollector {
   private samples: number[] = []
-  private accuracyDegrees = 0
+  private accuracyDegrees: number | null = null
   private lastMotionTimestamp: number | null = null
   private firstMotionTimestamp: number | null = null
   private maxGapSeconds = 0
@@ -244,7 +205,7 @@ export class WindMeasurementCollector {
     const mean = averageAnglesDegrees(this.samples)
     const spread = spreadDegrees ?? (mean === null ? null : getCircularSpreadDegrees(this.samples, mean))
     return { reason, collectedSamples: this.collectedSamples, acceptedSamples: this.samples.length, missingAccuracySamples: this.missingAccuracySamples,
-      referenceFrame: this.mixedReferenceFrames ? null : this.observedReferenceFrame, accuracyDegrees: this.samples.length ? this.accuracyDegrees : null, spreadDegrees: spread,
+      referenceFrame: this.mixedReferenceFrames ? null : this.observedReferenceFrame, accuracyDegrees: this.accuracyDegrees, spreadDegrees: spread,
       coverageSeconds: this.firstMotionTimestamp === null || this.lastMotionTimestamp === null ? null : this.lastMotionTimestamp - this.firstMotionTimestamp,
       maxGapSeconds: this.samples.length < 2 ? null : this.maxGapSeconds }
   }
@@ -259,7 +220,7 @@ export class WindMeasurementCollector {
       else this.observedReferenceFrame = sample.referenceFrame
     }
     if (sample.valid !== false && isValidHeading(sample.headingDegrees) && accuracy === null) this.missingAccuracySamples++
-    if (sample.valid === false || !isValidHeading(sample.headingDegrees) || accuracy === null ||
+    if (sample.valid === false || !isValidHeading(sample.headingDegrees) ||
         typeof timestamp !== 'number' || !Number.isFinite(timestamp) || timestamp < 0 ||
         (this.lastMotionTimestamp !== null && timestamp <= this.lastMotionTimestamp) ||
         (sample.referenceFrame !== 'true-north' && sample.referenceFrame !== 'magnetic-north') ||
@@ -275,7 +236,7 @@ export class WindMeasurementCollector {
     this.lastMotionTimestamp = timestamp
     this.referenceFrame = sample.referenceFrame
     this.selectedHeadingSource = source
-    this.accuracyDegrees = Math.max(this.accuracyDegrees, accuracy)
+    if (accuracy !== null) this.accuracyDegrees = Math.max(this.accuracyDegrees ?? 0, accuracy)
     this.latestNativeDebug = getValidDebugData(sample.nativeDebug)
   }
 
@@ -294,6 +255,10 @@ export class WindMeasurementCollector {
         this.lastMotionTimestamp - this.firstMotionTimestamp < MIN_WIND_HEADING_COVERAGE_SECONDS ||
         this.maxGapSeconds > MAX_WIND_HEADING_GAP_SECONDS) {
       throw new WindHeadingMeasurementError('insufficient-coverage', 'wind_measurement_insufficient_coverage', null, this.diagnostics('insufficient-coverage'))
+    }
+
+    if (referenceFrame !== 'true-north') {
+      throw new WindHeadingMeasurementError('failed', 'wind_measurement_failed', null, this.diagnostics('failed'))
     }
 
     const headingDegrees = averageAnglesDegrees(samples)
@@ -328,7 +293,6 @@ export class WindMeasurementCollector {
       )
     }
 
-    captureProof.set(result, proofKey(result))
     return result
   }
 }

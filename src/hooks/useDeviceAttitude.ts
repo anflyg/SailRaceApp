@@ -32,14 +32,20 @@ export function useDeviceAttitude(enabled = true): DeviceAttitudeReading {
       }
     }
 
-    void updateAttitude()
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') void updateAttitude()
+      else void stopDeviceAttitude()
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    onVisibility()
     const intervalId = window.setInterval(() => {
-      void updateAttitude()
+      if (document.visibilityState === 'visible') void updateAttitude()
     }, DEVICE_ATTITUDE_INTERVAL_MS)
 
     return () => {
       cancelled = true
       window.clearInterval(intervalId)
+      document.removeEventListener('visibilitychange', onVisibility)
       void stopDeviceAttitude()
     }
   }, [enabled])

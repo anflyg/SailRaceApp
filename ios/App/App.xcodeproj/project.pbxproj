@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A82400000000000000000001 /* WindHeadingMath.swift in Sources */ = {isa = PBXBuildFile; fileRef = A82400000000000000000002 /* WindHeadingMath.swift */; };
 		A82300000000000000000001 /* WindSampleFreshness.swift in Sources */ = {isa = PBXBuildFile; fileRef = A82300000000000000000002 /* WindSampleFreshness.swift */; };
 		A82300000000000000000003 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A82300000000000000000004 /* PrivacyInfo.xcprivacy */; };
 		A82200000000000000000001 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A82200000000000000000002 /* SceneDelegate.swift */; };
@@ -22,6 +23,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		A82400000000000000000002 /* WindHeadingMath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindHeadingMath.swift; sourceTree = "<group>"; };
 		A82300000000000000000002 /* WindSampleFreshness.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindSampleFreshness.swift; sourceTree = "<group>"; };
 		A82300000000000000000004 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		A82200000000000000000002 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
@@ -75,6 +77,7 @@
 				50379B222058CBB4000EE86E /* capacitor.config.json */,
 				504EC3071FED79650016851F /* AppDelegate.swift */,
 				A82300000000000000000002 /* WindSampleFreshness.swift */,
+				A82400000000000000000002 /* WindHeadingMath.swift */,
 				A82300000000000000000004 /* PrivacyInfo.xcprivacy */,
 				A82200000000000000000002 /* SceneDelegate.swift */,
 				A82100000000000000000002 /* TackWiseAuthPlugin.swift */,
@@ -187,6 +190,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A82300000000000000000001 /* WindSampleFreshness.swift in Sources */,
+				A82400000000000000000001 /* WindHeadingMath.swift in Sources */,
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 				A82200000000000000000001 /* SceneDelegate.swift in Sources */,
 				A82100000000000000000001 /* TackWiseAuthPlugin.swift in Sources */,

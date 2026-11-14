@@ -12,7 +12,7 @@ const gps: LiveGpsReading = {
 
 function measurement(overrides: Partial<WindHeadingMeasurementResult> = {}): WindHeadingMeasurementResult {
   return {
-    headingDegrees: 350.1, selectedHeadingDegrees: 350.1, selectedHeadingSource: 'back-vector-row',
+    qualityModel: 'core-motion-v1', headingDegrees: 350.1, selectedHeadingDegrees: 350.1, selectedHeadingSource: 'back-vector-row',
     sampleCount: 40, referenceFrame: 'true-north', quality: 'good', accuracyDegrees: 3.2, spreadDegrees: 0.62,
     nativeDebug: null, ...overrides,
   }
@@ -63,17 +63,15 @@ describe('wind VMG acceptance feedback in Course', () => {
         referenceFrame: 'true-north', accuracyDegrees: 4.5, spreadDegrees: null, coverageSeconds: null, maxGapSeconds: null }} />
     </LanguageProvider>)
     expect(html).toContain('12')
-    expect(html).toContain('20')
     expect(html).toContain(language === 'sv' ? 'geografisk nord' : 'true north')
     expect(html).toContain(language === 'sv' ? 'För få giltiga' : 'Too few valid')
-    expect(html).toContain(language === 'sv' ? '4,5°' : '4.5°')
   })
   it('clearly approves a good, consistent true-north measurement and separates the GPS check', () => {
     const html = renderCourse({ ...emptyCourse, windHeadingDegrees: 350.1, windMeasurement: measurement() })
     expect(html).toContain('GODKÄND FÖR VMG')
     expect(html).toContain('GPS-kurs och GPS-fart kontrolleras separat')
-    expect(html).toContain('Rapporterad noggrannhet 3,2°')
-    expect(html).not.toContain('Mät igen')
+    expect(html).toContain('Stabilitet/spridning 0,62°')
+    expect(html).toContain('Mät igen')
   })
 
   it('provides the same explicit decision and diagnostics in English', () => {
@@ -83,7 +81,7 @@ describe('wind VMG acceptance feedback in Course', () => {
       windMeasurement: measurement({ quality: 'poor', accuracyDegrees: 54.4 }),
     }, 'en')
     expect(html).toContain('NOT APPROVED FOR VMG')
-    expect(html).toContain('Direction 350.1° · Spread 0.62° · Reported accuracy 54.4° · Quality poor')
+    expect(html).toContain('Direction 350.1° · Stability/spread 0.62°')
     expect(html).toContain('Measure again')
   })
 
@@ -97,7 +95,6 @@ describe('wind VMG acceptance feedback in Course', () => {
     expect(html).toContain('Mät igen')
     expect(html).toContain('350,1°')
     expect(html).toContain('0,62°')
-    expect(html).toContain('54,4°')
     expect(html).toContain('Spridning beskriver hur jämna proverna var')
     expect(html).not.toContain('class="course-wind-feedback approved"')
   })
@@ -109,10 +106,9 @@ describe('wind VMG acceptance feedback in Course', () => {
     expect(html).toContain('Mät vind')
   })
 
-  it('asks for a new measurement when a short saved result has no in-memory coverage proof', () => {
+  it('accepts a short saved result with the new model', () => {
     const html = renderCourse({ ...emptyCourse, windHeadingDegrees: 350.1, windMeasurement: measurement({ sampleCount: 12 }) })
-    expect(html).toContain('EJ GODKÄND FÖR VMG')
-    expect(html).toContain('Mät vind igen för att kontrollera tidsfördelningen efter omstart')
+    expect(html).toContain('class="course-wind-feedback approved"')
   })
 
   it('shows the saved acceptance status after a recovered race restores its wind metadata', () => {
