@@ -112,3 +112,17 @@ Before the start gun, the current course and its matching wind measurement are s
 ### Continuous tactical HDG
 
 The existing true-north Core Motion stream supplies the same back-vector projection used by wind capture. A three-second circular average reduces wave oscillation. Samples older than one second at the native bridge are rejected; the display and tactical engine expire after 1.5 seconds, without GPS fallback. Invalid, unavailable, backgrounded or non-true-north readings clear the current heading. The reader never starts, stops or reconfigures the stream or the four-second capture. HDG remains transient and is not recorded, uploaded or logged. Known-heading, roll/pitch, wave, tack, sensor interruption and simultaneous wind-capture tests on a physical mounted iPhone remain required before release.
+
+### Physical iPhone HDG acceptance — 2026-11-15
+
+**Context:** Manual smoke test on a physical iPhone, reported by the product owner as TackWise Race Xcode Cloud/TestFlight **Build 83**. The installed build's exact source commit was not independently verified from the exported race log, and continuous HDG samples are intentionally absent from that export. This record captures qualitative observations, not raw GPS tracks or race telemetry.
+
+- **Heading without movement — accepted:** With the phone stationary, rotating it changed the large `RIKTNING` value. This supports speed-independent HDG operation, but does not by itself prove absolute true-north accuracy.
+- **Steady-state heading — accepted:** The displayed direction remained stable when the phone was held still, without objectionable jitter.
+- **Response time — accepted:** Following a change of orientation, the display settled in approximately **3 seconds**. The product owner accepted this balance of responsiveness and stability; **retain the existing 3-second circular averaging window** unless later sailing tests provide contrary evidence.
+- **Manual handling/tilt — preliminarily accepted:** No unexpected instability was reported during the qualitative phone-handling test. This is not a calibrated mast heel/pitch or wave-motion test.
+
+**Scope of approval:** The product owner approved the **basic HDG compass behavior** observed in Build 83. This is *not* approval of absolute geographic accuracy, the complete tactical wind-shift instruments, the native lifecycle, or a production release.
+
+**Still required before release:** Compare HDG with an independent corrected true-north compass at known headings; verify the prescribed mast mounting with representative roll, pitch and waves; validate tack/reference establishment, lift/header cues and the ±30° wind-shift scale under sail; check sensor loss and background/foreground transitions; and test concurrent four-second wind capture. The separately pending real Xcode simulator Build and Run also remains open. Do not mark those checks as passed based on this smoke test.
+
