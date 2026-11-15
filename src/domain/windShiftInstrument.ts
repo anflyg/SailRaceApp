@@ -18,7 +18,7 @@ export const MAX_COURSE_DEVIATION_FOR_WIND_ESTIMATE_DEGREES = 35
 export const MAX_TACK_TARGET_WIND_SHIFT_DEGREES = 35
 export const REFERENCE_MINIMUM_SAMPLES = 5
 export const REFERENCE_MAXIMUM_SPREAD_DEGREES = 10
-export const INDICATOR_THRESHOLDS_DEGREES = [5, 10, 15] as const
+export const DEFAULT_INDICATOR_DEGREES_PER_DOT = 5
 export const INDICATOR_HYSTERESIS_DEGREES = 0.5
 
 export interface WindInstrumentInput {
@@ -29,6 +29,7 @@ export interface WindInstrumentInput {
   windHeadingDegrees: number | null
   windReferenceFrame: string | null | undefined
   alphaDegrees: number
+  indicatorDegreesPerDot?: number
   startGunTimeMs?: number | null
 }
 
@@ -133,6 +134,9 @@ export function stepWindInstrument(
   }
 
   const currentCourse = normalizeDegrees(course)
+  const indicatorDegreesPerDot = isValidDegreesPerDot(input.indicatorDegreesPerDot)
+    ? input.indicatorDegreesPerDot
+    : DEFAULT_INDICATOR_DEGREES_PER_DOT
   const relative = normalizeDegrees(currentCourse - (state.estimatedWindHeadingDegrees ?? origin))
   const excluded = relative >= 90 && relative <= 270
   const remainsExcluded = state.excluded && relative >= 85 && relative <= 275
@@ -159,7 +163,7 @@ export function stepWindInstrument(
   } else if (state.phase === 'establishing') {
     state = collectReference(state, currentCourse, timestamp, origin, input.alphaDegrees)
   } else if (state.phase === 'steady') {
-    state = observeSteadyTack(state, currentCourse, timestamp, origin, input.alphaDegrees)
+    state = observeSteadyTack(state, currentCourse, timestamp, origin, input.alphaDegrees, indicatorDegreesPerDot)
   } else {
     state = observeTackTransition(state, currentCourse, timestamp, origin, input.alphaDegrees)
   }
@@ -268,6 +272,7 @@ function observeSteadyTack(
   timestamp: number,
   origin: number,
   alphaDegrees: number,
+  indicatorDegreesPerDot: number,
 ): WindInstrumentState {
   const tack = state.tack
   const reference = state.lockedCourseReferenceDegrees
@@ -310,6 +315,7 @@ function observeSteadyTack(
   const nextDots = updateIndicatorDotCount(
     state.indicatorIsLift === isLift ? state.indicatorDotCount : 0,
     Math.abs(signedCourseShift),
+    indicatorDegreesPerDot,
   )
   return {
     ...state,
@@ -390,12 +396,17 @@ function directedProgress(course: number, from: number, to: number): number {
   return Math.max(0, Math.min(Math.abs(tackArc), courseArc * Math.sign(tackArc)))
 }
 
-function updateIndicatorDotCount(previous: number, magnitude: number): number {
+export function updateIndicatorDotCount(previous: number, magnitude: number, degreesPerDot = DEFAULT_INDICATOR_DEGREES_PER_DOT): number {
+  const thresholds = [degreesPerDot, degreesPerDot * 2, degreesPerDot * 3]
   let next = previous
-  while (next < INDICATOR_THRESHOLDS_DEGREES.length &&
-    magnitude >= INDICATOR_THRESHOLDS_DEGREES[next] + INDICATOR_HYSTERESIS_DEGREES) next += 1
-  while (next > 0 && magnitude < INDICATOR_THRESHOLDS_DEGREES[next - 1] - INDICATOR_HYSTERESIS_DEGREES) next -= 1
+  while (next < thresholds.length &&
+    magnitude >= thresholds[next] + INDICATOR_HYSTERESIS_DEGREES) next += 1
+  while (next > 0 && magnitude <= thresholds[next - 1] - INDICATOR_HYSTERESIS_DEGREES) next -= 1
   return next
+}
+
+function isValidDegreesPerDot(value: number | undefined): value is number {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 2 && value <= 10
 }
 
 function resetTack(state: WindInstrumentState): WindInstrumentState {

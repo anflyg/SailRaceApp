@@ -9,7 +9,13 @@ try {
   await server.listen()
   browser = await chromium.launch({ headless: true })
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } })
-  await context.route('**/*', route => new URL(route.request().url()).hostname === '127.0.0.1' ? route.continue() : route.abort())
+  const uploadRequests = []
+  await context.route('**/*', route => {
+    const url = new URL(route.request().url())
+    if (url.hostname === '127.0.0.1') return route.continue()
+    if (url.pathname.startsWith('/v1/races') || url.pathname === '/v1/race-creation-intents') uploadRequests.push(url.pathname)
+    return route.abort()
+  })
   await context.addInitScript(() => {
     const initial = Date.now()
     const position = () => ({ timestamp: Date.now(), coords: {
@@ -39,11 +45,20 @@ try {
   const assertStopButtonFits = async () => {
     const bounds = await stopButton.evaluate(button => {
       const rect = button.getBoundingClientRect()
-      return { top: rect.top, bottom: rect.bottom, height: rect.height, viewportHeight: window.innerHeight }
+      const clipped = []
+      for (let parent = button.parentElement; parent; parent = parent.parentElement) {
+        const style = getComputedStyle(parent)
+        const box = parent.getBoundingClientRect()
+        if (/(hidden|clip|auto|scroll)/.test(style.overflowY) && (rect.top < box.top || rect.bottom > box.bottom)) clipped.push(parent.className || parent.tagName)
+      }
+      const points = [0.15, 0.5, 0.85].map(y => document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height * y) === button)
+      return { top: rect.top, bottom: rect.bottom, height: rect.height, viewportHeight: window.innerHeight, clipped, points }
     })
     assert.ok(bounds.height > 0, 'running Start keeps a non-empty stop button')
     assert.ok(bounds.top >= 0, 'stop button is not clipped at the top of the viewport')
     assert.ok(bounds.bottom <= bounds.viewportHeight + 1, `stop button is fully visible in the viewport: ${JSON.stringify(bounds)}`)
+    assert.deepEqual(bounds.clipped, [], `stop button is not clipped by a parent: ${JSON.stringify(bounds)}`)
+    assert.ok(bounds.points.every(Boolean), `stop button accepts hits across its height: ${JSON.stringify(bounds)}`)
   }
   const dialog = page.getByRole('dialog', { name: 'Avsluta race' })
   const openEndRace = async () => { await stopButton.click(); await dialog.waitFor({ state: 'visible' }) }
@@ -59,8 +74,11 @@ try {
 
   await start()
   assert.equal(await stopButton.count(), 1, 'running countdown shows stop control')
+  await page.addStyleTag({ content: ':root { --app-safe-top-padding: 71px; --app-safe-bottom-padding: 48px; }' })
+  await page.setViewportSize({ width: 393, height: 852 })
   await assertStopButtonFits()
   await page.setViewportSize({ width: 320, height: 568 })
+  await page.addStyleTag({ content: ':root { --app-safe-top-padding: 18px; --app-safe-bottom-padding: 14px; }' })
   await assertStopButtonFits()
   await page.setViewportSize({ width: 390, height: 844 })
   assert.equal(await recordingStatus.count(), 0, 'running Start shows no recording status')
@@ -93,6 +111,14 @@ try {
   await start()
   assert.equal(await timer.innerText(), '4:46')
   assert.equal(await stopButton.count(), 1, 'paused countdown keeps stop control')
+  await assertStopButtonFits()
+  await page.addStyleTag({ content: ':root { --app-safe-top-padding: 71px; --app-safe-bottom-padding: 48px; }' })
+  await page.setViewportSize({ width: 393, height: 852 })
+  await assertStopButtonFits()
+  await page.addStyleTag({ content: ':root { --app-safe-top-padding: 18px; --app-safe-bottom-padding: 14px; }' })
+  await page.setViewportSize({ width: 320, height: 568 })
+  await assertStopButtonFits()
+  await page.setViewportSize({ width: 390, height: 844 })
   let state = await snapshot()
   const race1 = state.logger.activeRaceId
   const token1 = state.logger.countdownRevision
@@ -166,7 +192,10 @@ try {
   const timeBeforeCancel = await timer.innerText()
   await openEndRace()
   await cancelEndRace()
-  assert.deepEqual((await snapshot()).logger, beforeCancel.logger, 'cancel leaves the active countdown token unchanged')
+  const afterCancel = (await snapshot()).logger
+  assert.equal(afterCancel.activeRaceId, beforeCancel.logger.activeRaceId)
+  assert.equal(afterCancel.countdownRevision, beforeCancel.logger.countdownRevision)
+  assert.equal(afterCancel.scheduledStartTime, beforeCancel.logger.scheduledStartTime, 'cancel leaves the countdown schedule unchanged')
   assert.equal(await timer.innerText(), timeBeforeCancel)
   await advance(1)
   assert.notEqual(await timer.innerText(), timeBeforeCancel, 'timer continues after cancellation')
@@ -229,6 +258,29 @@ try {
   const race5 = (await snapshot()).logger.activeRaceId
   assert.ok(race5)
   assert.notEqual(race5, race4, 'starting after ending creates a new race')
+  const setVisibility = value => page.evaluate(value => {
+    Object.defineProperty(document, 'visibilityState', { configurable: true, value })
+    document.dispatchEvent(new Event('visibilitychange'))
+  }, value)
+  await advance(6)
+  await setVisibility('hidden')
+  const checkpoint = (await snapshot()).logger.backgroundCheckpoint
+  assert.ok(checkpoint)
+  await setVisibility('visible')
+  assert.equal((await snapshot()).logger.activeRaceId, race5, 'same process resumes recording')
+  assert.equal((await snapshot()).logger.backgroundCheckpoint, undefined)
+  await advance(6)
+  await setVisibility('hidden')
+  const beforeRestart = await snapshot()
+  await page.reload()
+  await page.clock.runFor(2000)
+  const afterRestart = await snapshot()
+  assert.equal(afterRestart.logger.activeRaceId, null, 'new process finalizes checkpointed recording')
+  assert.ok(Math.abs(Date.parse(afterRestart.races[race5].endTime) - Date.parse(beforeRestart.logger.backgroundCheckpoint)) < 1000,
+    'restart uses the background checkpoint time')
+  assert.deepEqual(afterRestart.races[race5].samples.slice(0, beforeRestart.races[race5].samples.length), beforeRestart.races[race5].samples)
+  assert.equal(Object.keys(afterRestart.races).length, Object.keys(beforeRestart.races).length)
+  assert.deepEqual(uploadRequests, [], 'background and restart do not initiate race uploads')
   assert.deepEqual(errors, [])
   console.log('Start resynchronization UI: PASS (synthetic GPS; no external requests)')
   await context.close()

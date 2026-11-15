@@ -25,6 +25,7 @@ export function useWindShiftInstrumentOutput(
   course: CourseState,
   heading: TacticalHeading,
   alphaDegrees: number,
+  indicatorDegreesPerDot: number,
   startGunTimeMs: number | null,
   raceId: string | null,
 ): WindInstrumentOutput {
@@ -49,6 +50,7 @@ export function useWindShiftInstrumentOutput(
         windHeadingDegrees: windHeading,
         windReferenceFrame: referenceFrame,
         alphaDegrees,
+        indicatorDegreesPerDot,
         startGunTimeMs: startGunTimeMs === null ? null : Math.max(startGunTimeMs, resetKey.current.eligibleAfter),
       })
       stateRef.current = next.state
@@ -61,6 +63,7 @@ export function useWindShiftInstrumentOutput(
     return () => window.clearInterval(interval)
   }, [
     alphaDegrees,
+    indicatorDegreesPerDot,
     startGunTimeMs,
     raceId,
     course.windMeasurement,

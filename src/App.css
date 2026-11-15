@@ -2770,7 +2770,7 @@ button:focus-visible {
 }
 
 .app-shell .timer-view.timer-running-layout .start-run-panel {
-  flex: 1 0 auto;
+  flex: 1 1 auto;
 }
 
 .app-shell .timer-view .recording-control {

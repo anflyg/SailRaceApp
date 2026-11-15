@@ -14,6 +14,8 @@ function renderSetup(language: 'sv' | 'en') {
         onCalibrate={() => {}}
         laylineAlphaDegrees={90}
         onLaylineAlphaDegreesChange={() => {}}
+        windShiftDegreesPerDot={5}
+        onWindShiftDegreesPerDotChange={() => {}}
         compassDisplayMode="wind-relative"
         onCompassDisplayModeChange={() => {}}
       />
@@ -53,6 +55,16 @@ describe('SetupView settings', () => {
     expect(html).toContain('Wind-relative')
     expect(html).toContain('TACK ANGLE')
     expect(html).toContain('Decrease tack angle')
+  })
+
+  it('adds one compact wind sensitivity row and no additional controls or graphics', () => {
+    const sv = renderSetup('sv')
+    const en = renderSetup('en')
+    expect(sv).toContain('Vindvridindikator grad/prick')
+    expect(en).toContain('Wind shift degrees/dot')
+    expect(sv.match(/class="setup-layline-alpha-row"/g)).toHaveLength(2)
+    expect(sv.match(/class="setup-layline-alpha-control"/g)).toHaveLength(2)
+    expect(sv).toContain('<strong>5</strong>')
   })
 
   it('shows the About section after account controls in Swedish without inventing an app version', () => {

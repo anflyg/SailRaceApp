@@ -32,6 +32,8 @@ import { useLiveGps } from '../hooks/useLiveGps'
 import { useWakeLock } from '../hooks/useWakeLock'
 import {
   markStartGun,
+  checkpointActiveRace,
+  resumeActiveRaceSession,
   getActiveCountdownToken,
   getActiveRaceId,
   pausePlannedStart,
@@ -43,7 +45,7 @@ import {
 } from '../services/raceLogger'
 import { getRace } from '../services/raceStorage'
 import type { CountdownToken } from '../services/raceLogger'
-import { loadAppSettings, saveAppSettings } from '../services/appSettingsStorage'
+import { clampWindShiftDegreesPerDot, loadAppSettings, saveAppSettings } from '../services/appSettingsStorage'
 import type { CompassDisplayMode } from '../services/appSettingsStorage'
 import { LanguageProvider } from '../i18n/LanguageContext'
 import type { AppLanguage } from '../i18n/translations'
@@ -195,6 +197,7 @@ export function AppShell() {
   const [laylineAlphaDegrees, setLaylineAlphaDegrees] = useState(() => simulationLaylineSettings?.alphaDegrees ?? loadAppSettings().layline.alphaDegrees)
   const [language, setLanguage] = useState<AppLanguage>(() => loadAppSettings().language)
   const [compassDisplayMode, setCompassDisplayMode] = useState<CompassDisplayMode>(() => loadAppSettings().compassDisplayMode)
+  const [windShiftDegreesPerDot, setWindShiftDegreesPerDot] = useState(() => loadAppSettings().windShiftDegreesPerDot)
   const liveGpsDevice = useLiveGps(
     !manualMode.enabled && (activeView !== 'analysis' || (activeRaceId !== null && !recoveryPending)),
     simulationGpsSource ?? undefined,
@@ -207,7 +210,7 @@ export function AppShell() {
     simulationMode.enabled && simulationMode.scenario !== 'analysis-validation' && simulationMode.scenario !== 'logged-race-analysis'
   ) ? getDevelopmentTacticalHeading(true, filteredGps, Date.now(), manualMode.enabled ? Date.now() : undefined) : undefined
   const tacticalHeading = useTacticalHeading(!manualMode.enabled && (activeView === 'race' || activeRaceId !== null), developmentHeading)
-  const windInstrumentOutput = useWindShiftInstrumentOutput(course, tacticalHeading, laylineAlphaDegrees, recoveryPending || activeRaceId === null ? null : startGunTimeMs, activeRaceId)
+  const windInstrumentOutput = useWindShiftInstrumentOutput(course, tacticalHeading, laylineAlphaDegrees, windShiftDegreesPerDot, recoveryPending || activeRaceId === null ? null : startGunTimeMs, activeRaceId)
   const simulationAppVmgKnots = simulationMode.scenario === 'wind-vmg' &&
     isUsableWindReference(course.windHeadingDegrees, course.windMeasurement) &&
     isFreshReliableGps(filteredGps, filteredGps.courseDegrees, filteredGps.timestamp) &&
@@ -311,8 +314,9 @@ export function AppShell() {
       },
       language,
       compassDisplayMode,
+      windShiftDegreesPerDot,
     })
-  }, [compassDisplayMode, language, laylineAlphaDegrees, laylineEnabled, manualMode.enabled, simulationLaylineSettings])
+  }, [compassDisplayMode, language, laylineAlphaDegrees, laylineEnabled, manualMode.enabled, simulationLaylineSettings, windShiftDegreesPerDot])
 
   const handleManualViewChange = useCallback((nextView: AppView) => {
     if (isNavigationLocked && nextView !== activeView) {
@@ -382,7 +386,12 @@ export function AppShell() {
 
   useEffect(() => {
     const refreshWhenVisible = () => {
-      if (document.visibilityState === 'visible') refreshActiveRace()
+      if (document.visibilityState === 'visible') {
+        resumeActiveRaceSession()
+        refreshActiveRace()
+      } else if (!recoveryPending) {
+        checkpointActiveRace()
+      }
     }
     document.addEventListener('visibilitychange', refreshWhenVisible)
     window.addEventListener('pageshow', refreshWhenVisible)
@@ -393,7 +402,7 @@ export function AppShell() {
       window.removeEventListener('pageshow', refreshWhenVisible)
       window.removeEventListener('focus', refreshWhenVisible)
     }
-  }, [refreshActiveRace])
+  }, [recoveryPending, refreshActiveRace])
 
   useEffect(() => {
     activeRaceIdRef.current = activeRaceId
@@ -503,6 +512,8 @@ export function AppShell() {
         onCalibrate={calibrateRollPitch}
         laylineAlphaDegrees={laylineAlphaDegrees}
         onLaylineAlphaDegreesChange={setLaylineAlphaDegrees}
+        windShiftDegreesPerDot={windShiftDegreesPerDot}
+        onWindShiftDegreesPerDotChange={(degrees) => setWindShiftDegreesPerDot(clampWindShiftDegreesPerDot(degrees))}
         compassDisplayMode={compassDisplayMode}
         onCompassDisplayModeChange={setCompassDisplayMode}
       />

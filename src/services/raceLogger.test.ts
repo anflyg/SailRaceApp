@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   getActiveRaceId,
+  checkpointActiveRace,
+  resumeActiveRaceSession,
+  finalizePreviousRaceSession,
   getActiveCountdownToken,
   markStartGun,
   pausePlannedStart,
@@ -55,6 +58,41 @@ function stillGpsAt(timestamp: number) {
     courseReliable: true, timestamp, displayCourseDegrees: 45, presentationTimestamp: timestamp, sampleCount: 1,
   }
 }
+
+describe('background race session', () => {
+  it('continues on foreground and finalizes once on a later process start without losing races or samples', () => {
+    vi.stubGlobal('localStorage', new MockStorage())
+    const at = new Date('2026-01-01T12:00:00Z')
+    const previous = createRace({ date: at, name: 'Previous' })
+    const race = startRaceLogging({ countdownDurationSeconds: 300, now: at })
+    recordSampleIfDue({ gps: stillGpsAt(at.getTime()), now: at })
+    checkpointActiveRace(new Date(at.getTime() + 10_000))
+    resumeActiveRaceSession()
+    expect(getActiveRaceId()).toBe(race.id)
+    expect(finalizePreviousRaceSession(new Date(at.getTime() + 20_000))).toBeNull()
+    const later = new Date(at.getTime() + 30_000)
+    recordSampleIfDue({ gps: stillGpsAt(later.getTime()), now: later })
+    checkpointActiveRace(new Date(at.getTime() + 40_000))
+    const ended = finalizePreviousRaceSession(new Date(at.getTime() + 3_600_000))!
+    expect(ended.endTime).toBe('2026-01-01T12:00:40.000Z')
+    expect(ended.samples).toHaveLength(2)
+    expect(getRace(previous.id)).toEqual(previous)
+    expect(getActiveRaceId()).toBeNull()
+    expect(finalizePreviousRaceSession()).toBeNull()
+    expect(listRaces()).toHaveLength(2)
+  })
+
+  it('leaves crash recovery pending when no trustworthy background checkpoint exists', () => {
+    vi.stubGlobal('localStorage', new MockStorage())
+    const at = new Date('2026-01-01T12:00:00Z')
+    const race = startRaceLogging({ countdownDurationSeconds: 300, now: at })
+    expect(finalizePreviousRaceSession(new Date(at.getTime() + 3_600_000))).toBeNull()
+    expect(getActiveRaceId()).toBe(race.id)
+    checkpointActiveRace(new Date(at.getTime() - 1000))
+    expect(finalizePreviousRaceSession(new Date(at.getTime() + 3_600_000))).toBeNull()
+    expect(getRace(race.id)?.endTime).toBeUndefined()
+  })
+})
 
 describe('recorded wind VMG quality', () => {
   const at = new Date('2026-01-01T12:00:00.000Z')
