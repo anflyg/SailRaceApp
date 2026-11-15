@@ -5,6 +5,7 @@ import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import { selectPhysicalIphone } from './ios-device-selection.mjs'
+import { isExpectedCapacitorSyncChange } from './ios-device-safety.mjs'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const project = path.join(root, 'ios/App/App.xcodeproj')
@@ -114,7 +115,8 @@ try {
   run('npm', ['run', 'build'])
   run('npx', ['cap', 'sync', 'ios'])
 
-  const changedBySync = protectedFiles.filter((relative) => !equalSnapshot(before.get(relative), snapshot(relative)))
+  const changedBySync = protectedFiles.filter((relative) =>
+    !equalSnapshot(before.get(relative), snapshot(relative)) && !isExpectedCapacitorSyncChange(relative))
   if (changedBySync.length) {
     throw new Error(`Capacitor sync ändrade skyddade lokala/native-filer. Installationen stoppades; kontrollera ändringarna innan du fortsätter:\n  ${changedBySync.join('\n  ')}`)
   }
