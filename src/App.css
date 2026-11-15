@@ -161,14 +161,17 @@ button {
 }
 
 .setup-roll-pitch {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 80px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
   color: var(--text-high);
   font-size: clamp(1.65rem, 8vw, 2.45rem);
   font-weight: 900;
   font-variant-numeric: tabular-nums;
 }
+
+.setup-roll-pitch > span:last-child { text-align: right; }
 
 .setup-calibration-status {
   margin: 0;
@@ -289,7 +292,16 @@ button {
   line-height: 1.35;
 }
 
-.setup-calibrate-button { min-height: 44px; border-radius: 14px; }
+.setup-calibrate-button {
+  width: 80px;
+  min-width: 80px;
+  min-height: 80px;
+  padding: 4px;
+  border-radius: 14px;
+  line-height: 1.1;
+  text-align: center;
+  white-space: normal;
+}
 
 @media (max-height: 760px) {
   .view-section.setup-view { gap: 5px; padding-block: 7px; }
@@ -313,26 +325,14 @@ button {
   border-top: 1px solid var(--theme-border);
 }
 
-.setup-about-details {
-  display: grid;
-  gap: 3px;
-  min-width: 0;
+.setup-about-version {
   margin: 0;
   color: var(--theme-text-muted);
   font-size: 0.78rem;
   line-height: 1.35;
 }
 
-.setup-about-details > div {
-  display: grid;
-  grid-template-columns: minmax(0, 0.7fr) minmax(0, 1fr);
-  gap: 4px 10px;
-  min-width: 0;
-}
-
-.setup-about-details dt,
-.setup-about-details dd { min-width: 0; overflow-wrap: anywhere; }
-.setup-about-details dd { margin: 0; color: var(--theme-text); font-variant-numeric: tabular-nums; }
+.setup-about-version { min-width: 0; overflow-wrap: anywhere; }
 
 .primary-button,
 .secondary-button {
@@ -425,10 +425,6 @@ button:focus-visible {
 
 .course-wind-feedback.approved {
   border-inline-start-color: var(--theme-green);
-}
-
-.course-wind-feedback.rejected {
-  border-inline-start-color: var(--theme-red);
 }
 
 .course-wind-feedback-title {
@@ -699,6 +695,10 @@ button:focus-visible {
 
 .timer-view.timer-running-layout .timer-panel {
   flex: 0 0 clamp(190px, 32dvh, 280px);
+}
+
+.timer-view.timer-running-layout > .recording-control-compact {
+  flex-shrink: 0;
 }
 
 .timer-view.timer-running-layout .large-timer {
@@ -2782,6 +2782,19 @@ button:focus-visible {
 .app-shell .race-view .recording-control {
   align-self: flex-end;
   width: auto;
+}
+
+@media (max-height: 600px) {
+  .app-shell .timer-view.timer-running-layout { gap: 6px; }
+  .app-shell .timer-view.timer-running-layout .start-run-panel {
+    flex: 1 1 auto;
+    gap: 4px;
+    padding-block: 4px;
+  }
+  .app-shell .timer-view.timer-running-layout .start-metric-row,
+  .app-shell .timer-view.timer-running-layout .start-metric-row:nth-of-type(3) {
+    min-height: 50px;
+  }
 }
 
 .app-shell .race-view:has(.recording-control) { overflow-y: auto; }

@@ -8,7 +8,7 @@ interface NavigationBarProps {
 }
 
 const viewItems: Array<{ view: AppView; label: 'navigation.setup' | 'navigation.course' | 'navigation.start' | 'navigation.sailing' | 'navigation.analysis' }> = [
-  { view: 'setup', label: 'navigation.setup' }, { view: 'course', label: 'navigation.course' }, { view: 'timer', label: 'navigation.start' }, { view: 'race', label: 'navigation.sailing' }, { view: 'analysis', label: 'navigation.analysis' },
+  { view: 'course', label: 'navigation.course' }, { view: 'timer', label: 'navigation.start' }, { view: 'race', label: 'navigation.sailing' }, { view: 'setup', label: 'navigation.setup' }, { view: 'analysis', label: 'navigation.analysis' },
 ]
 
 export function NavigationBar({ currentView, isLocked = false, onChange }: NavigationBarProps) {
