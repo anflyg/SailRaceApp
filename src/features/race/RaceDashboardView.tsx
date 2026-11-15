@@ -8,12 +8,14 @@ import { useEffect, useState } from 'react'
 import { RecordingControl } from '../../components/RecordingControl'
 import { WindShiftDots, WindShiftScale, emptyOutput } from './WindShiftInstruments'
 import type { WindInstrumentOutput } from '../../domain/windShiftInstrument'
+import { isFreshTacticalHeading, NO_TACTICAL_HEADING, type TacticalHeading } from '../../hooks/useTacticalHeading'
 import type { CompassDisplayMode } from '../../services/appSettingsStorage'
 import type { CourseState, FilteredGpsReading, Race } from '../../types'
 
 interface RaceDashboardViewProps {
   course: CourseState
   gps: FilteredGpsReading
+  heading?: TacticalHeading
   compassDisplayMode: CompassDisplayMode
   laylineAlphaDegrees: number
   windInstrumentOutput?: WindInstrumentOutput
@@ -25,6 +27,7 @@ interface RaceDashboardViewProps {
 export function RaceDashboardView({
   course,
   gps,
+  heading = NO_TACTICAL_HEADING,
   compassDisplayMode,
   laylineAlphaDegrees,
   windInstrumentOutput = emptyOutput,
@@ -45,17 +48,17 @@ export function RaceDashboardView({
     const timeout = window.setTimeout(() => setFreshnessTick((tick) => tick + 1), remaining)
     return () => window.clearTimeout(timeout)
   }, [gps.timestamp, gps.presentationTimestamp, freshnessTick])
-  const freshDisplayCourse = isFreshReliableGps(gps, gps.displayCourseDegrees, gps.presentationTimestamp ?? gps.timestamp)
+  const freshDisplayCourse = isFreshTacticalHeading(heading)
   const freshVmgCourse = isFreshReliableGps(gps, gps.courseDegrees, gps.timestamp)
   const matchingWindReference = windReferenceCompatible && course.windHeadingDegrees !== null &&
     windInstrumentOutput.state.originWindHeadingDegrees === normalizeDegrees(course.windHeadingDegrees) &&
     windInstrumentOutput.state.alphaDegrees === laylineAlphaDegrees
   const courseHeading = compassDisplayMode === 'wind-relative' &&
     windReferenceCompatible && course.windHeadingDegrees !== null
-    ? freshDisplayCourse && gps.displayCourseDegrees !== null
-      ? getWindRelativeCourseDegrees(gps.displayCourseDegrees, course.windHeadingDegrees)
+    ? freshDisplayCourse && heading.degrees !== null
+      ? getWindRelativeCourseDegrees(heading.degrees, course.windHeadingDegrees)
       : null
-    : gps.displayCourseDegrees
+    : freshDisplayCourse ? heading.degrees : null
   const hasDisplayCourse = courseHeading !== null
   const matchesRace = !raceReference || (isUsableWindReference(raceReference.course?.windDirectionDegrees, raceReference.windMeasurement, raceReference.id) &&
     isUsableWindReference(course.windHeadingDegrees, raceReference.windMeasurement, raceReference.id))

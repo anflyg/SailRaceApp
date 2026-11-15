@@ -90,6 +90,7 @@ public class WindHeadingPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "beginBackVectorHeading", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "getBackVectorHeading", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "getDeviceAttitude", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "getTacticalHeading", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "stopBackVectorHeading", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "stopDeviceAttitude", returnType: CAPPluginReturnPromise)
     ]
@@ -173,6 +174,20 @@ public class WindHeadingPlugin: CAPPlugin, CAPBridgedPlugin {
             "selectedHeadingSource": selectedHeadingSource,
             "nativeDebug": nativeDebug
         ])
+    }
+
+    // Read the existing stream only: never start or change it during a wind capture.
+    @objc func getTacticalHeading(_ call: CAPPluginCall) {
+        let now = ProcessInfo.processInfo.systemUptime
+        guard motionManager.isDeviceMotionActive, activeReferenceFrame == .xTrueNorthZVertical,
+              let motion = motionManager.deviceMotion,
+              WindSampleFreshness.isFresh(motion.timestamp, since: 0, now: now, maxAge: maxMotionAgeSeconds),
+              let heading = backVectorHeadingDegrees(from: motion.attitude.rotationMatrix), heading.isFinite else {
+            call.resolve(["valid": false])
+            return
+        }
+        call.resolve(["valid": true, "headingDegrees": heading,
+                      "motionTimestamp": motion.timestamp, "ageMs": (now - motion.timestamp) * 1000])
     }
 
     @objc func getDeviceAttitude(_ call: CAPPluginCall) {

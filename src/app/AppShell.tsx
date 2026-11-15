@@ -1,3 +1,5 @@
+import { useTacticalHeading } from '../hooks/useTacticalHeading'
+import { getDevelopmentTacticalHeading } from './tacticalHeadingSource'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { NavigationBar } from '../components/NavigationBar'
 import { EndRaceDialog } from '../components/EndRaceDialog'
@@ -198,10 +200,14 @@ export function AppShell() {
     simulationGpsSource ?? undefined,
   )
   const filteredGpsDevice = useFilteredGps(liveGpsDevice)
-  const deviceAttitudeDevice = useDeviceAttitude(!manualMode.enabled && (activeView === 'setup' || activeView === 'course' || activeView === 'race'))
+  const deviceAttitudeDevice = useDeviceAttitude(!manualMode.enabled && (activeView === 'setup' || activeView === 'course' || activeView === 'race' || activeRaceId !== null))
   const liveGps = manualMode.enabled ? MANUAL_FIXTURES.liveGps : liveGpsDevice
   const filteredGps = manualMode.enabled ? MANUAL_FIXTURES.filteredGps : filteredGpsDevice
-  const windInstrumentOutput = useWindShiftInstrumentOutput(course, filteredGps, laylineAlphaDegrees, recoveryPending || activeRaceId === null ? null : startGunTimeMs, activeRaceId)
+  const developmentHeading = manualMode.enabled || (
+    simulationMode.enabled && simulationMode.scenario !== 'analysis-validation' && simulationMode.scenario !== 'logged-race-analysis'
+  ) ? getDevelopmentTacticalHeading(true, filteredGps, Date.now(), manualMode.enabled ? Date.now() : undefined) : undefined
+  const tacticalHeading = useTacticalHeading(!manualMode.enabled && (activeView === 'race' || activeRaceId !== null), developmentHeading)
+  const windInstrumentOutput = useWindShiftInstrumentOutput(course, tacticalHeading, laylineAlphaDegrees, recoveryPending || activeRaceId === null ? null : startGunTimeMs, activeRaceId)
   const simulationAppVmgKnots = simulationMode.scenario === 'wind-vmg' &&
     isUsableWindReference(course.windHeadingDegrees, course.windMeasurement) &&
     isFreshReliableGps(filteredGps, filteredGps.courseDegrees, filteredGps.timestamp) &&
@@ -535,6 +541,7 @@ export function AppShell() {
       <RaceDashboardView
         course={course}
         gps={filteredGps}
+        heading={tacticalHeading}
         compassDisplayMode={compassDisplayMode}
         laylineAlphaDegrees={laylineAlphaDegrees}
         windInstrumentOutput={windInstrumentOutput}

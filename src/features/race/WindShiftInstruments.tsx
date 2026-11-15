@@ -5,9 +5,10 @@ import {
   stepWindInstrument,
   type WindInstrumentOutput,
 } from '../../domain/windShiftInstrument'
-import type { CourseState, FilteredGpsReading } from '../../types'
+import type { CourseState } from '../../types'
 import { useTranslation } from '../../i18n/LanguageContext'
-import { isFreshReliableGps, isUsableWindReference } from '../../domain/windReference'
+import { isUsableWindReference } from '../../domain/windReference'
+import { isFreshTacticalHeading, type TacticalHeading } from '../../hooks/useTacticalHeading'
 
 export const emptyOutput: WindInstrumentOutput = {
   state: createWindInstrumentState(),
@@ -22,7 +23,7 @@ export const emptyOutput: WindInstrumentOutput = {
 
 export function useWindShiftInstrumentOutput(
   course: CourseState,
-  gps: FilteredGpsReading,
+  heading: TacticalHeading,
   alphaDegrees: number,
   startGunTimeMs: number | null,
   raceId: string | null,
@@ -31,7 +32,7 @@ export function useWindShiftInstrumentOutput(
   const [output, setOutput] = useState(emptyOutput)
   const windHeading = course.windHeadingDegrees
   const referenceFrame = isUsableWindReference(windHeading, course.windMeasurement) ? 'true-north' : undefined
-  const gpsHeading = gps.displayCourseDegrees
+  const tacticalHeading = heading.degrees
   const resetKey = useRef({ measurement: course.windMeasurement, raceId, eligibleAfter: 0 })
 
   useEffect(() => {
@@ -42,9 +43,9 @@ export function useWindShiftInstrumentOutput(
     const update = () => {
       const next = stepWindInstrument(stateRef.current, {
         nowMs: Date.now(),
-        timestamp: gps.presentationTimestamp ?? gps.timestamp,
-        courseDegrees: gpsHeading,
-        courseReliable: isFreshReliableGps(gps, gpsHeading, gps.presentationTimestamp ?? gps.timestamp),
+        timestamp: heading.timestamp,
+        courseDegrees: tacticalHeading,
+        courseReliable: isFreshTacticalHeading(heading),
         windHeadingDegrees: windHeading,
         windReferenceFrame: referenceFrame,
         alphaDegrees,
@@ -55,7 +56,7 @@ export function useWindShiftInstrumentOutput(
     }
 
     update()
-    if (!gps.courseReliable || gpsHeading === null) return
+    if (!isFreshTacticalHeading(heading)) return
     const interval = window.setInterval(update, 1_000)
     return () => window.clearInterval(interval)
   }, [
@@ -63,11 +64,8 @@ export function useWindShiftInstrumentOutput(
     startGunTimeMs,
     raceId,
     course.windMeasurement,
-    gps.courseReliable,
-    gps.speedKnots,
-    gps.presentationTimestamp,
-    gps.timestamp,
-    gpsHeading,
+    heading.timestamp,
+    tacticalHeading,
     referenceFrame,
     windHeading,
   ])
