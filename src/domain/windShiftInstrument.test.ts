@@ -5,6 +5,7 @@ import {
   clampWindShiftScalePosition,
   getWindRelativeCourseDegrees,
   stepWindInstrument,
+  updateIndicatorDotCount,
   type WindInstrumentInput,
   type WindInstrumentOutput,
 } from './windShiftInstrument'
@@ -287,5 +288,46 @@ describe('wind shift and tack instrument', () => {
     expect(staleGps.liftDots).toBe(0)
     const missingWind = feed(initial.output.state, sample(initial.nextTime + 1_000, 130, { windHeadingDegrees: null }))
     expect(missingWind.isReferenced).toBe(false)
+  })
+})
+
+describe('configurable lift and header dot sensitivity', () => {
+  it.each([2, 5, 10])('applies %i degree thresholds to both indicator colors', (step) => {
+    const initial = establish('starboard')
+    const values = [step + 0.51, step * 2 + 0.51, step * 3 + 0.51]
+    let state = initial.output.state
+    for (const [index, deviation] of values.entries()) {
+      const output = feed(state, sample(initial.nextTime + (index + 1) * 1_000, initial.heading + deviation, { indicatorDegreesPerDot: step }))
+      expect(output.liftDots).toBe(index + 1)
+      state = output.state
+    }
+
+    const port = establish('port')
+    let portState = port.output.state
+    for (const [index, deviation] of values.entries()) {
+      const output = feed(portState, sample(port.nextTime + (index + 1) * 1_000, port.heading + deviation, { indicatorDegreesPerDot: step }))
+      expect(output.headerDots).toBe(index + 1)
+      portState = output.state
+    }
+  })
+
+  it('keeps ±0.5 degree hysteresis around each selected threshold', () => {
+    expect(updateIndicatorDotCount(0, 5.49, 5)).toBe(0)
+    expect(updateIndicatorDotCount(0, 5.5, 5)).toBe(1)
+    expect(updateIndicatorDotCount(1, 4.5, 5)).toBe(0)
+    expect(updateIndicatorDotCount(1, 4.51, 5)).toBe(1)
+  })
+
+  it('applies a changed threshold on the next sample without resetting locked tack state', () => {
+    const initial = establish('starboard')
+    const on = feed(initial.output.state, sample(initial.nextTime + 1_000, 140, { indicatorDegreesPerDot: 5 }))
+    expect(on.liftDots).toBe(0)
+    const changed = feed(on.state, sample(initial.nextTime + 2_000, 140, { indicatorDegreesPerDot: 4 }))
+    expect(changed.liftDots).toBe(1)
+    expect(changed.state.phase).toBe('steady')
+    expect(changed.state.tack).toBe(initial.output.state.tack)
+    expect(changed.state.lockedCourseReferenceDegrees).toBe(initial.output.state.lockedCourseReferenceDegrees)
+    expect(changed.state.settlingStartedAtMs).toBeNull()
+    expect(changed.state.estimatedWindHeadingDegrees).toBe(on.state.estimatedWindHeadingDegrees)
   })
 })

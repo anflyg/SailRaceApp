@@ -5,6 +5,9 @@ import { getGpsStatusDisplay } from '../../domain/gps'
 import { formatInstalledAppVersion, getInstalledAppInfo } from '../../services/installedAppInfo'
 import {
   clampLaylineAlphaDegrees,
+  clampWindShiftDegreesPerDot,
+  MAX_WIND_SHIFT_DEGREES_PER_DOT,
+  MIN_WIND_SHIFT_DEGREES_PER_DOT,
   type CompassDisplayMode,
 } from '../../services/appSettingsStorage'
 import {
@@ -26,6 +29,8 @@ interface SetupViewProps {
   onCalibrate: () => void
   laylineAlphaDegrees: number
   onLaylineAlphaDegreesChange: (alphaDegrees: number) => void
+  windShiftDegreesPerDot: number
+  onWindShiftDegreesPerDotChange: (degrees: number) => void
   compassDisplayMode: CompassDisplayMode
   onCompassDisplayModeChange: (mode: CompassDisplayMode) => void
 }
@@ -38,6 +43,8 @@ export function SetupView({
   onCalibrate,
   laylineAlphaDegrees,
   onLaylineAlphaDegreesChange,
+  windShiftDegreesPerDot,
+  onWindShiftDegreesPerDotChange,
   compassDisplayMode,
   onCompassDisplayModeChange,
 }: SetupViewProps) {
@@ -110,6 +117,24 @@ export function SetupView({
             >
               +
             </button>
+          </div>
+        </div>
+        <div className="setup-layline-alpha-row">
+          <span>{t('setup.windShiftDegreesPerDot')}</span>
+          <div className="setup-layline-alpha-control">
+            <button
+              type="button"
+              aria-label={t('setup.decreaseWindShiftDegreesPerDot')}
+              onClick={() => onWindShiftDegreesPerDotChange(clampWindShiftDegreesPerDot(windShiftDegreesPerDot - 1))}
+              disabled={windShiftDegreesPerDot <= MIN_WIND_SHIFT_DEGREES_PER_DOT}
+            >−</button>
+            <strong>{windShiftDegreesPerDot}</strong>
+            <button
+              type="button"
+              aria-label={t('setup.increaseWindShiftDegreesPerDot')}
+              onClick={() => onWindShiftDegreesPerDotChange(clampWindShiftDegreesPerDot(windShiftDegreesPerDot + 1))}
+              disabled={windShiftDegreesPerDot >= MAX_WIND_SHIFT_DEGREES_PER_DOT}
+            >+</button>
           </div>
         </div>
       </div>

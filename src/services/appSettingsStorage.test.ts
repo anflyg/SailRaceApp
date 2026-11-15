@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   clampLaylineAlphaDegrees,
+  clampWindShiftDegreesPerDot,
+  DEFAULT_WIND_SHIFT_DEGREES_PER_DOT,
   loadAppSettings,
   saveAppSettings,
 } from './appSettingsStorage'
@@ -110,5 +112,35 @@ describe('appSettingsStorage layline alpha', () => {
       compassDisplayMode: 'wind-relative',
     })
     expect(loadAppSettings().compassDisplayMode).toBe('wind-relative')
+  })
+})
+
+describe('wind shift degrees per dot setting', () => {
+  it('defaults to 5 and clamps integer controls to 2–10', () => {
+    expect(DEFAULT_WIND_SHIFT_DEGREES_PER_DOT).toBe(5)
+    expect(clampWindShiftDegreesPerDot(1)).toBe(2)
+    expect(clampWindShiftDegreesPerDot(2)).toBe(2)
+    expect(clampWindShiftDegreesPerDot(10)).toBe(10)
+    expect(clampWindShiftDegreesPerDot(11)).toBe(10)
+  })
+
+  it('adds the default to older settings without changing existing values', () => {
+    const storage = new MockStorage()
+    storage.setItem(STORAGE_KEY, JSON.stringify({ layline: { enabled: false, alphaDegrees: 72 }, language: 'en', compassDisplayMode: 'wind-relative' }))
+    vi.stubGlobal('localStorage', storage)
+    expect(loadAppSettings()).toMatchObject({
+      layline: { enabled: false, alphaDegrees: 72 }, language: 'en', compassDisplayMode: 'wind-relative', windShiftDegreesPerDot: 5,
+    })
+  })
+
+  it('round-trips valid values and safely defaults invalid stored values', () => {
+    const storage = new MockStorage()
+    vi.stubGlobal('localStorage', storage)
+    saveAppSettings({ layline: { enabled: true, alphaDegrees: 90 }, windShiftDegreesPerDot: 8 })
+    expect(loadAppSettings().windShiftDegreesPerDot).toBe(8)
+    storage.setItem(STORAGE_KEY, JSON.stringify({ layline: { enabled: false, alphaDegrees: 72 }, windShiftDegreesPerDot: '8' }))
+    expect(loadAppSettings()).toMatchObject({ layline: { enabled: false, alphaDegrees: 72 }, windShiftDegreesPerDot: 5 })
+    storage.setItem(STORAGE_KEY, JSON.stringify({ windShiftDegreesPerDot: 99 }))
+    expect(loadAppSettings().windShiftDegreesPerDot).toBe(10)
   })
 })

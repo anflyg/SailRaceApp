@@ -7,6 +7,9 @@ import {
 import type { AppLanguage } from '../i18n/translations'
 
 const STORAGE_KEY = 'aster-race:app-settings:v1'
+export const DEFAULT_WIND_SHIFT_DEGREES_PER_DOT = 5
+export const MIN_WIND_SHIFT_DEGREES_PER_DOT = 2
+export const MAX_WIND_SHIFT_DEGREES_PER_DOT = 10
 
 export const DEFAULT_LAYLINE_SETTINGS: LaylineSettings = {
   enabled: true,
@@ -19,6 +22,7 @@ export interface AppSettingsState {
   layline: LaylineSettings
   language: AppLanguage
   compassDisplayMode: CompassDisplayMode
+  windShiftDegreesPerDot: number
 }
 
 function createDefaultSettingsState(): AppSettingsState {
@@ -26,6 +30,7 @@ function createDefaultSettingsState(): AppSettingsState {
     layline: DEFAULT_LAYLINE_SETTINGS,
     language: 'sv',
     compassDisplayMode: 'normal',
+    windShiftDegreesPerDot: DEFAULT_WIND_SHIFT_DEGREES_PER_DOT,
   }
 }
 
@@ -53,7 +58,11 @@ export function loadAppSettings(): AppSettingsState {
   }
 }
 
-export function saveAppSettings(state: Pick<AppSettingsState, 'layline'> & Partial<Pick<AppSettingsState, 'language' | 'compassDisplayMode'>>): void {
+export function clampWindShiftDegreesPerDot(degrees: number): number {
+  return Math.min(MAX_WIND_SHIFT_DEGREES_PER_DOT, Math.max(MIN_WIND_SHIFT_DEGREES_PER_DOT, Math.round(degrees)))
+}
+
+export function saveAppSettings(state: Pick<AppSettingsState, 'layline'> & Partial<Pick<AppSettingsState, 'language' | 'compassDisplayMode' | 'windShiftDegreesPerDot'>>): void {
   const storage = getLocalStorage()
 
   if (!storage) {
@@ -85,6 +94,9 @@ function normalizeSettingsState(value: unknown): AppSettingsState {
     },
     language: value.language === 'en' ? 'en' : 'sv',
     compassDisplayMode: value.compassDisplayMode === 'wind-relative' ? 'wind-relative' : 'normal',
+    windShiftDegreesPerDot: isFiniteNumber(value.windShiftDegreesPerDot)
+      ? clampWindShiftDegreesPerDot(value.windShiftDegreesPerDot)
+      : DEFAULT_WIND_SHIFT_DEGREES_PER_DOT,
   }
 }
 
