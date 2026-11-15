@@ -21,8 +21,8 @@ export class TacticalHeadingFilter {
     }
     const timestamp = now - ageMs
     const last = this.samples.at(-1)
-    if (last && motionTimestamp < last.motionTimestamp) this.samples = []
-    if (!last || motionTimestamp !== last.motionTimestamp) this.samples.push({ degrees, motionTimestamp, timestamp })
+    if (last && motionTimestamp < last.motionTimestamp) return NO_TACTICAL_HEADING
+    if (!last || motionTimestamp > last.motionTimestamp) this.samples.push({ degrees, motionTimestamp, timestamp })
     this.samples = this.samples.filter((s) => now - s.timestamp <= 3000 && s.timestamp <= now)
     const latest = this.samples.at(-1)
     if (!latest || now - latest.timestamp > TACTICAL_HEADING_MAX_AGE_MS) return NO_TACTICAL_HEADING
@@ -35,7 +35,7 @@ export function isFreshTacticalHeading(value: TacticalHeading, now = Date.now())
     value.timestamp !== null && Number.isFinite(value.timestamp) && value.timestamp <= now && now - value.timestamp <= TACTICAL_HEADING_MAX_AGE_MS
 }
 
-export function useTacticalHeading(enabled: boolean): TacticalHeading {
+export function useTacticalHeading(enabled: boolean, developmentHeading: TacticalHeading = NO_TACTICAL_HEADING): TacticalHeading {
   const [heading, setHeading] = useState<TacticalHeading>(NO_TACTICAL_HEADING)
   useEffect(() => {
     if (!enabled || !Capacitor.isNativePlatform()) return
@@ -64,5 +64,5 @@ export function useTacticalHeading(enabled: boolean): TacticalHeading {
     document.addEventListener('visibilitychange', visibility)
     return () => { cancelled = true; window.clearInterval(interval); document.removeEventListener('visibilitychange', visibility); setHeading(NO_TACTICAL_HEADING) }
   }, [enabled])
-  return enabled ? heading : NO_TACTICAL_HEADING
+  return enabled ? heading : developmentHeading
 }

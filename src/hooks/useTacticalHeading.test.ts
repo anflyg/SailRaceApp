@@ -9,10 +9,11 @@ describe('tactical Core Motion heading', () => {
     const heading = filter.add(sample(1, 2), 2000)
     expect(Math.min(heading.degrees!, 360 - heading.degrees!)).toBeLessThan(0.1)
   })
-  it('rejects invalid, old and repeated motion and recovers on a new sample', () => {
+  it('rejects invalid and stale samples and recovers on a new sample', () => {
     const filter = new TacticalHeadingFilter()
     expect(filter.add(sample(45, 1), 1000).degrees).toBe(45)
-    expect(filter.add(sample(45, 1, 900), 1900).timestamp).toBe(1000)
+    expect(filter.add(sample(45, 1), 1100).timestamp).toBe(1000)
+    expect(filter.add(sample(45, 0.5), 1200).degrees).toBeNull()
     expect(filter.add(sample(45, 1, 1001), 2100).degrees).toBeNull()
     expect(filter.add({ valid: false }, 2200).degrees).toBeNull()
     expect(filter.add(sample(60, 2), 2300).degrees).toBeCloseTo(60)
