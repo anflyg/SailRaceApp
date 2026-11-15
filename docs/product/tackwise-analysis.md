@@ -30,6 +30,21 @@ The analysis platform may progressively provide:
 
 Analysis algorithms should evolve independently of the raw recording format so older races can benefit from improved algorithms.
 
+## Desktop analysis experience (approved 2026-11-15)
+
+**Map-first design.** The sailing track is the primary content of the post-race desktop workspace; metrics and analysis support it rather than displacing it.
+
+- The desktop layout provides a race library, a large central track/map, and an analysis column. The library and analysis column are independently collapsible; a maximize/restore action expands the track without resetting replay position. On narrower screens, the layout reflows rather than shrinking text and controls to unreadable sizes. Target desktop layouts include 1920×1080 and 1440×900; visual verification at each resolution is a release check, not an assumed fact.
+- Place a compact, readable race summary above the track, and prominent play/pause, seek and playback-speed controls immediately below. Use the approved TackWise logo, colors and accessible high-contrast variants, with legible labels, controls and chart axes.
+- When an authorized detail result is available, the boat position, progress along the track, current boat speed, current VMG and both charts use the **same replay time**. Both charts show a clearly moving time cursor and current sample value. Draw elapsed portions prominently and future portions more subtly, without inventing values across missing samples or data gaps. Playback, pause and seeking must remain synchronized.
+- Distinguish the full route, replayed route, boat marker and start/crossing/course annotations visually. Mark course geometry as unavailable when it is absent; do not substitute synthetic course data into an authenticated user's race.
+- Present leg names, durations, and start/end clock times in a readable form with an explicit time zone. Keep synthetic/demo data visibly separate from private, authenticated race data, including loading, unavailable and error states.
+- This is an **interface decision only**. It does not authorize any new cloud access, change API/data contracts, enable private detail endpoints, alter authentication, or relax the existing security, CRA and GDPR requirements.
+
+## Geographic basemap direction (not yet approved for implementation)
+
+A future geographic map should show the GPS track at its correct geographic position and **default to satellite imagery**, with an explicit option to turn the imagery off. Provide safe fallback when imagery is unavailable. Before choosing or integrating an engine or imagery provider, separately review geographic alignment and fit-to-track, access to Swedish coastal imagery, licensing and attribution, costs, dependencies, operational limits, and security/privacy/CRA/GDPR impacts. Requests for map tiles can disclose the displayed area and the user's IP address to a provider; approve the provider, data flows, relevant processing/transfer terms, notices and retention/caching rules first. The current schematic SVG remains in place until that work is approved.
+
 ## Access and billing direction
 
 **TackWise Analysis Free** allows the first three successfully accepted cloud races on an account to be synchronized and analysed using the normal analysis experience.
