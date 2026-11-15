@@ -17,6 +17,7 @@
     "preview": "vite preview",
     "cap:copy": "npx cap copy",
     "cap:sync": "npm run build && npx cap sync",
+    "ios": "node scripts/ios-device.mjs",
     "cap:sync:simulation": "npm run build:simulation && npx cap sync",
     "cap:open:ios": "npx cap open ios",
     "sync:validation": "node scripts/run-sync-validation.mjs",
