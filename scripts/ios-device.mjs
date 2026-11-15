@@ -4,6 +4,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
+import { selectPhysicalIphone } from './ios-device-selection.mjs'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const project = path.join(root, 'ios/App/App.xcodeproj')
@@ -96,21 +97,10 @@ try {
   }
 
   const deviceList = run('xcrun', ['xcdevice', 'list', '--timeout', '10'], { capture: true })
-  const devices = JSON.parse(deviceList).filter((device) =>
-    device.platform === 'iOS' && device.available === true && device.id && !device.simulator
-  )
-  if (devices.length === 0) throw new Error('Ingen tillgänglig fysisk iPhone hittades. Anslut och lås upp iPhone, tryck på Trust och försök igen.')
-
-  let selected
   const requestedId = process.env.TACKWISE_IOS_DEVICE_ID
-  if (requestedId) selected = devices.find((device) => device.id === requestedId)
-  else if (devices.length === 1) selected = devices[0]
-  else {
-    const choices = devices.map((device) => `${device.name} (${device.id})`).join('\n  ')
-    throw new Error(`Flera iPhones är anslutna. Välj en med TACKWISE_IOS_DEVICE_ID=<UDID>:\n  ${choices}`)
-  }
-  if (!selected) throw new Error(`Vald enhet ${requestedId} är inte tillgänglig. Kontrollera USB/Wi-Fi-anslutning och enhets-ID.`)
-  console.log(`iPhone: ${selected.name} (${selected.id})`)
+  const selected = selectPhysicalIphone(deviceList, requestedId)
+  const deviceId = selected.identifier
+  console.log(`iPhone: ${selected.name} (${deviceId})`)
 
   const initialStatus = gitStatus()
   const dirtyGenerated = generatedPaths.filter((relative) => statusTouches(relative, initialStatus))
@@ -136,7 +126,7 @@ try {
   })
   if (unexpected.length) throw new Error(`Sync skapade nya, oväntade filer; installation stoppades:\n${unexpected.join('\n')}`)
 
-  const destination = `platform=iOS,id=${selected.id}`
+  const destination = `platform=iOS,id=${deviceId}`
   const derivedData = path.join(root, '.codex-ios-derived-data')
   const buildLog = xcodebuild([
     '-project', project,
@@ -150,9 +140,9 @@ try {
   const appPath = path.join(derivedData, 'Build/Products/Debug-iphoneos/App.app')
   if (!existsSync(appPath)) throw new Error('Xcode build ilmoitti onnistumisesta, mutta App.app ei löytynyt.')
   try {
-    run('xcrun', ['devicectl', 'device', 'install', 'app', '--device', selected.id, appPath])
+    run('xcrun', ['devicectl', 'device', 'install', 'app', '--device', deviceId, appPath])
     const bundleId = /PRODUCT_BUNDLE_IDENTIFIER = ([^;]+);/.exec(buildLog)?.[1]?.trim() ?? 'com.anflyg.sailraceapp'
-    run('xcrun', ['devicectl', 'device', 'process', 'launch', '--device', selected.id, bundleId])
+    run('xcrun', ['devicectl', 'device', 'process', 'launch', '--device', deviceId, bundleId])
   } catch (error) {
     if (/install app|install/i.test(error.message)) throw new Error(`Appen byggdes men kunde inte installeras på ${selected.name}. Kontrollera enhetslås, kabel och utvecklingssignering.\n${error.message}`)
     throw new Error(`Appen installerades inte eller kunde inte startas på ${selected.name}.\n${error.message}`)
