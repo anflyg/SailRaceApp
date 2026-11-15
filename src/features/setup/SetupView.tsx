@@ -75,21 +75,20 @@ export function SetupView({
       <div className="setup-calibration-panel">
         <div className="setup-roll-pitch">
           <span>R {rollPitch ? formatSignedDegrees(rollPitch.rollDegrees) : '—'}</span>
+          <button
+            type="button"
+            className="primary-button setup-calibrate-button"
+            onClick={onCalibrate}
+            disabled={!canCalibrate}
+          >
+            {t('setup.calibrate')}
+          </button>
           <span>S {rollPitch ? formatSignedDegrees(rollPitch.pitchDegrees) : '—'}</span>
         </div>
         <p className={`setup-calibration-status ${isCalibrated ? 'calibrated' : ''}`}>
           {isCalibrated ? t('setup.calibrated') : t('setup.notCalibrated')}
         </p>
       </div>
-
-      <button
-        type="button"
-        className="primary-button setup-calibrate-button"
-        onClick={onCalibrate}
-        disabled={!canCalibrate}
-      >
-        {t('setup.calibrate')}
-      </button>
 
       <h2 className="setup-section-heading">{t('sailing.windShiftInstruments')}</h2>
       <div className="setup-layline-panel" aria-label={t('setup.alpha')}>
@@ -166,11 +165,9 @@ export function SetupView({
       <AccountPanel />
       <section className="setup-about" aria-labelledby="setup-about-heading">
         <h2 className="setup-section-heading" id="setup-about-heading">{t('setup.aboutTitle')}</h2>
-        <dl className="setup-about-details">
-          <div><dt>{t('setup.aboutProduct')}</dt><dd>TackWise Race</dd></div>
-          <div><dt>{t('setup.aboutVersion')}</dt><dd>{installedAppVersion ?? t('setup.aboutVersionUnavailable')}</dd></div>
-          <div><dt>{t('setup.aboutTagline')}</dt><dd>Race smarter.</dd></div>
-        </dl>
+        <p className="setup-about-version">
+          {t('setup.aboutVersion')} {installedAppVersion ?? t('setup.aboutVersionUnavailable')}
+        </p>
       </section>
     </section>
   )

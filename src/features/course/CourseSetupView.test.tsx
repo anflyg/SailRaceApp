@@ -74,36 +74,35 @@ describe('wind VMG acceptance feedback in Course', () => {
     expect(html).toContain('Mät igen')
   })
 
-  it('provides the same explicit decision and diagnostics in English', () => {
+  it('omits rejected wind feedback in English', () => {
     const html = renderCourse({
       ...emptyCourse,
       windHeadingDegrees: 350.1,
       windMeasurement: measurement({ quality: 'poor', accuracyDegrees: 54.4 }),
     }, 'en')
-    expect(html).toContain('NOT APPROVED FOR VMG')
-    expect(html).toContain('Direction 350.1° · Stability/spread 0.62°')
-    expect(html).toContain('Measure again')
+    expect(html).not.toContain('NOT APPROVED FOR VMG')
+    expect(html).not.toContain('course-wind-feedback')
+    expect(html).toContain('wind-arrow-button')
   })
 
-  it.each(['ok', 'poor', 'unstable'] as const)('rejects %s quality and offers remeasurement', (quality) => {
+  it.each(['ok', 'poor', 'unstable'] as const)('omits the VMG warning for %s quality', (quality) => {
     const html = renderCourse({
       ...emptyCourse,
       windHeadingDegrees: 350.1,
       windMeasurement: measurement({ quality, accuracyDegrees: 54.4, spreadDegrees: 0.62 }),
     })
-    expect(html).toContain('EJ GODKÄND FÖR VMG')
-    expect(html).toContain('Mät igen')
-    expect(html).toContain('350,1°')
-    expect(html).toContain('0,62°')
-    expect(html).toContain('Spridning beskriver hur jämna proverna var')
-    expect(html).not.toContain('class="course-wind-feedback approved"')
+    expect(html).not.toContain('EJ GODKÄND FÖR VMG')
+    expect(html).not.toContain('course-wind-feedback')
+    expect(html).toContain('wind-arrow-button')
   })
 
-  it('reports missing measurement and offers an initial measurement', () => {
+  it('omits rejected feedback when wind metadata is missing', () => {
     const html = renderCourse(emptyCourse)
-    expect(html).toContain('EJ GODKÄND FÖR VMG')
-    expect(html).toContain('Vindmätning eller matchande metadata saknas')
-    expect(html).toContain('Mät vind')
+    expect(html).not.toContain('EJ GODKÄND FÖR VMG')
+    expect(html).not.toContain('Vindmätning eller matchande metadata saknas')
+    expect(html).not.toContain('Mät vind')
+    expect(html).not.toContain('course-wind-feedback')
+    expect(html).toContain('wind-arrow-button')
   })
 
   it('accepts a short saved result with the new model', () => {
@@ -122,7 +121,8 @@ describe('wind VMG acceptance feedback in Course', () => {
 
   it('rejects inconsistent saved direction and measurement metadata', () => {
     const html = renderCourse({ ...emptyCourse, windHeadingDegrees: 12, windMeasurement: measurement() })
-    expect(html).toContain('EJ GODKÄND FÖR VMG')
-    expect(html).toContain('Mätningens riktning eller metadata är ofullständig eller stämmer inte överens.')
+    expect(html).not.toContain('EJ GODKÄND FÖR VMG')
+    expect(html).not.toContain('Mätningens riktning eller metadata är ofullständig eller stämmer inte överens.')
+    expect(html).not.toContain('course-wind-feedback')
   })
 })

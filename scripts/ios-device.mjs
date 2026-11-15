@@ -5,6 +5,8 @@ import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import { selectPhysicalIphone } from './ios-device-selection.mjs'
+import { isExpectedCapacitorSyncChange } from './ios-device-safety.mjs'
+import { resolveAppProductPath } from './ios-device-build.mjs'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const project = path.join(root, 'ios/App/App.xcodeproj')
@@ -114,7 +116,8 @@ try {
   run('npm', ['run', 'build'])
   run('npx', ['cap', 'sync', 'ios'])
 
-  const changedBySync = protectedFiles.filter((relative) => !equalSnapshot(before.get(relative), snapshot(relative)))
+  const changedBySync = protectedFiles.filter((relative) =>
+    !equalSnapshot(before.get(relative), snapshot(relative)) && !isExpectedCapacitorSyncChange(relative))
   if (changedBySync.length) {
     throw new Error(`Capacitor sync ändrade skyddade lokala/native-filer. Installationen stoppades; kontrollera ändringarna innan du fortsätter:\n  ${changedBySync.join('\n  ')}`)
   }
@@ -128,17 +131,21 @@ try {
 
   const destination = `platform=iOS,id=${deviceId}`
   const derivedData = path.join(root, '.codex-ios-derived-data')
-  const buildLog = xcodebuild([
+  const buildArguments = [
     '-project', project,
     '-scheme', 'App',
     '-configuration', 'Debug',
     '-destination', destination,
     '-derivedDataPath', derivedData,
+  ]
+  const buildSettings = xcodebuild([...buildArguments, '-showBuildSettings'])
+  const appPath = resolveAppProductPath(buildSettings, 'App')
+  const buildLog = xcodebuild([
+    ...buildArguments,
     '-allowProvisioningUpdates',
     'build',
   ])
-  const appPath = path.join(derivedData, 'Build/Products/Debug-iphoneos/App.app')
-  if (!existsSync(appPath)) throw new Error('Xcode build ilmoitti onnistumisesta, mutta App.app ei löytynyt.')
+  if (!existsSync(appPath)) throw new Error(`Xcode build ilmoitti onnistumisesta, mutta sovelluspakettia ei löytynyt: ${appPath}`)
   try {
     run('xcrun', ['devicectl', 'device', 'install', 'app', '--device', deviceId, appPath])
     const bundleId = /PRODUCT_BUNDLE_IDENTIFIER = ([^;]+);/.exec(buildLog)?.[1]?.trim() ?? 'com.anflyg.sailraceapp'
