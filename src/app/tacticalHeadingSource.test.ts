@@ -3,9 +3,11 @@ import { MANUAL_FIXTURES } from './manualMode'
 import { getDevelopmentTacticalHeading } from './tacticalHeadingSource'
 
 describe('explicit development tactical heading source', () => {
-  it('keeps manual GUI heading available from its explicit fixture', () => {
-    expect(getDevelopmentTacticalHeading(true, MANUAL_FIXTURES.filteredGps, MANUAL_FIXTURES.filteredGps.presentationTimestamp!))
-      .toEqual({ degrees: 18, timestamp: MANUAL_FIXTURES.filteredGps.presentationTimestamp })
+  it('keeps manual GUI heading available with a current explicit timestamp', () => {
+    const now = Date.now()
+    const heading = getDevelopmentTacticalHeading(true, MANUAL_FIXTURES.filteredGps, now, now)
+    expect(heading).toEqual({ degrees: 18, timestamp: now })
+    expect(now - heading.timestamp!).toBeLessThanOrEqual(1500)
   })
   it('uses simulation course only when explicitly allowed and fresh', () => {
     const gps = { ...MANUAL_FIXTURES.filteredGps, displayCourseDegrees: 315 }

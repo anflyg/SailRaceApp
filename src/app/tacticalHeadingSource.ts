@@ -6,8 +6,9 @@ export function getDevelopmentTacticalHeading(
   allowed: boolean,
   gps: FilteredGpsReading,
   now = Date.now(),
+  timestampOverride?: number,
 ): TacticalHeading {
   if (!allowed || gps.displayCourseDegrees === null) return NO_TACTICAL_HEADING
-  const heading = { degrees: gps.displayCourseDegrees, timestamp: gps.presentationTimestamp ?? gps.timestamp }
+  const heading = { degrees: gps.displayCourseDegrees, timestamp: timestampOverride ?? gps.presentationTimestamp ?? gps.timestamp }
   return isFreshTacticalHeading(heading, now) ? heading : NO_TACTICAL_HEADING
 }

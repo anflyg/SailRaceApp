@@ -205,7 +205,7 @@ export function AppShell() {
   const filteredGps = manualMode.enabled ? MANUAL_FIXTURES.filteredGps : filteredGpsDevice
   const developmentHeading = manualMode.enabled || (
     simulationMode.enabled && simulationMode.scenario !== 'analysis-validation' && simulationMode.scenario !== 'logged-race-analysis'
-  ) ? getDevelopmentTacticalHeading(true, filteredGps) : undefined
+  ) ? getDevelopmentTacticalHeading(true, filteredGps, Date.now(), manualMode.enabled ? Date.now() : undefined) : undefined
   const tacticalHeading = useTacticalHeading(!manualMode.enabled && (activeView === 'race' || activeRaceId !== null), developmentHeading)
   const windInstrumentOutput = useWindShiftInstrumentOutput(course, tacticalHeading, laylineAlphaDegrees, recoveryPending || activeRaceId === null ? null : startGunTimeMs, activeRaceId)
   const simulationAppVmgKnots = simulationMode.scenario === 'wind-vmg' &&
