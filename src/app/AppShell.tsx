@@ -32,6 +32,8 @@ import { useLiveGps } from '../hooks/useLiveGps'
 import { useWakeLock } from '../hooks/useWakeLock'
 import {
   markStartGun,
+  checkpointActiveRace,
+  resumeActiveRaceSession,
   getActiveCountdownToken,
   getActiveRaceId,
   pausePlannedStart,
@@ -384,7 +386,12 @@ export function AppShell() {
 
   useEffect(() => {
     const refreshWhenVisible = () => {
-      if (document.visibilityState === 'visible') refreshActiveRace()
+      if (document.visibilityState === 'visible') {
+        resumeActiveRaceSession()
+        refreshActiveRace()
+      } else if (!recoveryPending) {
+        checkpointActiveRace()
+      }
     }
     document.addEventListener('visibilitychange', refreshWhenVisible)
     window.addEventListener('pageshow', refreshWhenVisible)
@@ -395,7 +402,7 @@ export function AppShell() {
       window.removeEventListener('pageshow', refreshWhenVisible)
       window.removeEventListener('focus', refreshWhenVisible)
     }
-  }, [refreshActiveRace])
+  }, [recoveryPending, refreshActiveRace])
 
   useEffect(() => {
     activeRaceIdRef.current = activeRaceId

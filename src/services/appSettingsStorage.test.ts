@@ -143,4 +143,10 @@ describe('wind shift degrees per dot setting', () => {
     storage.setItem(STORAGE_KEY, JSON.stringify({ windShiftDegreesPerDot: 99 }))
     expect(loadAppSettings().windShiftDegreesPerDot).toBe(10)
   })
+
+  it.each([2, 5, 10])('persists %i degrees per indicator', value => {
+    vi.stubGlobal('localStorage', new MockStorage())
+    saveAppSettings({ layline: { enabled: false, alphaDegrees: 90 }, windShiftDegreesPerDot: value })
+    expect(loadAppSettings().windShiftDegreesPerDot).toBe(value)
+  })
 })

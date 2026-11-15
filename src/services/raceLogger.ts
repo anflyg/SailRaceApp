@@ -34,6 +34,7 @@ type RaceLoggerState = {
   lastSampleTime?: string
   lastGpsTimestamp?: number
   belowStillSpeedSince?: string
+  backgroundCheckpoint?: string
 }
 
 export type StartRaceLoggingInput = {
@@ -303,6 +304,36 @@ export function recordSampleIfDue({
 
 export function getActiveRaceId(): string | null {
   return loadLoggerState().activeRaceId
+}
+
+/** A checkpoint is only consumed when a new app process starts. */
+export function checkpointActiveRace(now = new Date()): void {
+  const state = loadLoggerState()
+  if (!state.activeRaceId || !Number.isFinite(now.getTime())) return
+  saveLoggerState({ ...state, backgroundCheckpoint: now.toISOString() })
+}
+
+export function resumeActiveRaceSession(): void {
+  const state = loadLoggerState()
+  if (state.backgroundCheckpoint) saveLoggerState({ ...state, backgroundCheckpoint: undefined })
+}
+
+export function finalizePreviousRaceSession(now = new Date()): Race | null {
+  const state = loadLoggerState()
+  if (!state.activeRaceId || !state.backgroundCheckpoint) return null
+  const race = getRace(state.activeRaceId)
+  if (!race) return null
+  if (race.endTime) { clearLoggerState(); return race }
+  const checkpoint = Date.parse(state.backgroundCheckpoint)
+  const created = Date.parse(race.createdAt)
+  const sampleTimes = race.samples.map(sample => Date.parse(sample.timestamp))
+  const eventTimes = race.events.map(event => Date.parse(event.timestamp))
+  const times = [created, ...(race.startGunTime ? [Date.parse(race.startGunTime)] : []), ...sampleTimes, ...eventTimes]
+  if (!Number.isFinite(checkpoint) || !Number.isFinite(now.getTime()) || checkpoint > now.getTime() ||
+      times.some(time => !Number.isFinite(time) || time > checkpoint)) return null
+  const ended = updateRace(race.id, { endTime: new Date(checkpoint).toISOString() })
+  if (ended) clearLoggerState()
+  return ended
 }
 
 export function recordLaylineTackEventIfActive({
@@ -577,6 +608,8 @@ function normalizeLoggerState(value: unknown): RaceLoggerState {
   if (isString(value.belowStillSpeedSince)) {
     state.belowStillSpeedSince = value.belowStillSpeedSince
   }
+
+  if (isString(value.backgroundCheckpoint)) state.backgroundCheckpoint = value.backgroundCheckpoint
 
   return state
 }
