@@ -22,6 +22,18 @@ function renderSetup(language: 'sv' | 'en') {
 }
 
 describe('SetupView settings', () => {
+  it('places the existing calibration button between R and S and retains its status', () => {
+    const html = renderSetup('sv')
+    const rollIndex = html.indexOf('R —')
+    const buttonIndex = html.indexOf('Kalibrera nolläge')
+    const pitchIndex = html.indexOf('S —')
+
+    expect(rollIndex).toBeGreaterThan(-1)
+    expect(rollIndex).toBeLessThan(buttonIndex)
+    expect(buttonIndex).toBeLessThan(pitchIndex)
+    expect(html).toContain('Ej kalibrerad')
+  })
+
   it('shows Swedish compass options and the Slagvinkel label', () => {
     const html = renderSetup('sv')
     expect(html).toContain('KOMPASS')
@@ -49,11 +61,10 @@ describe('SetupView settings', () => {
     const aboutIndex = html.indexOf('Om TackWise')
 
     expect(aboutIndex).toBeGreaterThan(accountIndex)
-    expect(html).toContain('Produkt')
-    expect(html).toContain('TackWise Race')
-    expect(html).toContain('Appversion')
-    expect(html).toContain('Inte tillgänglig')
-    expect(html).toContain('Race smarter.')
+    expect(html).toContain('<p class="setup-about-version">Appversion Inte tillgänglig</p>')
+    expect(html).not.toContain('Produkt')
+    expect(html).not.toContain('TackWise Race')
+    expect(html).not.toContain('Race smarter.')
     expect(html).not.toMatch(/\b\d+\.\d+\.\d+\s+\(\d+\)/)
   })
 
@@ -61,9 +72,9 @@ describe('SetupView settings', () => {
     const html = renderSetup('en')
 
     expect(html).toContain('About TackWise')
-    expect(html).toContain('Product')
-    expect(html).toContain('App version')
-    expect(html).toContain('Unavailable')
-    expect(html).toContain('Race smarter.')
+    expect(html).toContain('<p class="setup-about-version">App version Unavailable</p>')
+    expect(html).not.toContain('Product')
+    expect(html).not.toContain('TackWise Race')
+    expect(html).not.toContain('Race smarter.')
   })
 })
