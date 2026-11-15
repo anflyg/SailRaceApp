@@ -121,6 +121,7 @@ describe('RaceDashboardView instrument layout', () => {
             timestamp: Date.now(),
             presentationTimestamp: Date.now(),
           }}
+          heading={{ degrees: 135, timestamp: Date.now() }}
           compassDisplayMode={compassDisplayMode}
           laylineAlphaDegrees={90}
         />
@@ -176,7 +177,7 @@ describe('wind-only VMG', () => {
       presentationTimestamp: currentTime - (condition === 'stale' ? 5_001 : 0) }
     const html = renderToStaticMarkup(
       <LanguageProvider language="sv" setLanguage={() => {}}>
-        <RaceDashboardView course={{ ...course, windHeadingDegrees: 90, windMeasurement }} gps={currentGps}
+        <RaceDashboardView course={{ ...course, windHeadingDegrees: 90, windMeasurement }} gps={currentGps} heading={{ degrees: 90, timestamp: Date.now() }}
           compassDisplayMode="wind-relative" laylineAlphaDegrees={90} />
       </LanguageProvider>,
     )
@@ -196,7 +197,7 @@ describe('wind-only VMG', () => {
     } }
     const html = renderToStaticMarkup(
       <LanguageProvider language="sv" setLanguage={() => {}}>
-        <RaceDashboardView course={legacyCourse} gps={{ ...gps, timestamp: Date.now(), presentationTimestamp: Date.now() }} compassDisplayMode="normal" laylineAlphaDegrees={90} />
+        <RaceDashboardView heading={{ degrees: 42, timestamp: Date.now() }} course={legacyCourse} gps={{ ...gps, timestamp: Date.now(), presentationTimestamp: Date.now() }} compassDisplayMode="normal" laylineAlphaDegrees={90} />
       </LanguageProvider>,
     )
     expect(html).toContain(`<span class="metric-value">${windHeadingDegrees === null ? '--' : '5,5'}</span><span class="metric-label">VMG</span>`)
@@ -206,5 +207,29 @@ describe('wind-only VMG', () => {
     expect(html).not.toContain('LAYLINE')
     expect(html).not.toContain('role="button"')
     expect(html).not.toContain('can-toggle')
+  })
+})
+
+describe('tactical heading source', () => {
+  it.each([0, 0.5])('shows HDG at %s knots while GPS VMG remains unavailable', (speedKnots) => {
+    const now = Date.now()
+    const html = renderToStaticMarkup(<LanguageProvider language="sv" setLanguage={() => {}}>
+      <RaceDashboardView course={{ ...course, windHeadingDegrees: 90, windMeasurement: measurement(90) }}
+        gps={{ ...gps, speedKnots, courseDegrees: 180, displayCourseDegrees: 180, courseReliable: false, timestamp: now, presentationTimestamp: now }}
+        heading={{ degrees: 45, timestamp: now }} compassDisplayMode="normal" laylineAlphaDegrees={90} />
+    </LanguageProvider>)
+    expect(html).toContain('<span class="metric-value">045°</span>')
+    expect(html).toContain('GPS-kurs otillförlitlig')
+    expect(html.match(/class="wind-cue-dot /g)).toHaveLength(6)
+    expect(html).toContain('−30°')
+    expect(html).toContain('+30°')
+  })
+  it('hides a stale heading even when GPS course is valid', () => {
+    const now = Date.now()
+    const html = renderToStaticMarkup(<LanguageProvider language="sv" setLanguage={() => {}}>
+      <RaceDashboardView course={course} gps={{ ...gps, timestamp: now, presentationTimestamp: now }}
+        heading={{ degrees: 45, timestamp: now - 1501 }} compassDisplayMode="normal" laylineAlphaDegrees={90} />
+    </LanguageProvider>)
+    expect(html).toContain('<span class="metric-value">--</span><span class="metric-label">Riktning</span>')
   })
 })

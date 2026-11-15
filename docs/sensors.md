@@ -16,10 +16,10 @@ heading APIs or raw magnetometer vectors are not robust enough for wind capture.
 ### While sailing (boat moving)
 
 - Boat speed uses GPS speed.
-- Boat direction uses GPS course over ground when speed is high enough to be reliable.
+- Tactical boat direction uses fresh true-north Core Motion back-vector heading (HDG), independent of GPS speed.
 - Step 1 live GPS integration is implemented for the Segling view:
   - GPS speed is converted from meters per second to knots and shown as Fart when available.
-  - GPS course over ground is shown as Riktning only when speed is at least 1.5 knots.
+  - Riktning and the tactical wind instruments use filtered HDG, including at rest and at 0.5 knots.
   - VMG Vind and VMG Bana calculations use filtered live GPS speed/course when both are available and reliable.
   - VMG Bana bearing-to-target uses the live GPS position when K1/L1 are set.
 - Step 2 live GPS integration is implemented for the Bana view:
@@ -28,12 +28,11 @@ heading APIs or raw magnetometer vectors are not robust enough for wind capture.
   - If GPS position is unavailable, no fake coordinate is saved and the point remains unset.
 - Start uses current GPS accuracy plus filtered speed/course over ground for TTL/BURN.
 - GPS speed and course are smoothed over about 3 seconds. Course smoothing uses circular averaging.
-- Segling keeps a 1.5 knot threshold for reliable COG because it drives displayed
-  direction and VMG values continuously.
+- Segling keeps the 1.5 knot threshold for GPS-based VMG.
 - TTL/BURN intentionally uses a lower 1.0 knot threshold so start-line timing can
   appear earlier during slow pre-start movement.
 
-Reason: when the boat is moving, GPS course is stable and directly reflects over-ground motion.
+GPS course remains the over-ground direction for VMG, start-line timing, BURN and distance; HDG reflects boat orientation and may differ due to leeway or current.
 
 ### Wind direction capture (low speed / mark setup)
 
@@ -50,7 +49,7 @@ Reason: when the boat is moving, GPS course is stable and directly reflects over
   2.5 seconds, with no gap over 0.75 seconds between accepted samples. All
   accepted samples contribute to mean and spread. Motion timestamps are checked against system uptime
   (at most 1 second old, never before measurement start or in the future).
-- The shared Core Motion stream is prepared for Setup, Course and Sailing while the app is active. It is stopped when these views no longer need it or the app backgrounds, and resumed on return. A wind capture reuses the stream and does not restart sensor fusion. Roll and pitch share the same manager.
+- The shared Core Motion stream is prepared for Setup, Course and Sailing while the app is active, and across tabs during an active race. It is stopped when these views no longer need it or the app backgrounds, and resumed on return. A wind capture reuses the stream and does not restart sensor fusion. Roll and pitch share the same manager.
 - Core Motion `xTrueNorthZVertical` is required for wind; magnetic or arbitrary frames cannot approve wind. True north requires available location services and a magnetometer. The mounted phone's back (-Z) points toward the bow. Its horizontal projection uses the existing row-based matrix calculation, with north X and west Y; heading is clockwise from north. Assuming the attitude matrix maps reference-frame vectors to device-frame vectors, the transpose maps device -Z to (-m31, -m32, -m33) in the reference frame. Deterministic tests cover this conditional mathematics; the actual Core Motion matrix convention and physical headings still require device verification before merge or release. A near-vertical back vector is invalid.
 - Every capture uses fresh, unique motion samples from its own four-second period, circular mean and circular spread. A spread above 10° is unstable. `CLHeading.headingAccuracy` is not a direct error estimate of the fused back vector and is not an acceptance requirement. Low spread indicates stability, not absolute geographic accuracy.
 - Successful captures persist `qualityModel: core-motion-v1` in local race metadata and local exports. Older unmarked wind measurements are not guaranteed compatible and require remeasurement for new wind VMG. Other race data and GPS tracks remain intact. The marker replaces process-local proof, including for covered captures with fewer than 30 samples. After the gun, the race wind snapshot remains locked.
@@ -109,3 +108,7 @@ used for GPS.
 ### Wind metadata during recording
 
 Before the start gun, the current course and its matching wind measurement are saved with the active race; clearing the wind removes its measurement. Recovery restores the saved reference only after explicit continuation. After the gun the race reference remains fixed: recorded wind VMG requires a matching good true-north measurement and fresh reliable GPS. Screen and recorded VMG are separately validated. The `good` quality threshold is preliminary and does not guarantee angular accuracy; physical-device validation remains necessary.
+
+### Continuous tactical HDG
+
+The existing true-north Core Motion stream supplies the same back-vector projection used by wind capture. A three-second circular average reduces wave oscillation. Samples older than one second at the native bridge are rejected; the display and tactical engine expire after 1.5 seconds, without GPS fallback. Invalid, unavailable, backgrounded or non-true-north readings clear the current heading. The reader never starts, stops or reconfigures the stream or the four-second capture. HDG remains transient and is not recorded, uploaded or logged. Known-heading, roll/pitch, wave, tack, sensor interruption and simultaneous wind-capture tests on a physical mounted iPhone remain required before release.
