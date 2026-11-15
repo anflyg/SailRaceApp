@@ -92,13 +92,6 @@ export function CourseSetupView({
     ? `${t('course.windSet')}: ${formatDegrees(measurementForDisplay.headingDegrees)} · ${t('course.quality')}: ${t(qualityKey)} · ${t('course.source')}: ${measurementForDisplay.selectedHeadingSource}`
     : null
   const isMeasuringWind = windMeasurementStatus === 'measuring'
-  const feedbackReasonKey = ({
-    missing: 'course.windRejectedMissing',
-    'north-reference': 'course.windRejectedNorth',
-    quality: 'course.windRejectedQuality',
-    remeasure: 'course.windRejectedRemeasure',
-    metadata: 'course.windRejectedMetadata',
-  } as const)[windAssessment.rejectionReason ?? 'missing']
 
   const formatMeasurementValue = (value: number | null | undefined, digits = 1) =>
     typeof value === 'number' && Number.isFinite(value)
@@ -196,34 +189,16 @@ export function CourseSetupView({
         ) : null}
         {failed && course.windMeasurement ? <p role="status">{language === 'sv' ? 'Ommätningen misslyckades. Tidigare vind gäller tills en ny mätning godkänns.' : 'Remeasurement failed. The previous wind remains in use until a new measurement is approved.'}</p> : null}
         {diagnostics && failed ? <WindFailureDiagnostics diagnostics={diagnostics} /> : null}
-        <div className={`course-wind-feedback ${windAssessment.usable ? 'approved' : 'rejected'}`} role="status" aria-live="polite">
-          <strong className="course-wind-feedback-title">
-            {windAssessment.usable ? t('course.windApproved') : t('course.windNotApproved')}
-          </strong>
-          {windAssessment.usable ? (
-            <>
-              {measurementValues ? <p className="course-wind-measurement-values">{measurementValues}</p> : null}
-              {measurementForDisplay ? <p>{t('course.windSampleNorth', { count: String(measurementForDisplay.sampleCount), north: measurementForDisplay.referenceFrame === 'true-north' ? t('course.windNorthTrue') : measurementForDisplay.referenceFrame === 'magnetic-north' ? t('course.windNorthMagnetic') : t('course.windNorthUnknown') })}</p> : null}
-              <p className="course-wind-feedback-note">{t('course.windStabilityAccuracyHelp')}</p>
-              <p className="course-wind-feedback-note">{t('course.windGpsSeparate')}</p>
-              <button type="button" className="wind-remeasure-button" onClick={handleMeasureAgain} disabled={isMeasuringWind}>{t('course.windMeasureAgain')}</button>
-            </>
-          ) : (
-            <>
-              <p className="course-wind-feedback-note">{t(feedbackReasonKey)}</p>
-              {measurementForDisplay ? (
-                <>
-                  {measurementValues ? <p className="course-wind-measurement-values">{measurementValues}</p> : null}
-                  <p>{t('course.windSampleNorth', { count: String(measurementForDisplay.sampleCount), north: measurementForDisplay.referenceFrame === 'true-north' ? t('course.windNorthTrue') : measurementForDisplay.referenceFrame === 'magnetic-north' ? t('course.windNorthMagnetic') : t('course.windNorthUnknown') })}</p>
-                  <p className="course-wind-feedback-note">{t('course.windStabilityAccuracyHelp')}</p>
-                </>
-              ) : null}
-              <button type="button" className="wind-remeasure-button" onClick={handleMeasureAgain} disabled={isMeasuringWind}>
-                {t(measurementForDisplay ? 'course.windMeasureAgain' : 'course.windMeasure')}
-              </button>
-            </>
-          )}
-        </div>
+        {windAssessment.usable ? (
+          <div className="course-wind-feedback approved" role="status" aria-live="polite">
+            <strong className="course-wind-feedback-title">{t('course.windApproved')}</strong>
+            {measurementValues ? <p className="course-wind-measurement-values">{measurementValues}</p> : null}
+            {measurementForDisplay ? <p>{t('course.windSampleNorth', { count: String(measurementForDisplay.sampleCount), north: measurementForDisplay.referenceFrame === 'true-north' ? t('course.windNorthTrue') : measurementForDisplay.referenceFrame === 'magnetic-north' ? t('course.windNorthMagnetic') : t('course.windNorthUnknown') })}</p> : null}
+            <p className="course-wind-feedback-note">{t('course.windStabilityAccuracyHelp')}</p>
+            <p className="course-wind-feedback-note">{t('course.windGpsSeparate')}</p>
+            <button type="button" className="wind-remeasure-button" onClick={handleMeasureAgain} disabled={isMeasuringWind}>{t('course.windMeasureAgain')}</button>
+          </div>
+        ) : null}
         <div className="course-display-debug" aria-label={t('course.debug')}>
           {windMeasurementSummary ? (
             <span>{windMeasurementSummary}</span>

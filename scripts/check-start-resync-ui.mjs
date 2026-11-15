@@ -36,6 +36,15 @@ try {
   const choose = minutes => page.locator('.duration-button').filter({ hasText: String(minutes) }).click()
   const advance = seconds => page.clock.runFor(seconds * 1000)
   const stopButton = page.locator('.recording-stop-button')
+  const assertStopButtonFits = async () => {
+    const bounds = await stopButton.evaluate(button => {
+      const rect = button.getBoundingClientRect()
+      return { top: rect.top, bottom: rect.bottom, height: rect.height, viewportHeight: window.innerHeight }
+    })
+    assert.ok(bounds.height > 0, 'running Start keeps a non-empty stop button')
+    assert.ok(bounds.top >= 0, 'stop button is not clipped at the top of the viewport')
+    assert.ok(bounds.bottom <= bounds.viewportHeight + 1, `stop button is fully visible in the viewport: ${JSON.stringify(bounds)}`)
+  }
   const dialog = page.getByRole('dialog', { name: 'Avsluta race' })
   const openEndRace = async () => { await stopButton.click(); await dialog.waitFor({ state: 'visible' }) }
   const cancelEndRace = () => dialog.getByRole('button', { name: 'Avbryt' }).click()
@@ -50,6 +59,10 @@ try {
 
   await start()
   assert.equal(await stopButton.count(), 1, 'running countdown shows stop control')
+  await assertStopButtonFits()
+  await page.setViewportSize({ width: 320, height: 568 })
+  await assertStopButtonFits()
+  await page.setViewportSize({ width: 390, height: 844 })
   assert.equal(await recordingStatus.count(), 0, 'running Start shows no recording status')
   await advance(10)
   assert.equal(await timer.innerText(), '4:50')
