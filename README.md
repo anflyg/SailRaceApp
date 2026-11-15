@@ -31,15 +31,17 @@ TackWise Race is the iPhone product in the TackWise sailing-instrument suite, bu
    ```bash
    npm run build
    ```
-4. Sync Capacitor after building:
+4. Build, sync, install and launch on a connected physical iPhone:
    ```bash
-   npm run cap:sync
+   npm run ios
    ```
-5. Open the iOS project in Xcode:
-   ```bash
-   npm run cap:open:ios
-   ```
-6. In Xcode, select your signing team and a connected iPhone, then run the app.
+   The command prints the current worktree, branch, commit and Git status before
+   building. It uses the current checkout without switching branches, requires
+   one available iPhone (or `TACKWISE_IOS_DEVICE_ID=<UDID>` when several are
+   connected), and uses Xcode automatic Debug signing. It stops before Capacitor
+   sync if locally changed sync-generated files could be overwritten. To open
+   Xcode manually instead, run `npm run cap:sync` followed by
+   `npm run cap:open:ios`.
 
 ## Notes
 
