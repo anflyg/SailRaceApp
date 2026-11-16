@@ -54,3 +54,34 @@ server logout is best effort if online. Public configuration, provider/legal-bas
 and processor/transfer/notice review and physical storage/logout evidence are
 prerequisites for an approved live environment. No live processing was enabled or
 verified in this implementation. [Concrete controls](../architecture/authentication.md).
+
+
+### Static marketing website preview (2026-11-16)
+
+Purpose: deliver a separate public-safe Swedish marketing preview for owner review.
+Implementation: private `anflyg/TackWiseWebsite`, separate Git-connected Cloudflare
+Pages project `tackwisewebsite`; [implementation/evidence PR](https://github.com/anflyg/TackWiseWebsite/pull/1).
+No account, form, payment, application API, direct Supabase/R2 access, race/GPS
+processing, analytics SDK, analytics cookies or advertising tracking was added.
+Product screenshots use only built-in synthetic/manual fixtures, with source
+commits/provenance recorded in the website repository.
+
+Provider: Cloudflare Pages/edge delivery. Technical requests can include IP
+address, request time, URL and network/client metadata. The website does not store
+visitor data itself. Observed preview responses additionally contain Cloudflare
+`NEL` and `Report-To` headers for network-error reporting; removal requested in
+static `_headers` did not suppress the outer-edge headers on `pages.dev`.
+Do not assume that no application analytics means no provider processing.
+
+Before production: owner review/approve actual controller/contact, purposes/legal
+bases, provider processing/transfer agreements, technical reporting/logging,
+retention/access, rights procedures and the final notice. Any website-only
+reporting-suppression change requires scoped review and verification; the existing
+Analysis-only rule and API settings remain untouched. `integritet.html` is an
+explicit incomplete draft and production blocker. No legal basis, retention or
+transfer arrangement is inferred or approved by this engineering record.
+
+Production deployment is disabled and no custom domain/DNS is attached. Merge,
+production publication and exact `www.tackwise.se`/DNS changes require separate
+explicit owner approval after privacy completion. Preview reachability does not
+approve general live Analysis authentication or application cloud processing.

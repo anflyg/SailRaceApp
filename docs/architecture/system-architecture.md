@@ -59,8 +59,9 @@ iPhone Race ---- tackwise-api Worker ---- Analysis Web
 ## Marketing website boundary (owner approved 2026-11-16)
 
 The owner approved a separate private repository, `anflyg/TackWiseWebsite`,
-for the static Swedish marketing website. This repository is planned and must
-be verified as created before claiming an implementation or deployment exists.
+for the static Swedish marketing website. The private repository is verified
+created; implementation and evidence are reviewed in
+[website PR #1](https://github.com/anflyg/TackWiseWebsite/pull/1).
 SailRaceApp remains the suite-level source of truth.
 
 The website serves self-hosted HTML, CSS, JavaScript and approved brand assets.
@@ -99,3 +100,35 @@ documents hosted HTTPS verification on 2026-10-29. Inspect actual Cloudflare
 Pages, zone DNS and applicable rules before any website hosting changes;
 record verified observations without assuming that historical notes reflect
 today's account state.
+
+### Verified website preview — 2026-11-16
+
+The separate Git-integrated Pages project `tackwisewebsite` was created through
+the Cloudflare API with **production deployments disabled from creation** and
+no initial deployment. Preview builds were then enabled only for
+`feat/static-website-v1-preview`; production branch remains `main`, with
+`production_deployments_enabled=false` and no canonical production deployment.
+Framework None, build command empty, output `public`, no environment secrets,
+Functions or application-resource bindings. Web Analytics is not enabled.
+
+[Preview](https://feat-static-website-v1-previ.tackwisewebsite.pages.dev/) is
+publicly reachable and contains only public-safe static assets and synthetic
+product captures. The owner explicitly approved adding only `TackWiseWebsite`
+to the existing Cloudflare GitHub app's selected repositories; the existing four
+selections were preserved. No `www`/apex, Analysis or API domain was changed.
+
+Read-only account inspection confirmed the existing `tackwiseanalysis` Pages
+project and `analysis.tackwise.se` binding. Existing `www.tackwise.se` is a
+DNS-only CNAME to `tackwise.se`; apex still has its pre-existing proxied A/AAAA
+origin. This is a conflict to review before any separately approved website DNS
+change, not authorization to replace it. Detailed observations, product capture
+commits, browser screenshots and deployed-header checks are in the
+[website verification record](https://github.com/anflyg/TackWiseWebsite/blob/feat/static-website-v1-preview/docs/verification.md).
+
+Cloudflare adds network-error reporting headers (`NEL`/`Report-To`) on the preview.
+A static Pages detach request was deployed, but real response checks show those
+outer-edge headers remain. The existing Analysis-only removal rule does not cover
+this host and was not changed. Provider reporting/logging/retention and final
+privacy-notice review remain release blockers; no global rule change or new Worker
+is approved by this task. See the marketing-preview activity in the
+[processing record](../privacy/gdpr-processing-record.md).
