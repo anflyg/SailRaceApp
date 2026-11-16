@@ -54,3 +54,48 @@ iPhone Race ---- tackwise-api Worker ---- Analysis Web
      |                    |
      +-- authenticated -->+-- private binding --> R2 race objects
 ```
+
+
+## Marketing website boundary (owner approved 2026-11-16)
+
+The owner approved a separate private repository, `anflyg/TackWiseWebsite`,
+for the static Swedish marketing website. This repository is planned and must
+be verified as created before claiming an implementation or deployment exists.
+SailRaceApp remains the suite-level source of truth.
+
+The website serves self-hosted HTML, CSS, JavaScript and approved brand assets.
+Product screenshots must be captured from current Race/Analysis code with
+synthetic/demo data only, with source commit and capture provenance recorded
+in the website repository. Race retains its white interface and instruments;
+Analysis retains its light map-first workspace. Watch is explicitly a concept
+under development. Preliminary Free/Pro positioning does not change the current
+first-three-accepted-cloud-races Analysis entitlement or authorize billing.
+
+Cloudflare Pages is approved for a separate **preview-only** project connected
+to the website repository: framework None, no build command, output `public`.
+Preview deployments may track the feature branch. Automatic production builds
+must remain disabled during preview preparation, and connecting Git must not
+publish the starter as a production deployment. The eventual production branch
+is `main`; only after separate release approval may production builds be
+enabled so subsequent merges/pushes to `main` trigger Pages deployment.
+
+This boundary adds no authentication, payment, database, API, direct Supabase
+access, R2 access, GPS/race-data processing, analytics cookies or third-party
+tracking. The Analysis link may target `https://analysis.tackwise.se/` but is
+not evidence that general live authentication is approved. Self-hosted images
+and a restrictive CSP minimize third-party requests; hosting still processes
+technical request data such as IP addresses and requires provider/privacy review.
+
+**Production gate:** `integritet.html` is an incomplete draft and blocks
+production publishing until controller/contact, purposes/legal bases,
+providers/transfers, logging/retention and rights information are completed
+and owner approved. Explicit owner approval is also required for merge,
+production deployment, `www.tackwise.se` attachment and any DNS change.
+Neither `analysis.tackwise.se` nor the API domain/configuration may be altered.
+
+The historical infrastructure-status file is not current deployment proof:
+Analysis's later [delivery record](https://github.com/anflyg/TackWiseAnalysis/blob/main/docs/cloud-analysis-delivery.md)
+documents hosted HTTPS verification on 2026-10-29. Inspect actual Cloudflare
+Pages, zone DNS and applicable rules before any website hosting changes;
+record verified observations without assuming that historical notes reflect
+today's account state.
