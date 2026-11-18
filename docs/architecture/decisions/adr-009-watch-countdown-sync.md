@@ -1,8 +1,9 @@
 # ADR-009 (PROPOSED): Watch countdown sync and iPhone recording boundary
 
-- **Status:** PROPOSED — not approved for implementation
+- **Status:** PROPOSED — synchronization and race-recording behavior not yet approved for implementation
 - **Scope:** Apple Watch Start Timer v1 with paired TackWise Race on iPhone
-- **Owner decision needed:** accept this ADR separately before implementing native integration
+- **Owner decision needed:** accept synchronization and race-recording behavior separately before implementing native integration
+- **Separately approved decision (2026-11-18):** Watch v1 stays as a SwiftUI watchOS target in `anflyg/SailRaceApp`'s existing Xcode project and uses Xcode Cloud for builds; see the build plan. This **does not** approve this ADR's conflict/recovery rules.
 - **Product proposal:** [TackWise Watch](../../product/tackwise-watch.md)
 - **Build/release proposal:** [Watch build and Xcode Cloud](../watch-build-and-release-plan.md)
 
@@ -77,4 +78,4 @@ The watch transmits only opaque session/control metadata; no location samples, a
 
 ## Approval state
 
-This ADR is **proposed only**. Product owner must approve the safety/concurrency and recording semantics; native feasibility and entitlement/privacy review must clear before implementation. No repository split, signing changes, CI activation, TestFlight release or merge is authorized by this draft.
+This ADR's **sync and recording semantics remain PROPOSED**. The product owner approved only the single-repository SwiftUI watchOS target and Xcode Cloud build environment on 2026-11-18 (documented separately). The owner still must approve safety/concurrency and recording semantics; native feasibility and entitlement/privacy review must clear before implementation. No repository split, signing changes, CI activation, TestFlight release or merge is authorized by this draft.
