@@ -1,14 +1,14 @@
-# TackWise Watch – native repository, Xcode Cloud and release proposal
+# TackWise Watch – repository and Xcode Cloud architecture
 
-> **Status:** PROPOSED, documentation only. No new Watch target, CI workflow, credentials, app record, signing changes, build, TestFlight deployment or merge is authorized.
+> **Decision:** OWNER-APPROVED 2026-11-18: use `anflyg/SailRaceApp` (no separate watch repository), add a native SwiftUI watchOS target to the existing `ios/App/App.xcodeproj`, and use Xcode Cloud as the native build environment. **Implementation and release plan remain unexecuted and subject to separate gates.** No new Watch target, CI workflow, credentials, app record, signing changes, build, TestFlight deployment or merge is authorized. This document is still in an unmerged draft PR.
 >
 > See [Watch product v1.3](../product/tackwise-watch.md) and [proposed ADR-009](decisions/adr-009-watch-countdown-sync.md).
 
-## Recommendation: one integrated repository for v1
+## Approved repository boundary for v1
 
 **Keep watchOS app in `anflyg/SailRaceApp`** as a native SwiftUI Watch App target in the existing `ios/App/App.xcodeproj`. Do not create a separate `TackWiseWatch` repository for v1. The watch companion and the iPhone native bridge change together when countdown semantics and replay protections change, so one commit/branch/PR and one Xcode project simplify coordinated validation, signing, versioning and TestFlight release. The existing repository continues to own suite-level architecture/ADR documentation.
 
-This is a **proposed** repo-boundary decision, not an approved change. A separate repository might become justified only for a decoupled, separately shipped watch product with independent release cadence and stable cross-repository integration contracts.
+This repository/target/build-environment choice was explicitly **approved by the product owner on 2026-11-18**. It is a design decision, not evidence of created native targets, operational CI, reviewed signing or production readiness. A separate repository might become justified only for a decoupled, separately shipped watch product with independent release cadence and stable cross-repository integration contracts.
 
 ## Confirmed baseline in current GitHub main (2026-11-18)
 
@@ -18,7 +18,7 @@ This is a **proposed** repo-boundary decision, not an approved change. A separat
 - No Watch target or Watch app is present in the inspected Xcode project; no `.github/workflows` directory was returned.
 - An Xcode Cloud preparation script in GitHub does **not** prove that Xcode Cloud itself has a configured or successful workflow. Inspect App Store Connect/Xcode Cloud before claiming operational readiness.
 
-## Proposed native target layout
+## Native target implementation plan (not yet executed)
 
 - Add a new **Watch App for existing iOS app** target using supported Xcode tooling, SwiftUI and a Watch-specific bundle identifier nested under the existing iPhone identity, subject to Apple's current bundle conventions and portal validation.
 - Keep watch code, local timer state machine and WatchConnectivity UI adapter inside the native Watch target. Avoid a duplicate JavaScript timer implementation on watch.
@@ -26,7 +26,7 @@ This is a **proposed** repo-boundary decision, not an approved change. A separat
 - Have one deterministic testable timer/state transition model (e.g. shared schema/state fixtures with platform implementations where necessary), with explicit protocol versions and native↔JS tests. Avoid prematurely creating a cloud API or publishing contracts to `tackwise-contracts`; decide only if an actual shared-contract need is demonstrated.
 - Avoid hardcoding initial Watch target filenames/paths before Xcode generates the target and signing identities.
 
-## Xcode Cloud design
+## Xcode Cloud design (selected environment; workflows not yet configured)
 
 Use the **existing project and GitHub connection** where present. Do not introduce new cloud accounts/providers or parallel CI pipelines merely for Watch v1.
 
@@ -91,7 +91,7 @@ Use the same task worktree/branch/PR for follow-ups. Follow `AGENTS.md`: freshly
 
 ## Outstanding approval/evidence
 
-- Owner approval of this **single-repository** recommendation and of ADR-009 behavior.
+- **Approved 2026-11-18:** same-repository Watch target and Xcode Cloud build environment. **Still pending:** detailed ADR-009 synchronization and race-recording semantics, build workflow creation and activation, signing/capabilities, and TestFlight release authority.
 - Actual configured Xcode Cloud workflow and Apple Developer signing/capability inventory remain **unverified**.
 - HealthKit session legitimacy and background haptics remain **unverified** until paired-device tests and policy/permission review.
 - No new Watch repo or Xcode Cloud workflow is created by this documentation.
