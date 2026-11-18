@@ -20,6 +20,8 @@
 		504EC30F1FED79650016851F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 504EC30E1FED79650016851F /* Assets.xcassets */; };
 		504EC3121FED79650016851F /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 504EC3101FED79650016851F /* LaunchScreen.storyboard */; };
 		50B271D11FEDC1A000F3C39B /* public in Resources */ = {isa = PBXBuildFile; fileRef = 50B271D01FEDC1A000F3C39B /* public */; };
+		B10000000000000000000001 /* WatchFeasibility.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000002 /* WatchFeasibility.swift */; };
+		B10000000000000000000003 /* WatchFeasibilityPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000004 /* WatchFeasibilityPlugin.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -39,6 +41,9 @@
 		504EC3131FED79650016851F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		50B271D01FEDC1A000F3C39B /* public */ = {isa = PBXFileReference; lastKnownFileType = folder; path = public; sourceTree = "<group>"; };
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
+		B10000000000000000000002 /* WatchFeasibility.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchFeasibility.swift; sourceTree = "<group>"; };
+		B10000000000000000000004 /* WatchFeasibilityPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchFeasibilityPlugin.swift; sourceTree = "<group>"; };
+		B10000000000000000000005 /* WatchFeasibility.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WatchFeasibility.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -58,6 +63,7 @@
 			children = (
 				958DCC722DB07C7200EA8C5F /* debug.xcconfig */,
 				504EC3061FED79650016851F /* App */,
+				B10000000000000000000006 /* WatchFeasibility */,
 				504EC3051FED79650016851F /* Products */,
 			);
 			sourceTree = "<group>";
@@ -66,6 +72,7 @@
 			isa = PBXGroup;
 			children = (
 				504EC3041FED79650016851F /* TackWise Race.app */,
+				B10000000000000000000005 /* WatchFeasibility.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -76,6 +83,7 @@
 				A82100000000000000000003 /* App.entitlements */,
 				50379B222058CBB4000EE86E /* capacitor.config.json */,
 				504EC3071FED79650016851F /* AppDelegate.swift */,
+				B10000000000000000000004 /* WatchFeasibilityPlugin.swift */,
 				A82300000000000000000002 /* WindSampleFreshness.swift */,
 				A82400000000000000000002 /* WindHeadingMath.swift */,
 				A82300000000000000000004 /* PrivacyInfo.xcprivacy */,
@@ -91,6 +99,7 @@
 			path = App;
 			sourceTree = "<group>";
 		};
+		B10000000000000000000006 /* WatchFeasibility */ = {isa = PBXGroup; children = (B10000000000000000000002 /* WatchFeasibility.swift */,); path = WatchFeasibility; sourceTree = "<group>"; };
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -99,6 +108,7 @@
 			buildConfigurationList = 504EC3161FED79650016851F /* Build configuration list for PBXNativeTarget "App" */;
 			buildPhases = (
 				A82100000000000000000010 /* Guard native test assets */,
+				B1000000000000000000000E /* Embed Watch feasibility */,
 				504EC3001FED79650016851F /* Sources */,
 				504EC3011FED79650016851F /* Frameworks */,
 				504EC3021FED79650016851F /* Resources */,
@@ -113,6 +123,17 @@
 			);
 			productName = App;
 			productReference = 504EC3041FED79650016851F /* TackWise Race.app */;
+			productType = "com.apple.product-type.application";
+		};
+		B10000000000000000000007 /* WatchFeasibility */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B1000000000000000000000B;
+			buildPhases = (B10000000000000000000008 /* Sources */,);
+			buildRules = ();
+			dependencies = ();
+			name = WatchFeasibility;
+			productName = WatchFeasibility;
+			productReference = B10000000000000000000005 /* WatchFeasibility.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -148,6 +169,7 @@
 			projectRoot = "";
 			targets = (
 				504EC3031FED79650016851F /* App */,
+				B10000000000000000000007 /* WatchFeasibility */,
 			);
 		};
 /* End PBXProject section */
@@ -182,6 +204,18 @@
 			shellPath = /bin/sh;
 			shellScript = "/bin/sh \"$SRCROOT/../../scripts/guard-native-test-build.sh\" \"$SRCROOT/App/public\"";
 		};
+		B1000000000000000000000E /* Embed Watch feasibility */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = ();
+			inputPaths = ();
+			name = "Embed Watch feasibility";
+			outputPaths = ();
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "if [ \"${TACKWISE_WATCH_FEASIBILITY:-}\" = 1 ]; then\n  if [ \"$CONFIGURATION\" != Debug ] || [ \"$PLATFORM_NAME\" != iphonesimulator ] || [ \"${TACKWISE_NATIVE_TEST_BUILD:-}\" != 1 ] || [ \"${SKIP_INSTALL:-}\" != YES ] || [ \"${ACTION:-}\" != build ]; then\n    echo 'error: Watch feasibility requires a guarded Debug simulator build'; exit 1\n  fi\n  test -d \"$BUILD_DIR/$CONFIGURATION-watchsimulator/WatchFeasibility.app\" || { echo 'error: Build WatchFeasibility first'; exit 1; }\n  mkdir -p \"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Watch\"\n  ditto \"$BUILD_DIR/$CONFIGURATION-watchsimulator/WatchFeasibility.app\" \"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Watch/WatchFeasibility.app\"\nfi";
+		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -194,9 +228,11 @@
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 				A82200000000000000000001 /* SceneDelegate.swift in Sources */,
 				A82100000000000000000001 /* TackWiseAuthPlugin.swift in Sources */,
+				B10000000000000000000003 /* WatchFeasibilityPlugin.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		B10000000000000000000008 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (B10000000000000000000001 /* WatchFeasibility.swift in Sources */,); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXVariantGroup section */
@@ -384,6 +420,8 @@
 			};
 			name = Release;
 		};
+		B10000000000000000000009 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGNING_ALLOWED = NO; CURRENT_PROJECT_VERSION = 14; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_KEY_CFBundleDisplayName = "Watch Feasibility"; INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.anflyg.sailraceapp; MARKETING_VERSION = 0.1.0; PRODUCT_BUNDLE_IDENTIFIER = com.anflyg.sailraceapp.watchkitapp; PRODUCT_NAME = WatchFeasibility; SDKROOT = watchos; SUPPORTED_PLATFORMS = "watchos watchsimulator"; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = 4; WATCHOS_DEPLOYMENT_TARGET = 10.0; SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG; }; name = Debug; };
+		B1000000000000000000000A /* Release */ = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGNING_ALLOWED = NO; CURRENT_PROJECT_VERSION = 14; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_KEY_CFBundleDisplayName = "Watch Feasibility"; INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.anflyg.sailraceapp; MARKETING_VERSION = 0.1.0; PRODUCT_BUNDLE_IDENTIFIER = com.anflyg.sailraceapp.watchkitapp; PRODUCT_NAME = WatchFeasibility; SDKROOT = watchos; SUPPORTED_PLATFORMS = "watchos watchsimulator"; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = 4; WATCHOS_DEPLOYMENT_TARGET = 10.0; SWIFT_ACTIVE_COMPILATION_CONDITIONS = ""; }; name = Release; };
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -405,6 +443,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		B1000000000000000000000B = {isa = XCConfigurationList; buildConfigurations = (B10000000000000000000009 /* Debug */, B1000000000000000000000A /* Release */,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
