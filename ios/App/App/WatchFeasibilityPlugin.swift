@@ -1,4 +1,4 @@
-#if DEBUG && WATCH_FEASIBILITY && targetEnvironment(simulator)
+#if WATCH_TEST_CANDIDATE || (DEBUG && WATCH_FEASIBILITY && targetEnvironment(simulator))
 import Capacitor
 import Foundation
 import WatchConnectivity

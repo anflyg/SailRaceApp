@@ -1,5 +1,5 @@
 import SwiftUI
-#if DEBUG
+#if DEBUG || WATCH_TEST_CANDIDATE
 import WatchKit
 import WatchConnectivity
 
