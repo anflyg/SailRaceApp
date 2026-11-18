@@ -13,6 +13,14 @@ final class Experiment: NSObject, ObservableObject, WCSessionDelegate {
     override init() {
         super.init()
         if WCSession.isSupported() { WCSession.default.delegate = self; WCSession.default.activate() }
+        #if targetEnvironment(simulator)
+        if ProcessInfo.processInfo.arguments.contains("--watch-auto-countdown") {
+            DispatchQueue.main.async { self.start() }
+        }
+        if ProcessInfo.processInfo.arguments.contains("--watch-auto-send") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 5) { self.send() }
+        }
+        #endif
     }
     func start() {
         deadline = ProcessInfo.processInfo.systemUptime + 60
@@ -28,17 +36,20 @@ final class Experiment: NSObject, ObservableObject, WCSessionDelegate {
         remaining = seconds
         // Never replay missed cues when execution resumes late.
         if seconds <= 5 && seconds < lastCue && timeLeft >= Double(seconds) - 0.25 {
+            NSLog("Watch feasibility: haptic request %d", seconds)
             WKInterfaceDevice.current().play(seconds == 0 ? .success : .click)
         }
         lastCue = seconds
         if seconds == 0 { timer?.invalidate(); self.deadline = nil }
     }
     func send() {
-        guard WCSession.default.activationState == .activated, WCSession.default.isReachable else { status = "Phone unreachable"; return }
+        guard WCSession.default.activationState == .activated, WCSession.default.isReachable else { status = "Phone unreachable"; NSLog("Watch feasibility: phone unreachable"); return }
         status = "Awaiting JS"
         WCSession.default.sendMessage(["kind": "watch-feasibility", "id": UUID().uuidString], replyHandler: { [weak self] reply in
-            DispatchQueue.main.async { self?.status = (reply["processed"] as? Bool == true) ? "JS processed" : "JS not confirmed" }
-        }, errorHandler: { [weak self] _ in DispatchQueue.main.async { self?.status = "Delivery failed" } })
+            DispatchQueue.main.async { let processed = reply["processed"] as? Bool == true
+                self?.status = processed ? "JS processed" : "JS not confirmed"
+                NSLog(processed ? "Watch feasibility: JS processed" : "Watch feasibility: JS not confirmed") }
+        }, errorHandler: { [weak self] _ in DispatchQueue.main.async { self?.status = "Delivery failed"; NSLog("Watch feasibility: delivery failed") } })
     }
     func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {}
 }

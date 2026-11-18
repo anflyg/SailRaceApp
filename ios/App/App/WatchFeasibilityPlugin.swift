@@ -1,4 +1,4 @@
-#if DEBUG
+#if DEBUG && WATCH_FEASIBILITY && targetEnvironment(simulator)
 import Capacitor
 import Foundation
 import WatchConnectivity
@@ -30,6 +30,7 @@ final class WatchFeasibilityReceiver: NSObject, WCSessionDelegate {
     }
     func finish(_ id: String, processed: Bool) {
         guard let reply = pending.removeValue(forKey: id) else { return }
+        NSLog(processed ? "Watch feasibility: JS confirmed" : "Watch feasibility: JS timeout")
         reply(["processed": processed])
     }
 }
@@ -38,7 +39,13 @@ final class WatchFeasibilityReceiver: NSObject, WCSessionDelegate {
 public class WatchFeasibilityPlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "WatchFeasibilityPlugin"
     public let jsName = "WatchFeasibility"
-    public let pluginMethods: [CAPPluginMethod] = [CAPPluginMethod(name: "confirm", returnType: CAPPluginReturnPromise)]
+    public let pluginMethods: [CAPPluginMethod] = [
+        CAPPluginMethod(name: "confirm", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "testMode", returnType: CAPPluginReturnPromise)
+    ]
+    @objc func testMode(_ call: CAPPluginCall) {
+        call.resolve(["listen": !ProcessInfo.processInfo.arguments.contains("--watch-no-listener")])
+    }
     public override func load() { WatchFeasibilityReceiver.shared.plugin = self }
     @objc func confirm(_ call: CAPPluginCall) {
         guard let id = call.getString("id") else { call.reject("Missing id"); return }

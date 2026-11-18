@@ -8,7 +8,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        #if DEBUG
+        #if DEBUG && WATCH_FEASIBILITY && targetEnvironment(simulator)
         WatchFeasibilityReceiver.shared.start()
         #endif
         return true
@@ -64,7 +64,7 @@ class AppBridgeViewController: CAPBridgeViewController {
         bridge?.registerPluginInstance(WindHeadingPlugin())
         bridge?.registerPluginInstance(TackWiseAuthPlugin())
         bridge?.registerPluginInstance(TackWiseAppInfoPlugin())
-        #if DEBUG
+        #if DEBUG && WATCH_FEASIBILITY && targetEnvironment(simulator)
         bridge?.registerPluginInstance(WatchFeasibilityPlugin())
         #endif
     }
