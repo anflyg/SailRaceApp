@@ -91,7 +91,7 @@ Use the same task worktree/branch/PR for follow-ups. Follow `AGENTS.md`: freshly
 
 ## Outstanding approval/evidence
 
-- **Approved 2026-11-18:** same-repository Watch target and Xcode Cloud build environment. **Still pending:** detailed ADR-009 synchronization and race-recording semantics, build workflow creation and activation, signing/capabilities, and TestFlight release authority.
+- **Approved 2026-11-18:** same-repository Watch target and Xcode Cloud build environment, plus five Watch v1.3 product rules (iPhone authority and SOLO conflicts, STOP separate from End race, RUNNING-only skip, iPhone-preferred explicit offline preset conflict, fail-safe restart recovery). **Still pending:** detailed ADR-009 protocol implementation choices, WatchConnectivity/HealthKit feasibility, build workflow creation and activation, signing/capabilities, and TestFlight release authority.
 - Actual configured Xcode Cloud workflow and Apple Developer signing/capability inventory remain **unverified**.
 - HealthKit session legitimacy and background haptics remain **unverified** until paired-device tests and policy/permission review.
 - No new Watch repo or Xcode Cloud workflow is created by this documentation.
