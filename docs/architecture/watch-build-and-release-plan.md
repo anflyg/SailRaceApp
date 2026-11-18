@@ -65,6 +65,10 @@ Before any Watch target or release automation change:
 4. Audit the actual need and policy eligibility for HealthKit workout sessions/background execution. Do not add workout/health permissions as an unchecked workaround for background haptics. Prepare required privacy/App Review disclosures and a choice to discard an unneeded workout without persistently collecting health data.
 5. Keep signing/certificates and App Store Connect API keys out of GitHub. Use the existing trusted signing system, with minimum access.
 
+## Current platform evidence (documentation only)
+
+See [Watch platform feasibility and physical-device gate](watch-platform-feasibility.md) for checked Apple documentation, the actual React/Capacitor race integration, and the minimum hardware experiments. **H1–H8 are NOT RUN.** In particular, prepared-only workout background haptics and locked-iPhone native→JavaScript command completion remain unverified; no entitlements, provisioning, CI workflows or distributions are authorized by the research.
+
 ## Physical-device verification before release
 
 A native build and simulator test are necessary but insufficient. On a specific paired iPhone/Apple Watch set, verify:
