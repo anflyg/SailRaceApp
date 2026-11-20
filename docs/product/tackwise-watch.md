@@ -7,7 +7,7 @@
 
 ## Product role and principles
 
-TackWise Watch is a sailing-focused watch companion, not a smaller copy of the iPhone UI. Design for sunlight, motion, wet hands, strong contrast, large digits, minimal attention and conservative battery use. The initial release is a **start countdown only**. A watch may complete a local countdown without a phone connection; this does not mean that a phone recording has started.
+TackWise Watch is a sailing-focused watch companion, not a smaller copy of the iPhone UI. Design for sunlight, motion, wet hands, strong contrast, large digits, minimal attention and conservative battery use. The previously approved initial release scope is **start countdown only**. A minimal, voluntary Sailing Workout with live heart rate is a separately approved **product direction for feasibility testing**, not an approved HealthKit implementation or production release. A watch may complete a local countdown without a phone connection; this does not mean that a phone recording has started.
 
 The watch's proposed native implementation uses SwiftUI. Its on-watch countdown may run locally; the existing iPhone application remains the authority for local race recording and its start-gun event.
 
@@ -29,7 +29,7 @@ The previously approved platform boundary is **one native SwiftUI Watch target i
 - Start, pause, resume, skip down to a whole minute, and stop/reset.
 - Retain the most recently explicitly selected preset across app restarts and new races; default to **5:00** only on first use.
 - Synchronize **commands and state changes**, not every displayed second, with TackWise Race on iPhone in both directions.
-- Local vibration at **5, 4, 3, 2, 1** seconds (short) and **0** (distinctive stronger/longer effect if supported).
+- Local vibration at **5, 4, 3, 2, 1** seconds (short) and **0** (distinctive stronger/longer effect if supported). The physical Watch Test prototype additionally uses a short beep at 5–1 (approximately 150 ms) and the **same pitch/timbre held longer** at 0 (approximately 650 ms); actual wrist-down delivery is not yet verified.
 - Continue the watch countdown when connectivity is lost; never promise phone recording without confirmation.
 - Return to a passive state after the gun or stop; the watch app does not need to remain active for the subsequent race.
 
@@ -38,6 +38,13 @@ Not in v1: watch GPS/recording, VMG, course, speed, start-line distance, cloud s
 ## Screen and interaction
 
 Use a dark, high-contrast face with the **largest practical MM:SS digits**. No persistent TackWise wordmark or decorative gauges. A small link-status indicator is optional; timing dominates the screen. The *number display itself has no tap action*.
+
+### Approved minimalist countdown face (owner decision, 2026-11-20)
+
+- In RUNNING, show only **large MM:SS**, a **small heart icon and current heart rate (e.g. `124 bpm`) when HealthKit is authorized and a valid measurement is available**, and the existing **PAUSE** control. Keep the timer visually dominant and the heart rate secondary; avoid invented readings.
+- **Do not display** the labels **“Startnedräkning”** or **“Seglingspass aktivt”** on the countdown face. No persistent workout-status text, permanent workout buttons, or additional decorative elements on this primary screen.
+- Preserve the existing READY/PAUSED controls and accessible secondary actions. HealthKit consent, any workout indication required by watchOS, error states and a reliable workout-end action must remain understandable and accessible outside the uncluttered RUNNING face; do not conceal an ongoing workout.
+- This is an **approved UI/product decision**, not evidence that the native product UI, HealthKit authorization or workout lifecycle is implemented. The separate Watch Test remains a feasibility prototype.
 
 | State | Display | Input |
 | --- | --- | --- |
@@ -76,9 +83,17 @@ Persist the last **explicit** whole-minute selection, locally on both devices. A
 
 When the watch app is explicitly opened to prepare for the start, establish the supported background execution mechanism before promising background haptics. An `HKWorkoutSession` of a suitable type is a **candidate requiring technical, App Review and privacy approval**, not permission to create a misleading workout or save unnecessary health data. Do not implement unrelated HealthKit data collection or automatically create a saved workout. If an appropriate approved background session is unavailable, report the limitation honestly.
 
+### Proposed opt-in Sailing Workout experiment (owner product direction, 2026-11-20)
+
+- Offer a **genuine, optional sailing fitness session** with elapsed workout duration and live heart rate; it must provide user value independent of countdown/background-execution needs. Never start HealthKit processing before an informed opt-in and the applicable authorization flow. A later countdown start can initiate an enabled workout automatically only after the user has knowingly opted into that behavior.
+- Keep the main countdown screen minimalist as specified above. A sailing workout may continue after the start gun while the real activity continues, independently of the countdown and iPhone race recording. Provide an accessible, explicit way to end it and prevent unintended long-running sessions; **STOP_RESET** of the countdown is not **End race** and must not implicitly change the approved recording boundary.
+- Prefer HealthKit's supported workout heart-rate and duration collection. Do **not** add a separate 30-second heart-rate log, store heart-rate summaries in TackWise races, send health data to the cloud, or enable additional Watch GPS tracking in this experiment. Review any data the platform saves automatically, including save/discard, authorization, deletion and disclosures. Health data must not be logged in diagnostics.
+- Battery consumption is a feasibility gate: measure a comparable baseline and active-workout drain on the physical Watch SE 2, note active sensors and battery impact, and reject a materially excessive drain for sailing use. Minimize display redraws, polling, wireless transfers and other background work; do not imply that infrequent app-side storage reduces the Watch's workout sensor power.
+- Wrist-down 5–0 audio and haptics remain **unverified**, as do HealthKit/App Review suitability and system permission behavior. Review entitlements, workout/background modes, privacy/GDPR and CRA **before implementation and release**, and do not infer approval from a successful TestFlight build.
+
 User-approved screen behavior: **dimming/screen-off is acceptable**; on raising the wrist, the watch must show the correct time again. Do not attempt to override watchOS display policies. During a supported active session the countdown should continue even if the display is dimmed.
 
-Haptics are locally scheduled against the valid countdown generation. Provide short distinct feedback at 5, 4, 3, 2 and 1 second, and a stronger/longer feasible pattern at 0. Never replay missed seconds or stale-generation cues after pause, skip, reset or recovery. Verify physical-watch behavior while wrist-down; UI/simulator tests alone do not establish this requirement. At the gun briefly show START!, then end the background session and return to a passive state.
+Haptics are locally scheduled against the valid countdown generation. Provide short distinct feedback at 5, 4, 3, 2 and 1 second, and a stronger/longer feasible pattern at 0. Never replay missed seconds or stale-generation cues after pause, skip, reset or recovery. Verify physical-watch behavior while wrist-down; UI/simulator tests alone do not establish this requirement. At the gun briefly show START! and return the **countdown** to a passive state. End any **countdown-only** background execution then; a separately opted-in genuine Sailing Workout, if later approved, may continue until explicitly ended.
 
 ## Phone/watch cooperation
 
@@ -111,7 +126,7 @@ Haptics are locally scheduled against the valid countdown generation. Provide sh
 5. Timer STOP_RESET does **not** end an active race; the existing iPhone recording path, post-gun new-countdown behavior, gun semantics, recovery and confirmed End race are regression-tested.
 6. Timing agrees within one displayed second on two connected active devices in normal conditions; out-of-range delay is not advertised as instantaneous.
 7. Watch dim/raise, physical wrist-down haptics and wet-touch ergonomics are tested on a real watch.
-8. No workout/Health data is unnecessarily saved; new entitlements and privacy impacts are reviewed before release.
+8. No workout/Health data is unnecessarily saved; new entitlements and privacy impacts are reviewed before release. The optional Sailing Workout requires separate authorization, data-lifecycle review, physical wrist-down cue verification and comparative Watch SE 2 battery evidence before product approval.
 9. An actual Xcode simulator **Build and Run** plus paired physical iPhone/Watch tests are required for native release readiness.
 10. A passing PR/build is **not** authorization to merge, automatically deliver to TestFlight, or activate production.
 11. Restart recovery resumes only from verifiable state/time continuity; expired alerts, retroactive start guns and reconstructed race history are forbidden.
