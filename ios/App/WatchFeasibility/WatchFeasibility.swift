@@ -12,6 +12,7 @@ final class Experiment: NSObject, ObservableObject, WCSessionDelegate {
     private var countdown = CountdownState()
     private var timer: Timer?
     private var sceneIsActive = false
+    private var workoutIsActive = false
     private var shortBeep: AVAudioPlayer?
     private var zeroBeep: AVAudioPlayer?
 
@@ -33,7 +34,7 @@ final class Experiment: NSObject, ObservableObject, WCSessionDelegate {
         countdown.start(at: .now)
         remaining = 60
         countdownStatus = "Running"
-        if sceneIsActive { startTimer() }
+        if sceneIsActive || workoutIsActive { startTimer() }
     }
     func cancel() {
         timer?.invalidate()
@@ -43,9 +44,16 @@ final class Experiment: NSObject, ObservableObject, WCSessionDelegate {
     }
     func setActive(_ active: Bool) {
         sceneIsActive = active
+        updateExecution()
+    }
+    func setWorkoutActive(_ active: Bool) {
+        workoutIsActive = active
+        updateExecution()
+    }
+    private func updateExecution() {
         timer?.invalidate()
         timer = nil
-        guard active, countdownStatus == "Running" else { return }
+        guard sceneIsActive || workoutIsActive, countdownStatus == "Running" else { return }
         tick(allowCue: false)
         if countdownStatus == "Running" { startTimer() }
     }
@@ -106,11 +114,18 @@ final class Experiment: NSObject, ObservableObject, WCSessionDelegate {
 
 @main struct WatchFeasibilityApp: App {
     @StateObject private var experiment = Experiment()
+    #if WATCH_TEST_CANDIDATE
+    @StateObject private var workout = SailingWorkout()
+    #endif
     @Environment(\.scenePhase) private var scenePhase
     var body: some Scene {
         WindowGroup {
+            NavigationStack {
             ScrollView {
               VStack {
+                #if WATCH_TEST_CANDIDATE
+                if workout.active { Text("Workout active").font(.caption) }
+                #endif
                 Text(String(format: "%02d:%02d", experiment.remaining / 60, experiment.remaining % 60)).font(.system(size: 42, weight: .bold, design: .monospaced))
                 Button("Start 1 min") { experiment.start() }
                 Button("Cancel") { experiment.cancel() }
@@ -118,11 +133,20 @@ final class Experiment: NSObject, ObservableObject, WCSessionDelegate {
                 Text(experiment.countdownStatus).font(.caption2)
                 Button("Send test") { experiment.send() }
                 Text(experiment.status).font(.caption)
+                #if WATCH_TEST_CANDIDATE
+                NavigationLink(workout.active ? "Workout active" : "Sailing workout") {
+                    SailingWorkoutView(workout: workout)
+                }
+                #endif
               }
             }
             .focusable(true)
             .onAppear { experiment.setActive(scenePhase == .active) }
             .onChange(of: scenePhase) { _, phase in experiment.setActive(phase == .active) }
+            #if WATCH_TEST_CANDIDATE
+            .onChange(of: workout.active) { _, active in experiment.setWorkoutActive(active) }
+            #endif
+            }
         }
     }
 }
