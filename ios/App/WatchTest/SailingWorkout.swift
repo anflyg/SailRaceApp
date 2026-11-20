@@ -8,11 +8,19 @@ final class SailingWorkout: NSObject, ObservableObject, HKWorkoutSessionDelegate
     @Published private(set) var active = false
     @Published private(set) var busy = true
     @Published private(set) var heartRate: Double?
+    @Published private(set) var heartRateSampleDate: Date?
     @Published private(set) var startDate: Date?
     private let store = HKHealthStore()
     private var session: HKWorkoutSession?
     private var builder: HKLiveWorkoutBuilder?
     private let heartType = HKQuantityType(.heartRate)
+
+    func liveHeartRate(at date: Date) -> Int? {
+        guard active, let heartRate, heartRate.isFinite, heartRate > 0, heartRate < 300,
+              let heartRateSampleDate, date.timeIntervalSince(heartRateSampleDate) <= 30,
+              date >= heartRateSampleDate else { return nil }
+        return Int(heartRate.rounded())
+    }
 
     override init() {
         super.init()
@@ -100,7 +108,7 @@ final class SailingWorkout: NSObject, ObservableObject, HKWorkoutSessionDelegate
             DispatchQueue.main.async {
                 guard let self else { return }
                 self.active = false; self.busy = false; self.session = nil; self.builder = nil
-                self.heartRate = nil; self.startDate = nil; self.status = "Workout discarded"
+                self.heartRate = nil; self.heartRateSampleDate = nil; self.startDate = nil; self.status = "Workout discarded"
             }
         }
     }
@@ -115,7 +123,10 @@ final class SailingWorkout: NSObject, ObservableObject, HKWorkoutSessionDelegate
     func workoutBuilder(_ workoutBuilder: HKLiveWorkoutBuilder, didCollectDataOf collectedTypes: Set<HKSampleType>) {
         guard collectedTypes.contains(heartType), let quantity = workoutBuilder.statistics(for: heartType)?.mostRecentQuantity() else { return }
         let bpm = quantity.doubleValue(for: HKUnit.count().unitDivided(by: .minute()))
-        DispatchQueue.main.async { [weak self] in self?.heartRate = bpm }
+        DispatchQueue.main.async { [weak self] in
+            self?.heartRate = bpm
+            self?.heartRateSampleDate = Date()
+        }
     }
 }
 

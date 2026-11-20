@@ -122,22 +122,27 @@ final class Experiment: NSObject, ObservableObject, WCSessionDelegate {
         WindowGroup {
             NavigationStack {
             ScrollView {
-              VStack {
+              VStack(spacing: 10) {
+                Text(String(format: "%02d:%02d", experiment.remaining / 60, experiment.remaining % 60))
+                    .font(.system(size: 56, weight: .bold, design: .monospaced))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.72)
+                    .accessibilityLabel("Time remaining")
                 #if WATCH_TEST_CANDIDATE
-                if workout.active { Text("Workout active").font(.caption) }
+                TimelineView(.periodic(from: .now, by: 1)) { context in
+                    if let bpm = workout.liveHeartRate(at: context.date) {
+                        Label("\(bpm) bpm", systemImage: "heart.fill")
+                            .font(.caption2)
+                            .foregroundStyle(.red)
+                            .accessibilityLabel("Heart rate, \(bpm) beats per minute")
+                    }
+                }
                 #endif
-                Text(String(format: "%02d:%02d", experiment.remaining / 60, experiment.remaining % 60)).font(.system(size: 42, weight: .bold, design: .monospaced))
                 Button("Start 1 min") { experiment.start() }
                 Button("Cancel") { experiment.cancel() }
                 Toggle("Sound cues", isOn: $experiment.soundEnabled)
-                Text(experiment.countdownStatus).font(.caption2)
                 Button("Send test") { experiment.send() }
                 Text(experiment.status).font(.caption)
-                #if WATCH_TEST_CANDIDATE
-                NavigationLink(workout.active ? "Workout active" : "Sailing workout") {
-                    SailingWorkoutView(workout: workout)
-                }
-                #endif
               }
             }
             .focusable(true)
@@ -146,6 +151,18 @@ final class Experiment: NSObject, ObservableObject, WCSessionDelegate {
             #if WATCH_TEST_CANDIDATE
             .onChange(of: workout.active) { _, active in experiment.setWorkoutActive(active) }
             #endif
+            .toolbar {
+                #if WATCH_TEST_CANDIDATE
+                ToolbarItem(placement: .topBarTrailing) {
+                    NavigationLink {
+                        SailingWorkoutView(workout: workout)
+                    } label: {
+                        Image(systemName: "ellipsis")
+                    }
+                    .accessibilityLabel("Workout details")
+                }
+                #endif
+            }
             }
         }
     }
