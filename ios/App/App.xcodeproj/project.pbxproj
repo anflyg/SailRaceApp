@@ -32,6 +32,7 @@
 		C1000000000000000000001C /* Watch assets */ = {isa = PBXBuildFile; fileRef = C1000000000000000000001D; };
 		C10000000000000000000020 /* CountdownShort.wav in Resources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000022; };
 		C10000000000000000000027 /* SailingWorkout.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000028; };
+		C1000000000000000000002A /* WorkoutRecoveryState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000000000000000000002B; };
 		C10000000000000000000024 /* CountdownState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000026; };
 		C10000000000000000000025 /* CountdownState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000026; };
 		C10000000000000000000021 /* CountdownZero.wav in Resources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000023; };
@@ -63,6 +64,7 @@
 		C1000000000000000000001D /* WatchAssets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = WatchAssets.xcassets; sourceTree = "<group>"; };
 		C10000000000000000000028 /* SailingWorkout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SailingWorkout.swift; sourceTree = "<group>"; };
 		C10000000000000000000029 /* WatchTest.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = WatchTest.entitlements; sourceTree = "<group>"; };
+		C1000000000000000000002B /* WorkoutRecoveryState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutRecoveryState.swift; sourceTree = "<group>"; };
 		C10000000000000000000026 /* CountdownState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CountdownState.swift; sourceTree = "<group>"; };
 		C10000000000000000000022 /* CountdownShort.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = Audio/CountdownShort.wav; sourceTree = "<group>"; };
 		C10000000000000000000023 /* CountdownZero.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = Audio/CountdownZero.wav; sourceTree = "<group>"; };
@@ -138,7 +140,7 @@
 			sourceTree = "<group>";
 		};
 		B10000000000000000000006 /* WatchFeasibility */ = {isa = PBXGroup; children = (B10000000000000000000002 /* WatchFeasibility.swift */, C10000000000000000000026 /* CountdownState.swift */,); path = WatchFeasibility; sourceTree = "<group>"; };
-		C1000000000000000000000B /* WatchTest */ = {isa = PBXGroup; children = (C10000000000000000000002, C10000000000000000000028, C10000000000000000000029, C1000000000000000000001D, C10000000000000000000022, C10000000000000000000023,); path = WatchTest; sourceTree = "<group>"; };
+		C1000000000000000000000B /* WatchTest */ = {isa = PBXGroup; children = (C10000000000000000000002, C10000000000000000000028, C10000000000000000000029, C1000000000000000000002B, C1000000000000000000001D, C10000000000000000000022, C10000000000000000000023,); path = WatchTest; sourceTree = "<group>"; };
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -281,7 +283,7 @@
 		};
 		B10000000000000000000008 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (B10000000000000000000001 /* WatchFeasibility.swift in Sources */, C10000000000000000000024,); runOnlyForDeploymentPostprocessing = 0; };
 		C1000000000000000000000E /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (C10000000000000000000001, C10000000000000000000003,); runOnlyForDeploymentPostprocessing = 0; };
-		C10000000000000000000014 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (C10000000000000000000004, C10000000000000000000025, C10000000000000000000027,); runOnlyForDeploymentPostprocessing = 0; };
+		C10000000000000000000014 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (C10000000000000000000004, C10000000000000000000025, C10000000000000000000027, C1000000000000000000002A,); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXVariantGroup section */

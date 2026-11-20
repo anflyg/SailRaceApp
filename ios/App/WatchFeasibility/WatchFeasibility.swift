@@ -115,6 +115,7 @@ final class Experiment: NSObject, ObservableObject, WCSessionDelegate {
 @main struct WatchFeasibilityApp: App {
     @StateObject private var experiment = Experiment()
     #if WATCH_TEST_CANDIDATE
+    @WKApplicationDelegateAdaptor(WatchTestWorkoutAppDelegate.self) private var workoutAppDelegate
     @StateObject private var workout = SailingWorkout()
     #endif
     @Environment(\.scenePhase) private var scenePhase
@@ -146,7 +147,13 @@ final class Experiment: NSObject, ObservableObject, WCSessionDelegate {
               }
             }
             .focusable(true)
-            .onAppear { experiment.setActive(scenePhase == .active) }
+            .onAppear {
+                experiment.setActive(scenePhase == .active)
+                #if WATCH_TEST_CANDIDATE
+                workoutAppDelegate.installRecoveryHandler { workout.checkForRecoverableWorkout() }
+                workout.checkForRecoverableWorkout()
+                #endif
+            }
             .onChange(of: scenePhase) { _, phase in experiment.setActive(phase == .active) }
             #if WATCH_TEST_CANDIDATE
             .onChange(of: workout.active) { _, active in experiment.setWorkoutActive(active) }
