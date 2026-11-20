@@ -31,6 +31,8 @@
 		C1000000000000000000001B /* iPhone assets */ = {isa = PBXBuildFile; fileRef = 504EC30E1FED79650016851F; };
 		C1000000000000000000001C /* Watch assets */ = {isa = PBXBuildFile; fileRef = C1000000000000000000001D; };
 		C10000000000000000000020 /* CountdownShort.wav in Resources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000022; };
+		C10000000000000000000024 /* CountdownState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000026; };
+		C10000000000000000000025 /* CountdownState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000026; };
 		C10000000000000000000021 /* CountdownZero.wav in Resources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000023; };
 /* End PBXBuildFile section */
 
@@ -58,6 +60,7 @@
 		C10000000000000000000008 /* WatchTest Watch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "WatchTest Watch.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		C10000000000000000000009 /* TackWise Watch Test.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "TackWise Watch Test.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		C1000000000000000000001D /* WatchAssets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = WatchAssets.xcassets; sourceTree = "<group>"; };
+		C10000000000000000000026 /* CountdownState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CountdownState.swift; sourceTree = "<group>"; };
 		C10000000000000000000022 /* CountdownShort.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = Audio/CountdownShort.wav; sourceTree = "<group>"; };
 		C10000000000000000000023 /* CountdownZero.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = Audio/CountdownZero.wav; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -131,7 +134,7 @@
 			path = App;
 			sourceTree = "<group>";
 		};
-		B10000000000000000000006 /* WatchFeasibility */ = {isa = PBXGroup; children = (B10000000000000000000002 /* WatchFeasibility.swift */,); path = WatchFeasibility; sourceTree = "<group>"; };
+		B10000000000000000000006 /* WatchFeasibility */ = {isa = PBXGroup; children = (B10000000000000000000002 /* WatchFeasibility.swift */, C10000000000000000000026 /* CountdownState.swift */,); path = WatchFeasibility; sourceTree = "<group>"; };
 		C1000000000000000000000B /* WatchTest */ = {isa = PBXGroup; children = (C10000000000000000000002, C1000000000000000000001D, C10000000000000000000022, C10000000000000000000023,); path = WatchTest; sourceTree = "<group>"; };
 /* End PBXGroup section */
 
@@ -273,9 +276,9 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		B10000000000000000000008 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (B10000000000000000000001 /* WatchFeasibility.swift in Sources */,); runOnlyForDeploymentPostprocessing = 0; };
+		B10000000000000000000008 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (B10000000000000000000001 /* WatchFeasibility.swift in Sources */, C10000000000000000000024,); runOnlyForDeploymentPostprocessing = 0; };
 		C1000000000000000000000E /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (C10000000000000000000001, C10000000000000000000003,); runOnlyForDeploymentPostprocessing = 0; };
-		C10000000000000000000014 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (C10000000000000000000004,); runOnlyForDeploymentPostprocessing = 0; };
+		C10000000000000000000014 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (C10000000000000000000004, C10000000000000000000025,); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXVariantGroup section */

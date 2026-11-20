@@ -9,9 +9,9 @@ final class Experiment: NSObject, ObservableObject, WCSessionDelegate {
     @Published var countdownStatus = "Ready"
     @Published var remaining = 60
     @Published var soundEnabled = true
-    private var deadline: TimeInterval?
-    private var lastCue = 61
+    private var countdown = CountdownState()
     private var timer: Timer?
+    private var sceneIsActive = false
     private var shortBeep: AVAudioPlayer?
     private var zeroBeep: AVAudioPlayer?
 
@@ -30,17 +30,29 @@ final class Experiment: NSObject, ObservableObject, WCSessionDelegate {
     }
     func start() {
         timer?.invalidate()
-        deadline = ProcessInfo.processInfo.systemUptime + 60
+        countdown.start(at: .now)
         remaining = 60
         countdownStatus = "Running"
-        lastCue = 61
-        timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in self?.tick() }
+        if sceneIsActive { startTimer() }
     }
     func cancel() {
         timer?.invalidate()
         timer = nil
-        deadline = nil
+        countdown.cancel()
         countdownStatus = "Cancelled"
+    }
+    func setActive(_ active: Bool) {
+        sceneIsActive = active
+        timer?.invalidate()
+        timer = nil
+        guard active, countdownStatus == "Running" else { return }
+        tick(allowCue: false)
+        if countdownStatus == "Running" { startTimer() }
+    }
+    private func startTimer() {
+        let next = Timer(timeInterval: 0.1, repeats: true) { [weak self] _ in self?.tick(allowCue: true) }
+        RunLoop.main.add(next, forMode: .common)
+        timer = next
     }
     private func preloadSounds() {
         // Ambient audio follows the system's silent-mode policy and does not
@@ -66,24 +78,17 @@ final class Experiment: NSObject, ObservableObject, WCSessionDelegate {
         player.currentTime = 0
         if player.play() { NSLog("Watch feasibility: audio request %d", seconds) }
     }
-    private func tick() {
-        guard let deadline = deadline else { return }
-        let timeLeft = deadline - ProcessInfo.processInfo.systemUptime
-        let seconds = max(0, Int(ceil(timeLeft)))
-        remaining = seconds
-        // Cue only the next boundary and only while it is still timely. A
-        // delayed callback advances the clock without replaying missed cues.
-        if (0...5).contains(seconds), lastCue == seconds + 1,
-           timeLeft >= Double(seconds) - 0.25 {
+    private func tick(allowCue: Bool) {
+        guard let result = countdown.update(at: .now, allowCue: allowCue) else { return }
+        remaining = result.remaining
+        if let seconds = result.cue {
             NSLog("Watch feasibility: haptic request %d", seconds)
             WKInterfaceDevice.current().play(seconds == 0 ? .success : .click)
             playSound(at: seconds)
         }
-        lastCue = seconds
-        if seconds == 0 {
+        if result.remaining == 0 {
             timer?.invalidate()
             timer = nil
-            self.deadline = nil
             countdownStatus = "Complete"
         }
     }
@@ -101,9 +106,11 @@ final class Experiment: NSObject, ObservableObject, WCSessionDelegate {
 
 @main struct WatchFeasibilityApp: App {
     @StateObject private var experiment = Experiment()
+    @Environment(\.scenePhase) private var scenePhase
     var body: some Scene {
         WindowGroup {
-            VStack {
+            ScrollView {
+              VStack {
                 Text(String(format: "%02d:%02d", experiment.remaining / 60, experiment.remaining % 60)).font(.system(size: 42, weight: .bold, design: .monospaced))
                 Button("Start 1 min") { experiment.start() }
                 Button("Cancel") { experiment.cancel() }
@@ -111,7 +118,11 @@ final class Experiment: NSObject, ObservableObject, WCSessionDelegate {
                 Text(experiment.countdownStatus).font(.caption2)
                 Button("Send test") { experiment.send() }
                 Text(experiment.status).font(.caption)
+              }
             }
+            .focusable(true)
+            .onAppear { experiment.setActive(scenePhase == .active) }
+            .onChange(of: scenePhase) { _, phase in experiment.setActive(phase == .active) }
         }
     }
 }
