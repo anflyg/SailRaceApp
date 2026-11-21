@@ -79,9 +79,9 @@ final class Experiment: NSObject, ObservableObject, WCSessionDelegate {
         player.prepareToPlay()
         return player
     }
-    private func playSound(at seconds: Int) {
+    private func playSound(_ sound: CountdownSound, at seconds: Int) {
         guard soundEnabled else { return }
-        let player = seconds == 0 ? zeroBeep : shortBeep
+        let player = sound == .zero ? zeroBeep : shortBeep
         guard let player else { return }
         player.currentTime = 0
         if player.play() { NSLog("Watch feasibility: audio request %d", seconds) }
@@ -90,9 +90,12 @@ final class Experiment: NSObject, ObservableObject, WCSessionDelegate {
         guard let result = countdown.update(at: .now, allowCue: allowCue) else { return }
         remaining = result.remaining
         if let seconds = result.cue {
-            NSLog("Watch feasibility: haptic request %d", seconds)
-            WKInterfaceDevice.current().play(seconds == 0 ? .success : .click)
-            playSound(at: seconds)
+            if let output = CountdownCueOutput.forSecond(seconds) {
+                NSLog("Watch feasibility: haptic request %d", seconds)
+                let haptic: WKHapticType = output.haptic == .success ? .success : .click
+                WKInterfaceDevice.current().play(haptic)
+                playSound(output.sound, at: seconds)
+            }
         }
         if result.remaining == 0 {
             timer?.invalidate()
