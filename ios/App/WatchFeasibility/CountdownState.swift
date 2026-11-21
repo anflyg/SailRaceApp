@@ -68,6 +68,18 @@ struct CountdownState {
         setDeadline(at: now, duration: pausedDuration)
         return true
     }
+    mutating func adopt(remaining: Duration, running: Bool, at now: ContinuousClock.Instant) {
+        guard remaining > .zero, remaining <= .seconds(300) else { return }
+        if running {
+            phase = .running
+            setDeadline(at: now, duration: remaining)
+        } else {
+            pausedDuration = remaining
+            deadline = nil
+            lastUpdate = nil
+            phase = .paused
+        }
+    }
     mutating func skip(at now: ContinuousClock.Instant) -> Bool {
         guard phase == .running, let deadline, now < deadline else { return false }
         let left = durationSeconds(now.duration(to: deadline))

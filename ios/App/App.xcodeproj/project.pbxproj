@@ -35,6 +35,8 @@
 		C1000000000000000000002A /* WorkoutRecoveryState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000000000000000000002B; };
 		C1000000000000000000002C /* CountdownCueOutput.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000000000000000000002D; };
 		C1000000000000000000002F /* CountdownCueOutput.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000030; };
+		C10000000000000000000031 /* SyncProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000033; };
+		C10000000000000000000032 /* SyncProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000033; };
 		C10000000000000000000024 /* CountdownState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000026; };
 		C10000000000000000000025 /* CountdownState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000026; };
 		C10000000000000000000021 /* CountdownZero.wav in Resources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000023; };
@@ -69,6 +71,7 @@
 		C1000000000000000000002B /* WorkoutRecoveryState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutRecoveryState.swift; sourceTree = "<group>"; };
 		C1000000000000000000002D /* CountdownCueOutput.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CountdownCueOutput.swift; sourceTree = "<group>"; };
 		C10000000000000000000030 /* CountdownCueOutput.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../WatchFeasibility/CountdownCueOutput.swift; sourceTree = "<group>"; };
+		C10000000000000000000033 /* SyncProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../WatchSyncTest/SyncProtocol.swift; sourceTree = "<group>"; };
 		C10000000000000000000026 /* CountdownState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CountdownState.swift; sourceTree = "<group>"; };
 		C10000000000000000000022 /* CountdownShort.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = Audio/CountdownShort.wav; sourceTree = "<group>"; };
 		C10000000000000000000023 /* CountdownZero.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = Audio/CountdownZero.wav; sourceTree = "<group>"; };
@@ -144,7 +147,7 @@
 			sourceTree = "<group>";
 		};
 		B10000000000000000000006 /* WatchFeasibility */ = {isa = PBXGroup; children = (B10000000000000000000002 /* WatchFeasibility.swift */, C10000000000000000000026 /* CountdownState.swift */, C1000000000000000000002D /* CountdownCueOutput.swift */,); path = WatchFeasibility; sourceTree = "<group>"; };
-		C1000000000000000000000B /* WatchTest */ = {isa = PBXGroup; children = (C10000000000000000000002, C10000000000000000000028, C10000000000000000000029, C1000000000000000000002B, C1000000000000000000001D, C10000000000000000000022, C10000000000000000000023, C10000000000000000000030 /* CountdownCueOutput.swift */,); path = WatchTest; sourceTree = "<group>"; };
+		C1000000000000000000000B /* WatchTest */ = {isa = PBXGroup; children = (C10000000000000000000002, C10000000000000000000028, C10000000000000000000029, C1000000000000000000002B, C1000000000000000000001D, C10000000000000000000022, C10000000000000000000023, C10000000000000000000030 /* CountdownCueOutput.swift */, C10000000000000000000033 /* SyncProtocol.swift */,); path = WatchTest; sourceTree = "<group>"; };
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -286,8 +289,8 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		B10000000000000000000008 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (B10000000000000000000001 /* WatchFeasibility.swift in Sources */, C10000000000000000000024, C1000000000000000000002C /* CountdownCueOutput.swift in Sources */,); runOnlyForDeploymentPostprocessing = 0; };
-		C1000000000000000000000E /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (C10000000000000000000001, C10000000000000000000003,); runOnlyForDeploymentPostprocessing = 0; };
-		C10000000000000000000014 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (C10000000000000000000004, C10000000000000000000025, C10000000000000000000027, C1000000000000000000002A, C1000000000000000000002F /* CountdownCueOutput.swift in Sources */,); runOnlyForDeploymentPostprocessing = 0; };
+		C1000000000000000000000E /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (C10000000000000000000001, C10000000000000000000003, C10000000000000000000031 /* SyncProtocol.swift in Sources */,); runOnlyForDeploymentPostprocessing = 0; };
+		C10000000000000000000014 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (C10000000000000000000004, C10000000000000000000025, C10000000000000000000027, C1000000000000000000002A, C1000000000000000000002F /* CountdownCueOutput.swift in Sources */, C10000000000000000000032 /* SyncProtocol.swift in Sources */,); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXVariantGroup section */

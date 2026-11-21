@@ -81,6 +81,14 @@ import Foundation
                 precondition(skip.update(at: at(0.1), allowCue: true)?.cue == nil)
             }
         }
+        var interrupted = CountdownState()
+        interrupted.start(at: base, seconds: 180)
+        let localBeforeSnapshot = interrupted
+        interrupted.adopt(remaining: .seconds(120), running: true, at: at(10))
+        precondition(interrupted.remaining(at: at(10)) == 120)
+        interrupted = localBeforeSnapshot // rollback after unconfirmed acknowledgment
+        precondition(interrupted.remaining(at: at(12)) == 168)
+        precondition(interrupted.update(at: at(12), allowCue: false)?.cue == nil)
         print("PASS: preset bounds, pause/resume, strict minute skips, reset, completion and stale cue suppression")
         print("PASS: simulated suspension, resume, cues, skipped boundaries, cancellation and late zero")
     }
