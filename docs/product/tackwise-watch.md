@@ -37,11 +37,17 @@ Not in v1: watch GPS/recording, VMG, course, speed, start-line distance, cloud s
 
 ## Screen and interaction
 
-Use a dark, high-contrast face with the **largest practical MM:SS digits**. No persistent TackWise wordmark or decorative gauges. A small link-status indicator is optional; timing dominates the screen. The *number display itself has no tap action*.
+Use a dark, high-contrast face with the **largest practical M:SS digits**. No persistent TackWise wordmark or decorative gauges. A small link-status indicator is optional; timing dominates the screen. The *number display itself has no tap action*.
+
+### Approved single-digit minute display and maximal countdown size (owner decision, 2026-11-21)
+
+- Show countdown time as **`M:SS`**, not `MM:SS`. The minute field is always **one digit** for the approved 1–5-minute presets, including `0` below one minute. Examples: `5:00`, `4:32`, `1:00`, `0:59`, `0:00`. Seconds always have two digits; never add a leading zero to minutes.
+- **Maximize the countdown's readable font size and screen area**, particularly on the Apple Watch SE 2. Use responsive sizing that avoids clipping or truncation in READY, RUNNING, PAUSED and FINISHED while retaining the essential START/PAUSE/CONTINUE action and subordinate optional heart-rate display. Prefer stable, tabular digit alignment without unnecessary labels or chrome.
+- This is a display/layout decision only. It does not change permitted presets, timer precision, cue timing, synchronization or race-start semantics.
 
 ### Approved minimalist countdown face (owner decision, 2026-11-20)
 
-- In RUNNING, show only **large MM:SS**, a **small heart icon and current heart rate (e.g. `124 bpm`) when HealthKit is authorized and a valid measurement is available**, and the existing **PAUSE** control. Keep the timer visually dominant and the heart rate secondary; avoid invented readings.
+- In RUNNING, show only **large M:SS**, a **small heart icon and current heart rate (e.g. `124 bpm`) when HealthKit is authorized and a valid measurement is available**, and the existing **PAUSE** control. Keep the timer visually dominant and the heart rate secondary; avoid invented readings.
 - **Do not display** the labels **“Startnedräkning”** or **“Seglingspass aktivt”** on the countdown face. No persistent workout-status text, permanent workout buttons, or additional decorative elements on this primary screen.
 - Preserve the existing READY/PAUSED controls and accessible secondary actions. HealthKit consent, any workout indication required by watchOS, error states and a reliable workout-end action must remain understandable and accessible outside the uncluttered RUNNING face; do not conceal an ongoing workout.
 - This is an **approved UI/product decision**, not evidence that the native product UI, HealthKit authorization or workout lifecycle is implemented. The separate Watch Test remains a feasibility prototype.
@@ -49,9 +55,9 @@ Use a dark, high-contrast face with the **largest practical MM:SS digits**. No p
 | State | Display | Input |
 | --- | --- | --- |
 | READY | Stored preset (e.g. 4:00), START | Digital Crown selects 1–5 minutes; tap START begins |
-| RUNNING | Huge remaining MM:SS, PAUSE button | **Short press** PAUSE; **long press** (~0.7 s) opens actions |
-| PAUSED | Frozen MM:SS, PAUSAD, CONTINUE | Short press CONTINUE; long press opens actions |
-| FINISHED | Brief START!/00:00, then passive | New explicit start required; saved preset remains |
+| RUNNING | Huge remaining M:SS, PAUSE button | **Short press** PAUSE; **long press** (~0.7 s) opens actions |
+| PAUSED | Frozen M:SS, PAUSAD, CONTINUE | Short press CONTINUE; long press opens actions |
+| FINISHED | Brief START!/0:00, then passive | New explicit start required; saved preset remains |
 
 The long press opens **exactly two** actions: (1) **Skip to whole minute** and (2) **Stop and reset**. Opening or dismissing the action sheet must not itself pause a running timer. Dismiss without change after approximately five seconds of inactivity. Stop/reset requires an intentional second selection; never conflate long-press recognition with the short-tap pause action.
 
