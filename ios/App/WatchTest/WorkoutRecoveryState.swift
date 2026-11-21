@@ -1,5 +1,30 @@
 import Foundation
 
+struct AutomaticWorkoutPreference {
+    let defaults: UserDefaults
+    private let key = "watchTestAutoSailingWorkout"
+    var enabled: Bool { defaults.bool(forKey: key) }
+    func enable() { defaults.set(true, forKey: key) }
+    func disable() { defaults.removeObject(forKey: key) }
+}
+
+struct AutomaticWorkoutPolicy {
+    enum Decision { case disabled, wait, reuse, start, unavailable }
+
+    static func startCountdown(_ start: () -> Bool, initiateWorkout: () -> Void) {
+        guard start() else { return }
+        initiateWorkout()
+    }
+
+    static func decide(enabled: Bool, active: Bool, paused: Bool, busy: Bool,
+                       healthAvailable: Bool, recovery: WorkoutRecoveryState) -> Decision {
+        guard enabled else { return .disabled }
+        if busy || recovery.isChecking { return .wait }
+        if active { return paused ? .unavailable : .reuse }
+        return healthAvailable && recovery.canStart ? .start : .unavailable
+    }
+}
+
 struct WorkoutRecoveryState: Equatable {
     enum Phase: Equatable {
         case checking

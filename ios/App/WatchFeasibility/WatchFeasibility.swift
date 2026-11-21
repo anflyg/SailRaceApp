@@ -55,13 +55,14 @@ final class Experiment: NSObject, ObservableObject, WCSessionDelegate {
         remaining = countdown.presetSeconds
         presetStore.save(presetMinutes)
     }
-    func start() {
-        guard phase == .ready else { return }
+    @discardableResult func start() -> Bool {
+        guard phase == .ready else { return false }
         finishTask?.cancel()
         countdown.start(at: .now)
         phase = .running
         remaining = countdown.presetSeconds
         updateExecution()
+        return true
     }
     func pauseOrResume() {
         let now = ContinuousClock.now
@@ -192,6 +193,13 @@ final class Experiment: NSObject, ObservableObject, WCSessionDelegate {
         }
     }
     private func closeActions() { actionGeneration += 1; showActions = false }
+    private func startCountdown() {
+        #if WATCH_TEST_CANDIDATE
+        AutomaticWorkoutPolicy.startCountdown({ experiment.start() }) { workout.countdownStarted() }
+        #else
+        experiment.start()
+        #endif
+    }
 
     var body: some Scene {
         WindowGroup {
@@ -224,12 +232,12 @@ final class Experiment: NSObject, ObservableObject, WCSessionDelegate {
                                     switch result {
                                     case .first: openActions()
                                     case .second:
-                                        if experiment.phase == .ready { experiment.start() }
+                                        if experiment.phase == .ready { startCountdown() }
                                         else { experiment.pauseOrResume() }
                                     }
                                 })
                                 .accessibilityAddTraits(.isButton)
-                                .accessibilityAction { if experiment.phase == .ready { experiment.start() } else { experiment.pauseOrResume() } }
+                                .accessibilityAction { if experiment.phase == .ready { startCountdown() } else { experiment.pauseOrResume() } }
                                 .accessibilityAction(named: Text("Countdown actions")) { openActions() }
                         }
                         Spacer(minLength: 0)
@@ -257,6 +265,14 @@ final class Experiment: NSObject, ObservableObject, WCSessionDelegate {
                 }
                 #if WATCH_TEST_CANDIDATE
                 .onChange(of: workout.active) { _, active in experiment.setWorkoutActive(active) }
+                .alert("Sailing workout", isPresented: Binding(
+                    get: { workout.automaticWarning != nil },
+                    set: { if !$0 { workout.automaticWarning = nil } }
+                )) {
+                    Button("OK", role: .cancel) { workout.automaticWarning = nil }
+                } message: {
+                    Text(workout.automaticWarning ?? "")
+                }
                 #endif
                 .confirmationDialog("Countdown actions", isPresented: $showActions, titleVisibility: .visible) {
                     Button("Skip to whole minute") { closeActions(); experiment.skip() }.disabled(!experiment.canSkip)

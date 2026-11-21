@@ -31,12 +31,19 @@ final class SailingWorkout: NSObject, ObservableObject, HKWorkoutSessionDelegate
     @Published private(set) var heartRate: Double?
     @Published private(set) var heartRateSampleDate: Date?
     @Published private(set) var startDate: Date?
+    @Published private(set) var autoStartEnabled = AutomaticWorkoutPreference(defaults: .standard).enabled
+    @Published private(set) var enablingAutoStart = false
+    @Published var automaticWarning: String?
 
     private let store = HKHealthStore()
     private var session: HKWorkoutSession?
     private var builder: HKLiveWorkoutBuilder?
     private var dataSource: HKLiveWorkoutDataSource?
     private var finishingSession = false
+    private var autoStartPending = false
+    private var automaticAttempt = false
+    private var optInGeneration = 0
+    private let autoStartPreference = AutomaticWorkoutPreference(defaults: .standard)
     private let heartType = HKQuantityType(.heartRate)
 
     func liveHeartRate(at date: Date) -> Int? {
@@ -93,8 +100,66 @@ final class SailingWorkout: NSObject, ObservableObject, HKWorkoutSessionDelegate
                     self.busy = false
                     self.status = "Not started"
                 }
+                self.processAutomaticStart()
             }
         }
+    }
+
+    func enableAutomaticStart() {
+        guard !enablingAutoStart, healthAvailable else {
+            if !healthAvailable { status = "Health data unavailable; automatic workout not enabled" }
+            return
+        }
+        enablingAutoStart = true
+        optInGeneration += 1
+        let generation = optInGeneration
+        store.requestAuthorization(toShare: [HKObjectType.workoutType()], read: [heartType]) { [weak self] success, error in
+            DispatchQueue.main.async {
+                guard let self, self.optInGeneration == generation else { return }
+                self.enablingAutoStart = false
+                guard success, error == nil, self.store.authorizationStatus(for: HKObjectType.workoutType()) == .sharingAuthorized else {
+                    self.status = "Workout access not granted; automatic workout not enabled"
+                    return
+                }
+                self.autoStartEnabled = true
+                self.autoStartPreference.enable()
+            }
+        }
+    }
+
+    func disableAutomaticStart() {
+        optInGeneration += 1
+        enablingAutoStart = false
+        autoStartPending = false
+        autoStartEnabled = false
+        autoStartPreference.disable()
+    }
+
+    func countdownStarted() {
+        guard autoStartEnabled else { return }
+        autoStartPending = true
+        processAutomaticStart()
+    }
+
+    private func processAutomaticStart() {
+        guard autoStartPending else { return }
+        switch AutomaticWorkoutPolicy.decide(enabled: autoStartEnabled, active: active, paused: paused,
+                                              busy: busy, healthAvailable: healthAvailable, recovery: recovery) {
+        case .disabled: autoStartPending = false
+        case .wait: break
+        case .reuse: autoStartPending = false
+        case .unavailable:
+            autoStartPending = false
+            warnAutomaticStart()
+        case .start:
+            autoStartPending = false
+            automaticAttempt = true
+            start(automatic: true)
+        }
+    }
+
+    private func warnAutomaticStart() {
+        automaticWarning = "Sailing workout unavailable. The countdown continues, but wrist-down sound and haptics may not work. Check Sailing workout in settings."
     }
 
     func retryRecovery() {
@@ -108,8 +173,20 @@ final class SailingWorkout: NSObject, ObservableObject, HKWorkoutSessionDelegate
         status = "Ready"
     }
 
-    func start() {
+    func start(automatic: Bool = false) {
         guard !busy, recovery.canStart, !active, healthAvailable else { return }
+        if automatic {
+            guard autoStartEnabled, store.authorizationStatus(for: HKObjectType.workoutType()) == .sharingAuthorized else {
+                automaticAttempt = false
+                status = "Workout access not granted"
+                warnAutomaticStart()
+                return
+            }
+            busy = true
+            status = "Starting workout"
+            begin()
+            return
+        }
         busy = true
         status = "Requesting Health access"
         store.requestAuthorization(toShare: [HKObjectType.workoutType()], read: [heartType]) { [weak self] success, error in
@@ -118,6 +195,8 @@ final class SailingWorkout: NSObject, ObservableObject, HKWorkoutSessionDelegate
                 guard success, error == nil, self.store.authorizationStatus(for: HKObjectType.workoutType()) == .sharingAuthorized else {
                     self.busy = false
                     self.status = "Workout access not granted"
+                    if self.automaticAttempt { self.automaticAttempt = false; self.warnAutomaticStart() }
+                    self.processAutomaticStart()
                     return
                 }
                 self.begin()
@@ -155,9 +234,12 @@ final class SailingWorkout: NSObject, ObservableObject, HKWorkoutSessionDelegate
                         self.recovery.recoveryFinished(foundSession: true, failed: false)
                         self.busy = false
                         self.status = "Workout active"
+                        self.automaticAttempt = false
+                        self.processAutomaticStart()
                     } else {
                         self.busy = true
                         self.status = "Workout could not start; ending and discarding it"
+                        if self.automaticAttempt { self.automaticAttempt = false; self.warnAutomaticStart() }
                         self.session?.end()
                     }
                 }
@@ -170,6 +252,8 @@ final class SailingWorkout: NSObject, ObservableObject, HKWorkoutSessionDelegate
             active = false
             recovery.recoveryFinished(foundSession: false, failed: false)
             status = "Workout could not start"
+            if automaticAttempt { automaticAttempt = false; warnAutomaticStart() }
+            processAutomaticStart()
         }
     }
 
@@ -225,6 +309,7 @@ final class SailingWorkout: NSObject, ObservableObject, HKWorkoutSessionDelegate
                 self.status = success && error == nil
                     ? "Workout ended; check Health to confirm it was discarded"
                     : "Workout ended with an error; check Health before starting again"
+                self.processAutomaticStart()
             }
         }
     }
@@ -234,6 +319,7 @@ final class SailingWorkout: NSObject, ObservableObject, HKWorkoutSessionDelegate
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
             self.status = "Workout interrupted; ending and discarding it"
+            if self.automaticAttempt { self.automaticAttempt = false; self.warnAutomaticStart() }
             self.busy = true
             if workoutSession.state == .ended {
                 self.finishEndedSession(workoutSession, at: workoutSession.endDate ?? Date())
@@ -259,12 +345,22 @@ final class SailingWorkout: NSObject, ObservableObject, HKWorkoutSessionDelegate
 
 struct SailingWorkoutView: View {
     @ObservedObject var workout: SailingWorkout
+    @State private var confirmAutoStart = false
 
     var body: some View {
         ScrollView {
             VStack(spacing: 8) {
                 Text("Sailing workout").font(.headline)
                 Text(workout.status).font(.caption)
+                if workout.autoStartEnabled {
+                    Text("Automatic start enabled for sailing. The workout continues until you end it.").font(.caption2)
+                    Button("Disable automatic start") { workout.disableAutomaticStart() }
+                } else if workout.enablingAutoStart {
+                    Text("Waiting for Health access").font(.caption2)
+                    Button("Cancel automatic start") { workout.disableAutomaticStart() }
+                } else {
+                    Button("Enable automatic start") { confirmAutoStart = true }
+                }
                 if workout.recovery.needsRecoveryHelp {
                     Text("If a workout is still active, end it in Apple's Workout app before retrying here.").font(.caption2)
                     Button("Retry recovery") { workout.retryRecovery() }.disabled(workout.busy)
@@ -281,7 +377,13 @@ struct SailingWorkoutView: View {
                     Button("Allow & start") { workout.start() }.disabled(workout.busy || !workout.recovery.canStart || !workout.healthAvailable)
                 }
             }
-        }.focusable(true)
+        }
+        .confirmationDialog("Start a Sailing Workout with each countdown?", isPresented: $confirmAutoStart, titleVisibility: .visible) {
+            Button("Allow automatic start") { workout.enableAutomaticStart() }
+        } message: {
+            Text("Only use while sailing. HealthKit uses workout and heart-rate data; samples may remain in Health. The workout uses battery and continues until End & discard. You can disable automatic start here.")
+        }
+        .focusable(true)
     }
 }
 #endif
