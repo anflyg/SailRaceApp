@@ -49,6 +49,7 @@ Use a dark, high-contrast face with the **largest practical M:SS digits**. No pe
 
 - In RUNNING, show only **large M:SS**, a **small heart icon and current heart rate (e.g. `124 bpm`) when HealthKit is authorized and a valid measurement is available**, and the existing **PAUSE** control. Keep the timer visually dominant and the heart rate secondary; avoid invented readings.
 - **Do not display** the labels **“Startnedräkning”** or **“Seglingspass aktivt”** on the countdown face. No persistent workout-status text, permanent workout buttons, or additional decorative elements on this primary screen.
+- **Owner-approved UI clarification (2026-11-21):** Never show **READY** or **RUNNING** as visible headings, labels, badges or captions on the countdown face. These are internal state names only; `M:SS` and the primary START/PAUSE control already communicate the mode. Keep the separately approved visible PAUSED indication (`PAUSAD`) if needed.
 - Preserve the existing READY/PAUSED controls and accessible secondary actions. HealthKit consent, any workout indication required by watchOS, error states and a reliable workout-end action must remain understandable and accessible outside the uncluttered RUNNING face; do not conceal an ongoing workout.
 - This is an **approved UI/product decision**, not evidence that the native product UI, HealthKit authorization or workout lifecycle is implemented. The separate Watch Test remains a feasibility prototype.
 
