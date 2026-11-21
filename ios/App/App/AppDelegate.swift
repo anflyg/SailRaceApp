@@ -8,7 +8,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Override point for customization after application launch.
+        #if DEBUG && WATCH_FEASIBILITY && targetEnvironment(simulator)
+        WatchFeasibilityReceiver.shared.start()
+        #endif
         return true
     }
 
@@ -62,6 +64,9 @@ class AppBridgeViewController: CAPBridgeViewController {
         bridge?.registerPluginInstance(WindHeadingPlugin())
         bridge?.registerPluginInstance(TackWiseAuthPlugin())
         bridge?.registerPluginInstance(TackWiseAppInfoPlugin())
+        #if DEBUG && WATCH_FEASIBILITY && targetEnvironment(simulator)
+        bridge?.registerPluginInstance(WatchFeasibilityPlugin())
+        #endif
     }
 }
 
