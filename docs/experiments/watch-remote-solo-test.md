@@ -6,6 +6,22 @@ REMOTE uses reachable-only WatchConnectivity messages. A query returns a fresh g
 
 Owner decision 2026-11-22: the initial Watch release is REMOTE-only; SOLO development is paused indefinitely. The Watch always starts in REMOTE and replaces a previously saved SOLO mode. The selector, SOLO screen and startup audio preparation are disabled. The standalone countdown and cue implementation is retained for possible future use. No workout, background entitlement or HealthKit access is used.
 
+## Single-surface REMOTE verification on 2026-11-22
+
+The owner-approved interaction in [PR #80](https://github.com/anflyg/SailRaceApp/pull/80), commit `964d15b`, is the product dependency. The prototype uses one surface with release-based actions and retained confirmed-state transport.
+
+- PASS: Focused Swift tests cover durations just below and at 0.4, 1.2 and 2.0 seconds, the dead zone, cancellation, repeated release, one command per press, pending command suppression, confirmed label changes, stale ACK/reconnect handling and saved SOLO migration. They exercise the press classifier and fake transport, not actual watchOS touch delivery or haptics.
+- PASS: WatchTest Debug and Release generic iOS builds, including the watchOS target. Paired simulator Debug build succeeded.
+- PARTIAL: On the iOS 27.0/watchOS 27.2 pair, 0.7-second Watch presses produced START then PAUSA; the Watch changed from green START to red PAUSA and green FORTSÄTT, and the phone showed a paused countdown. The phone subsequently became unavailable; FORTSÄTT, long-press AVSLUTA, dead-zone input, progress display, and VoiceOver were not verified in this simulator run. This run preceded the common-run-loop timer adjustment.
+- NOT VERIFIED: physical Watch gesture timing, threshold haptic, progress during tracking, VoiceOver actions and system navigation, interrupted presses, and real transport disconnect/reconnect. The haptic is a threshold indication, not confirmation of phone execution.
+
+### Physical-device verification required
+
+- With the phone awake, exercise every boundary and dead zone, cancel/interruption and unavailable/pending states; verify no command before release and no short action after a long press.
+- Verify progress and threshold haptic while holding; confirm START/PAUSA/FORTSÄTT/AVSLUTA update only after phone execution and AVSLUTA resets only the test countdown.
+- Verify VoiceOver primary and named AVSLUTA actions, accessible state announcements and system gestures; check that a saved SOLO preference opens REMOTE without local countdown activity.
+- Interrupt and restore connectivity around commands, checking confirmed refresh and no stale replay. Verify the Watch remains REMOTE.
+
 ## REMOTE-only verification on 2026-11-22
 
 - PASS: Focused WatchModel tests verify fresh startup and migration from a saved SOLO preference select REMOTE, and direct attempts to select a SOLO preset or start SOLO leave the local timer inactive. Existing REMOTE timeout, delayed acknowledgment, reconnect and stale-generation tests pass.

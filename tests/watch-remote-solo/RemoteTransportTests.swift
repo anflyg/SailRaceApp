@@ -37,23 +37,41 @@ final class FakeTransport {
         migrated.selectPreset(originalPreset == 5 ? 1 : 5)
         migrated.soloAction(.start)
         precondition(migrated.solo.phase == .ready && migrated.solo.presetMinutes == originalPreset && fake.sent.isEmpty, "SOLO must be inaccessible")
+        for (duration, expected) in [(0.399, Optional<Action>.none), (0.4, .start), (1.2, .start), (1.201, nil), (1.999, nil), (2.0, .reset), (3.0, .reset)] {
+            var press = RemotePress()
+            press.begin(at: 0)
+            precondition(press.release(at: duration, primary: .start) == expected)
+            precondition(press.release(at: duration, primary: .start) == nil, "release must dispatch at most once")
+        }
+        var press = RemotePress()
+        press.begin(at: 0)
+        precondition(!press.update(at: 1.999) && press.update(at: 2.0) && !press.update(at: 2.1))
+        press.cancel()
+        precondition(press.release(at: 2.2, primary: .start) == nil, "canceled press must not dispatch")
         var phone = Authority()
 
         watch.refresh()
         let (g1, initial) = phone.refresh()
         fake.queryReply(0, generation: g1, phase: initial)
         precondition(watch.phase == .ready && !watch.pending)
-        watch.command(.start)
+        var gesture = RemotePress()
+        gesture.begin(at: 0)
+        precondition(fake.sent.count == 1, "press must not send before release")
+        if let action = gesture.release(at: 0.6, primary: watch.primaryAction) { watch.command(action) }
+        if let action = gesture.release(at: 2.1, primary: watch.primaryAction) { watch.command(action) }
+        precondition(fake.sent.count == 2, "one press must send exactly one command")
         let start = fake.sent[1]
         let startID = start.payload["id"] as! String
-        precondition(watch.pending && watch.phase == .ready)
+        precondition(watch.pending && watch.phase == .ready && watch.primaryLabel == "START" && !watch.available)
+        watch.command(.start)
+        precondition(fake.sent.count == 2, "pending command must not dispatch twice")
         precondition(phone.execute(id: startID, generation: g1, action: .start).0)
         // Fire the actual command's scheduled timeout, then resolve its refresh.
         fake.timers[1]()
         precondition(fake.sent.count == 3 && fake.sent[2].payload["kind"] as? String == "query")
         let (g2, afterTimeout) = phone.refresh()
         fake.queryReply(2, generation: g2, phase: afterTimeout)
-        precondition(watch.phase == .running && !watch.pending)
+        precondition(watch.phase == .running && watch.primaryLabel == "PAUSA" && !watch.pending)
         fake.commandReply(1, accepted: true, phase: .ready)
         precondition(watch.phase == .running, "late ACK must not overwrite the refreshed state")
         fake.timers[1]() // Duplicate timeout delivery must not issue another query.

@@ -22,12 +22,37 @@ struct RemoteIO {
     var deliver: (@escaping () -> Void) -> Void
 }
 
+// One interaction owns the press from touch-down to release. A canceled or
+// completed interaction cannot dispatch a second action.
+struct RemotePress {
+    private(set) var startedAt: TimeInterval?
+    private(set) var thresholdSignaled = false
+    mutating func begin(at time: TimeInterval) { guard startedAt == nil else { return }; startedAt = time; thresholdSignaled = false }
+    mutating func update(at time: TimeInterval) -> Bool {
+        guard let start = startedAt, !thresholdSignaled, time - start >= 2 else { return false }
+        thresholdSignaled = true
+        return true
+    }
+    mutating func cancel() { startedAt = nil; thresholdSignaled = false }
+    mutating func release(at time: TimeInterval, primary: Action) -> Action? {
+        guard let start = startedAt else { return nil }
+        let duration = time - start
+        cancel()
+        if duration >= 2 { return .reset }
+        if duration >= 0.4 && duration <= 1.2 { return primary }
+        return nil
+    }
+}
+
 final class WatchModel: NSObject, ObservableObject, WCSessionDelegate {
     let mode = "remote"
     @Published var phase: Phase = .ready
     @Published var status = "Ej tillgänglig"
     @Published private var requestGate = RemoteRequestGate()
     var pending: Bool { requestGate.pending }
+    var available: Bool { !pending && status == "Ansluten" && generation != nil && io.isReachable() }
+    var primaryAction: Action { phase == .ready ? .start : phase == .running ? .pause : .resume }
+    var primaryLabel: String { phase == .ready ? "START" : phase == .running ? "PAUSA" : "FORTSÄTT" }
     @Published var solo: CountdownState
     @Published var remaining: Int
     private let io: RemoteIO
@@ -96,7 +121,7 @@ final class WatchModel: NSObject, ObservableObject, WCSessionDelegate {
         timeout(token)
     }
     func command(_ action: Action) {
-        guard mode == "remote", !pending, let generation, io.isReachable() else { return }
+        guard mode == "remote", available, let generation else { return }
         let token = requestGate.begin(), id = UUID().uuidString; status = "Väntar"
         io.send(["kind": "command", "id": id, "generation": generation, "action": action.rawValue], { reply in self.io.deliver {
             guard self.requestGate.accepts(token, mode: self.mode), reply["id"] as? String == id,
@@ -117,14 +142,82 @@ final class WatchModel: NSObject, ObservableObject, WCSessionDelegate {
 #if !WATCH_REMOTE_TEST
 @main struct WatchApp: App {
     @StateObject private var model = WatchModel()
-    var body: some Scene { WindowGroup { NavigationStack {
-        VStack {
-            Text(model.status).font(.caption)
-            Button(model.phase == .ready ? "START" : model.phase == .running ? "PAUSA" : "FORTSÄTT") { model.command(model.phase == .ready ? .start : model.phase == .running ? .pause : .resume) }
-                .tint(.blue).disabled(model.pending || model.status != "Ansluten")
-            Button("AVSLUTA") { model.command(.reset) }.tint(.red).disabled(model.pending || model.status != "Ansluten")
-        }.buttonStyle(.borderedProminent)
-    } } }
+    var body: some Scene { WindowGroup { NavigationStack { RemoteControlView(model: model) } } }
 }
 
+struct RemoteControlView: View {
+    @ObservedObject var model: WatchModel
+    @Environment(\.scenePhase) private var scenePhase
+    @GestureState private var touching = false
+    @State private var press = RemotePress()
+    @State private var progress = 0.0
+    @State private var capturedAction: Action?
+    @State private var touchConsumed = false
+    @State private var pressTimer: Timer?
+
+    private var now: TimeInterval { ProcessInfo.processInfo.systemUptime }
+    private func cancelPress() {
+        pressTimer?.invalidate(); pressTimer = nil
+        press.cancel(); capturedAction = nil; progress = 0
+    }
+    private func beginPress() {
+        guard !touchConsumed else { return }
+        touchConsumed = true
+        guard model.available else { return }
+        capturedAction = model.primaryAction
+        press.begin(at: now)
+        let timer = Timer(timeInterval: 0.05, repeats: true) { _ in
+            guard model.available, let start = press.startedAt else { cancelPress(); return }
+            let time = now
+            progress = min(1, max(0, (time - start) / 2))
+            if press.update(at: time) { WKInterfaceDevice.current().play(.click) }
+        }
+        pressTimer = timer
+        RunLoop.main.add(timer, forMode: .common)
+    }
+    private func endPress() {
+        guard model.available, let action = capturedAction else { cancelPress(); return }
+        let result = press.release(at: now, primary: action)
+        cancelPress()
+        if let result { model.command(result) }
+    }
+    var body: some View {
+        VStack(spacing: 6) {
+            Text(model.status).font(.caption).accessibilityIdentifier("remoteStatus")
+            ZStack {
+                RoundedRectangle(cornerRadius: 18)
+                    .fill(model.phase == .running ? Color.red : Color.green)
+                VStack(spacing: 8) {
+                    Text(model.primaryLabel).font(.headline)
+                    if press.startedAt != nil {
+                        ProgressView(value: progress).tint(.white)
+                        Text("Håll för AVSLUTA").font(.caption2)
+                    }
+                }.foregroundStyle(.white).padding(10)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .opacity(model.available ? 1 : 0.45)
+            .contentShape(Rectangle())
+            .gesture(DragGesture(minimumDistance: 0)
+                .updating($touching) { _, state, _ in state = true }
+                .onChanged { _ in beginPress() }
+                .onEnded { _ in endPress() })
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(model.primaryLabel)
+            .accessibilityValue(model.status)
+            .accessibilityHint("Håll i två sekunder för att avsluta nedräkningen")
+            .accessibilityAddTraits(.isButton)
+            .accessibilityIdentifier("remoteControl")
+            .accessibilityAction { if model.available { model.command(model.primaryAction) } }
+            .accessibilityAction(named: Text("AVSLUTA nedräkning")) { if model.available { model.command(.reset) } }
+        }
+        .onChange(of: touching) { _, active in
+            if !active { DispatchQueue.main.async { if !touching { cancelPress(); touchConsumed = false } } }
+        }
+        .onChange(of: model.available) { _, available in if !available { cancelPress() } }
+        .onChange(of: model.phase) { _, _ in cancelPress() }
+        .onChange(of: scenePhase) { _, phase in if phase != .active { cancelPress() } }
+        .onDisappear { cancelPress() }
+    }
+}
 #endif
