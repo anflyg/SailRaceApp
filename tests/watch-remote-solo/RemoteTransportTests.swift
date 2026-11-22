@@ -37,17 +37,32 @@ final class FakeTransport {
         migrated.selectPreset(originalPreset == 5 ? 1 : 5)
         migrated.soloAction(.start)
         precondition(migrated.solo.phase == .ready && migrated.solo.presetMinutes == originalPreset && fake.sent.isEmpty, "SOLO must be inaccessible")
-        for (duration, expected) in [(0.399, Optional<Action>.none), (0.4, .start), (1.2, .start), (1.201, nil), (1.999, nil), (2.0, .reset), (3.0, .reset)] {
+        for (duration, expected) in [(0.0, Optional<Action>.some(.start)), (0.1, .start), (0.399, .start), (0.4, .start), (1.2, .start), (1.201, .start), (1.999, .start), (2.0, .reset), (3.0, .reset)] {
             var press = RemotePress()
             press.begin(at: 0)
             precondition(press.release(at: duration, primary: .start) == expected)
             precondition(press.release(at: duration, primary: .start) == nil, "release must dispatch at most once")
+        }
+        for action in [Action.start, .pause, .resume] {
+            var tap = RemotePress()
+            tap.begin(at: 0)
+            precondition(tap.release(at: 0.1, primary: action) == action)
+            tap.begin(at: 0)
+            precondition(tap.release(at: 2.0, primary: action) == .reset)
         }
         var press = RemotePress()
         press.begin(at: 0)
         precondition(!press.update(at: 1.999) && press.update(at: 2.0) && !press.update(at: 2.1))
         press.cancel()
         precondition(press.release(at: 2.2, primary: .start) == nil, "canceled press must not dispatch")
+        press.begin(at: 0)
+        press.updateLocation(isInside: true)
+        press.updateLocation(isInside: false)
+        press.updateLocation(isInside: true)
+        precondition(press.release(at: 0.1, primary: .start) == nil, "drag outside and back must remain canceled")
+        press.begin(at: 0)
+        press.updateLocation(isInside: false)
+        precondition(!press.update(at: 2.1) && press.release(at: 2.1, primary: .pause) == nil, "outside long press must not cue or dispatch")
         var phone = Authority()
 
         watch.refresh()

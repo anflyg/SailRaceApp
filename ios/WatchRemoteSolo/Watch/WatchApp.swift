@@ -34,13 +34,13 @@ struct RemotePress {
         return true
     }
     mutating func cancel() { startedAt = nil; thresholdSignaled = false }
+    mutating func updateLocation(isInside: Bool) { if !isInside { cancel() } }
     mutating func release(at time: TimeInterval, primary: Action) -> Action? {
         guard let start = startedAt else { return nil }
         let duration = time - start
         cancel()
-        if duration >= 2 { return .reset }
-        if duration >= 0.4 && duration <= 1.2 { return primary }
-        return nil
+        guard duration >= 0 else { return nil }
+        return duration >= 2 ? .reset : primary
     }
 }
 
@@ -184,7 +184,8 @@ struct RemoteControlView: View {
     var body: some View {
         VStack(spacing: 6) {
             Text(model.status).font(.caption).accessibilityIdentifier("remoteStatus")
-            ZStack {
+            GeometryReader { geometry in
+              ZStack {
                 RoundedRectangle(cornerRadius: 18)
                     .fill(model.phase == .running ? Color.red : Color.green)
                 VStack(spacing: 8) {
@@ -200,8 +201,19 @@ struct RemoteControlView: View {
             .contentShape(Rectangle())
             .gesture(DragGesture(minimumDistance: 0)
                 .updating($touching) { _, state, _ in state = true }
-                .onChanged { _ in beginPress() }
-                .onEnded { _ in endPress() })
+                .onChanged { value in
+                    beginPress()
+                    if !CGRect(origin: .zero, size: geometry.size).contains(value.location) {
+                        press.updateLocation(isInside: false)
+                        cancelPress()
+                    }
+                }
+                .onEnded { value in
+                    if !CGRect(origin: .zero, size: geometry.size).contains(value.location) {
+                        press.updateLocation(isInside: false)
+                        cancelPress()
+                    } else { endPress() }
+                })
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(model.primaryLabel)
             .accessibilityValue(model.status)
@@ -210,6 +222,7 @@ struct RemoteControlView: View {
             .accessibilityIdentifier("remoteControl")
             .accessibilityAction { if model.available { model.command(model.primaryAction) } }
             .accessibilityAction(named: Text("AVSLUTA nedräkning")) { if model.available { model.command(.reset) } }
+            }
         }
         .onChange(of: touching) { _, active in
             if !active { DispatchQueue.main.async { if !touching { cancelPress(); touchConsumed = false } } }

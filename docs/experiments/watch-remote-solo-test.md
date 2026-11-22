@@ -6,7 +6,16 @@ REMOTE uses reachable-only WatchConnectivity messages. A query returns a fresh g
 
 Owner decision 2026-11-22: the initial Watch release is REMOTE-only; SOLO development is paused indefinitely. The Watch always starts in REMOTE and replaces a previously saved SOLO mode. The selector, SOLO screen and startup audio preparation are disabled. The standalone countdown and cue implementation is retained for possible future use. No workout, background entitlement or HealthKit access is used.
 
-## Single-surface REMOTE verification on 2026-11-22
+## Tap interaction follow-up
+
+The owner requested normal taps for the primary action and a two-second hold for AVSLUTA, superseding the 0.4-second minimum and dead zone in PR #80 commit `964d15b`. PR #80 still needs a corresponding product documentation update. The action remains release-only; dragging outside cancels the gesture even if the touch returns inside.
+
+- PASS: Focused Swift tests cover normal taps, durations below and at two seconds, long press, canceled gestures, drag outside and return, threshold feedback suppression after cancellation, and existing REMOTE acknowledgment/transport behavior.
+- PASS: WatchTest Debug and Release generic iOS builds include the Watch target.
+- NOT VERIFIED on physical hardware: normal tap responsiveness; two-second progress and haptic; release-only dispatch; drag-out cancellation including return inside; VoiceOver and system gestures; and phone acknowledgment/connection behavior with the updated gesture.
+- Earlier physical testing confirmed START and PAUSA with the previous 0.4-second minimum; it does not validate this change.
+
+## Earlier single-surface REMOTE verification on 2026-11-22
 
 The owner-approved interaction in [PR #80](https://github.com/anflyg/SailRaceApp/pull/80), commit `964d15b`, is the product dependency. The prototype uses one surface with release-based actions and retained confirmed-state transport.
 
