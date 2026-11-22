@@ -7,11 +7,11 @@ final class WatchModel: NSObject, ObservableObject, WCSessionDelegate {
     @Published var mode: String
     @Published var phase: Phase = .ready
     @Published var status = "Ej tillgänglig"
-    @Published var pending = false
+    @Published private var requestGate = RemoteRequestGate()
+    var pending: Bool { requestGate.pending }
     @Published var solo: CountdownState
     @Published var remaining: Int
     private var generation: String?
-    private var request = UUID()
     private var timer: Timer?
     private var refreshTicks = 0
     private var players: [String: AVAudioPlayer] = [:]
@@ -30,7 +30,7 @@ final class WatchModel: NSObject, ObservableObject, WCSessionDelegate {
     func select(_ newMode: String) {
         guard newMode != mode else { return }
         if mode == "solo" { solo.cancel(); remaining = solo.presetSeconds }
-        request = UUID(); pending = false; generation = nil; status = "Ej tillgänglig"
+        requestGate.invalidate(); generation = nil; status = "Ej tillgänglig"
         mode = newMode; UserDefaults.standard.set(mode, forKey: "watchMode")
         if mode == "remote", WCSession.isSupported() {
             WCSession.default.delegate = self
@@ -64,29 +64,31 @@ final class WatchModel: NSObject, ObservableObject, WCSessionDelegate {
     }
     func refresh() {
         guard mode == "remote", WCSession.default.isReachable else { status = "Ej tillgänglig"; generation = nil; return }
-        let token = UUID(); request = token; pending = true; status = "Ansluter"
+        let token = requestGate.begin(); status = "Ansluter"
         WCSession.default.sendMessage(["kind": "query"], replyHandler: { reply in DispatchQueue.main.async {
-            guard self.mode == "remote", self.request == token, let generation = reply["generation"] as? String,
+            guard self.requestGate.accepts(token, mode: self.mode), let generation = reply["generation"] as? String,
                   let raw = reply["phase"] as? String, let phase = Phase(rawValue: raw) else { return }
-            self.generation = generation; self.phase = phase; self.pending = false; self.status = "Ansluten"
+            guard self.requestGate.complete(token, mode: self.mode) else { return }
+            self.generation = generation; self.phase = phase; self.status = "Ansluten"
         } }, errorHandler: { _ in DispatchQueue.main.async { self.fail(token) } })
         timeout(token)
     }
     func command(_ action: Action) {
         guard mode == "remote", !pending, let generation, WCSession.default.isReachable else { return }
-        let token = UUID(), id = UUID().uuidString; request = token; pending = true; status = "Väntar"
+        let token = requestGate.begin(), id = UUID().uuidString; status = "Väntar"
         WCSession.default.sendMessage(["kind": "command", "id": id, "generation": generation, "action": action.rawValue], replyHandler: { reply in DispatchQueue.main.async {
-            guard self.mode == "remote", self.request == token, reply["id"] as? String == id,
+            guard self.requestGate.accepts(token, mode: self.mode), reply["id"] as? String == id,
                   let ok = reply["ok"] as? Bool, let raw = reply["phase"] as? String, let phase = Phase(rawValue: raw) else { return }
-            self.phase = phase; self.pending = false; self.status = ok ? "Ansluten" : "Avvisad"
+            guard self.requestGate.complete(token, mode: self.mode) else { return }
+            self.phase = phase; self.status = ok ? "Ansluten" : "Avvisad"
         } }, errorHandler: { _ in DispatchQueue.main.async { self.uncertain(token) } })
         DispatchQueue.main.asyncAfter(deadline: .now() + 3) { self.uncertain(token) }
     }
     private func timeout(_ token: UUID) { DispatchQueue.main.asyncAfter(deadline: .now() + 3) { self.fail(token) } }
-    private func fail(_ token: UUID) { guard mode == "remote", request == token, pending else { return }; request = UUID(); pending = false; generation = nil; status = "Ej tillgänglig" }
-    private func uncertain(_ token: UUID) { guard mode == "remote", request == token, pending else { return }; fail(token); refresh() }
+    private func fail(_ token: UUID) { guard requestGate.accepts(token, mode: mode) else { return }; requestGate.invalidate(); generation = nil; status = "Ej tillgänglig" }
+    private func uncertain(_ token: UUID) { guard requestGate.accepts(token, mode: mode) else { return }; fail(token); refresh() }
     func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) { DispatchQueue.main.async { if self.mode == "remote" { self.refresh() } } }
-    func sessionReachabilityDidChange(_ session: WCSession) { DispatchQueue.main.async { guard self.mode == "remote" else { return }; self.request = UUID(); self.pending = false; self.generation = nil; self.refresh() } }
+    func sessionReachabilityDidChange(_ session: WCSession) { DispatchQueue.main.async { guard self.mode == "remote" else { return }; self.requestGate.invalidate(); self.generation = nil; self.refresh() } }
 }
 
 @main struct WatchApp: App {

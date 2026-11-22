@@ -26,14 +26,14 @@ final class PhoneModel: NSObject, ObservableObject, WCSessionDelegate {
         let previous = authority.phase
         let reply = authority.execute(id: id, generation: generation, action: action)
         // Duplicate requests return the original result, but must not execute timer effects again.
-        guard reply.0, previous != authority.phase || (action == .reset && deadline != nil) else { return reply }
+        guard reply.0, reply.2, previous != authority.phase || (action == .reset && deadline != nil) else { return (reply.0, reply.1) }
         switch action {
         case .start: remaining = preset * 60; deadline = Date().addingTimeInterval(Double(remaining)); lastSecond = remaining
         case .pause: if let deadline { remaining = max(0, Int(ceil(deadline.timeIntervalSinceNow))) }; deadline = nil
         case .resume: deadline = Date().addingTimeInterval(Double(remaining)); lastSecond = remaining
         case .reset: deadline = nil; remaining = preset * 60
         }
-        return reply
+        return (reply.0, reply.1)
     }
     func local(_ action: Action) { _ = perform(action, id: UUID().uuidString, generation: authority.generation) }
     func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {}
@@ -46,10 +46,9 @@ final class PhoneModel: NSObject, ObservableObject, WCSessionDelegate {
                 let (generation, phase) = self.authority.refresh()
                 replyHandler(["generation": generation, "phase": phase.rawValue]); return
             }
-            guard kind == "command", let id = message["id"] as? String, UUID(uuidString: id) != nil,
-                  let generation = message["generation"] as? String,
-                  let raw = message["action"] as? String, let action = Action(rawValue: raw) else { replyHandler(["ok": false]); return }
-            let (ok, phase) = self.perform(action, id: id, generation: generation)
+            guard let command = Command.parse(message) else { replyHandler(["ok": false]); return }
+            let id = command.id
+            let (ok, phase) = self.perform(command.action, id: id, generation: command.generation)
             replyHandler(["id": id, "ok": ok, "phase": phase.rawValue])
         }
     }
