@@ -62,9 +62,8 @@ final class WatchModel: NSObject, ObservableObject, WCSessionDelegate {
     private let defaults: UserDefaults
     private var generation: String?
     private var timer: Timer?
-    private var refreshTicks = 0
-    private var pressActive = false
-    func setPressActive(_ active: Bool) { pressActive = active }
+    private var revisions = ControlRevisionGate()
+    private var queryToken: UUID?
     private var players: [String: AVAudioPlayer] = [:]
     #if !WATCH_REMOTE_TEST
     override convenience init() {
@@ -85,7 +84,8 @@ final class WatchModel: NSObject, ObservableObject, WCSessionDelegate {
         super.init()
         guard startServices else { return }
         if mode == "remote", WCSession.isSupported() { WCSession.default.delegate = self; WCSession.default.activate() }
-        timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in self?.tick() }
+        if mode == "solo" { timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in self?.tickSolo() } }
+
     }
     func selectPreset(_ value: Int) { guard mode == "solo" else { return }; if solo.selectPreset(value) { remaining = solo.presetSeconds; CountdownPresetStore(defaults: defaults).save(value) } }
     func soloAction(_ action: Action) {
@@ -98,12 +98,7 @@ final class WatchModel: NSObject, ObservableObject, WCSessionDelegate {
         }
         remaining = solo.remaining(at: .now)
     }
-    func tick() {
-        if mode == "remote" {
-            refreshTicks += 1
-            if refreshTicks >= 50 { refreshTicks = 0; if !pending && !pressActive { refresh() } }
-            return
-        }
+    private func tickSolo() {
         guard let update = solo.update(at: .now, allowCue: true) else { return }
         remaining = update.remaining
         if let second = update.cue, let cue = CountdownCueOutput.forSecond(second) {
@@ -114,34 +109,87 @@ final class WatchModel: NSObject, ObservableObject, WCSessionDelegate {
             player?.currentTime = 0; player?.play()
         }
     }
+    private func applyLatest() {
+        guard let snapshot = revisions.snapshot else { return }
+        generation = snapshot.generation
+        if phase != snapshot.phase { phase = snapshot.phase }
+    }
+    // A query has its own token: it never completes or invalidates a command.
     func refresh() {
-        guard mode == "remote", io.isReachable() else { status = "Ej tillgänglig"; generation = nil; return }
-        let token = requestGate.begin(); status = "Ansluter"
+        guard mode == "remote", io.isReachable() else {
+            queryToken = nil; generation = nil; status = "Ej tillgänglig"; return
+        }
+        guard queryToken == nil else { return }
+        let token = UUID(); queryToken = token
+        if status != "Ansluten" && !pending { status = "Ansluter" }
         io.send(["kind": "query"], { reply in self.io.deliver {
-            guard self.requestGate.accepts(token, mode: self.mode), let generation = reply["generation"] as? String,
-                  let raw = reply["phase"] as? String, let phase = Phase(rawValue: raw) else { return }
-            guard self.requestGate.complete(token, mode: self.mode) else { return }
-            self.generation = generation; self.phase = phase; self.status = "Ansluten"
-        } }, { _ in self.io.deliver { self.fail(token) } })
-        timeout(token)
+            guard self.queryToken == token, let snapshot = ControlSnapshot.parse(reply) else { return }
+            self.queryToken = nil
+            if self.revisions.isRetired(snapshot.epoch) {
+                self.generation = nil; self.status = "Ej tillgänglig"; return
+            }
+            _ = self.revisions.establish(snapshot)
+            if !self.pending { self.applyLatest(); self.status = "Ansluten" }
+        } }, { _ in self.io.deliver { self.queryFailed(token) } })
+        io.schedule { self.queryFailed(token) }
+    }
+    private func queryFailed(_ token: UUID) {
+        guard queryToken == token else { return }
+        queryToken = nil
+        if !pending { generation = nil; status = "Ej tillgänglig" }
+    }
+    func receiveState(_ message: [String: Any]) {
+        guard mode == "remote", let snapshot = ControlSnapshot.parse(message) else { return }
+        guard let current = revisions.snapshot, current.epoch == snapshot.epoch else {
+            if revisions.isRetired(snapshot.epoch) { return }
+            // Invalidate an earlier query that might predate the new authority.
+            queryToken = nil
+            if !pending { generation = nil; status = "Ej tillgänglig" }
+            refresh(); return
+        }
+        guard revisions.accept(snapshot) else { return }
+        // A push is never a command acknowledgement. Retain it until the reply.
+        if !pending && status == "Ansluten" { applyLatest() }
     }
     func command(_ action: Action) {
         guard mode == "remote", available, let generation else { return }
         let token = requestGate.begin(), id = UUID().uuidString; status = "Väntar"
         io.send(["kind": "command", "id": id, "generation": generation, "action": action.rawValue], { reply in self.io.deliver {
             guard self.requestGate.accepts(token, mode: self.mode), reply["id"] as? String == id,
-                  let ok = reply["ok"] as? Bool, let raw = reply["phase"] as? String, let phase = Phase(rawValue: raw) else { return }
+                  let ok = reply["ok"] as? Bool, let snapshot = ControlSnapshot.parse(reply) else { return }
             guard self.requestGate.complete(token, mode: self.mode) else { return }
-            self.phase = phase; self.status = ok ? "Ansluten" : "Avvisad"
+            guard self.revisions.snapshot?.epoch == snapshot.epoch else {
+                self.generation = nil; self.status = "Ej tillgänglig"; self.refresh(); return
+            }
+            _ = self.revisions.accept(snapshot)
+            self.applyLatest(); self.status = ok ? "Ansluten" : "Avvisad"
+            if !ok { self.refresh() }
         } }, { _ in self.io.deliver { self.uncertain(token) } })
         io.schedule { self.uncertain(token) }
     }
-    private func timeout(_ token: UUID) { io.schedule { self.fail(token) } }
-    private func fail(_ token: UUID) { guard requestGate.accepts(token, mode: mode) else { return }; requestGate.invalidate(); generation = nil; status = "Ej tillgänglig" }
-    private func uncertain(_ token: UUID) { guard requestGate.accepts(token, mode: mode) else { return }; fail(token); refresh() }
-    func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) { io.deliver { if self.mode == "remote" { self.refresh() } } }
+    private func uncertain(_ token: UUID) {
+        guard requestGate.accepts(token, mode: mode) else { return }
+        requestGate.invalidate(); queryToken = nil; generation = nil; status = "Ej tillgänglig"
+        refresh()
+    }
+    func foreground() { if mode == "remote" { refresh() } }
+    func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
+        io.deliver { if self.mode == "remote" { self.refresh() } }
+    }
     func sessionReachabilityDidChange(_ session: WCSession) { io.deliver { self.reachabilityChanged() } }
-    func reachabilityChanged() { guard mode == "remote" else { return }; requestGate.invalidate(); generation = nil; refresh() }
+    func reachabilityChanged() {
+        guard mode == "remote" else { return }
+        if !io.isReachable() {
+            requestGate.invalidate(); queryToken = nil; generation = nil; status = "Ej tillgänglig"
+        } else { refresh() }
+    }
+    func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
+        io.deliver { self.receiveState(message) }
+    }
+    func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String: Any]) {
+        io.deliver { self.receiveState(applicationContext) }
+    }
+
 }
 
 #if !WATCH_REMOTE_TEST
@@ -176,7 +224,6 @@ struct RemoteControlView: View {
         #if DEBUG
         loggedNearThreshold = false
         #endif
-        model.setPressActive(false)
     }
     private func beginPress() {
         guard !touchConsumed else { return }
@@ -184,7 +231,6 @@ struct RemoteControlView: View {
         guard model.available else { trace("begin unavailable"); return }
         trace("begin " + model.phase.rawValue)
         capturedAction = model.primaryAction
-        model.setPressActive(true)
         press.begin(at: now)
         let timer = Timer(timeInterval: 0.05, repeats: true) { _ in
             guard model.available, let start = press.startedAt else { cancelPress("timer unavailable or missing press"); return }
@@ -258,7 +304,9 @@ struct RemoteControlView: View {
         }
         .onChange(of: model.available) { _, available in if !available { cancelPress("availability changed") } }
         .onChange(of: model.phase) { _, _ in cancelPress("phase changed") }
-        .onChange(of: scenePhase) { _, phase in if phase != .active { cancelPress("scene inactive") } }
+        .onChange(of: scenePhase) { _, phase in
+            if phase != .active { cancelPress("scene inactive") } else { model.foreground() }
+        }
         .onDisappear { cancelPress("view disappeared") }
     }
 }

@@ -14,11 +14,11 @@ final class FakeTransport {
             self.sent.append(Sent(payload: message, reply: reply, error: error))
         }, schedule: { self.timers.append($0) }, deliver: { $0() })
     }
-    func queryReply(_ index: Int, generation: String, phase: Phase) {
-        sent[index].reply(["generation": generation, "phase": phase.rawValue])
-    }
-    func commandReply(_ index: Int, accepted: Bool, phase: Phase) {
-        sent[index].reply(["id": sent[index].payload["id"]!, "ok": accepted, "phase": phase.rawValue])
+    func queryReply(_ index: Int, snapshot: ControlSnapshot) { sent[index].reply(snapshot.message) }
+    func commandReply(_ index: Int, accepted: Bool, snapshot: ControlSnapshot) {
+        var reply = snapshot.message
+        reply["id"] = sent[index].payload["id"]!; reply["ok"] = accepted
+        sent[index].reply(reply)
     }
 }
 
@@ -75,96 +75,89 @@ final class FakeTransport {
         runningHold.cancel() // Simulates an actual cancellation after threshold.
         precondition(runningHold.release(at: 202.1, primary: .pause) == nil)
         var phone = Authority()
+        watch.refresh() // activation
+        precondition(fake.sent.count == 1 && watch.status == "Ansluter")
+        fake.queryReply(0, snapshot: phone.snapshot)
+        precondition(watch.phase == .ready && watch.available && watch.status == "Ansluten")
+        let baselineTimers = fake.timers.count
+        precondition(fake.timers.count == baselineTimers, "no periodic poll scheduled")
 
-        watch.refresh()
-        let (g1, initial) = phone.refresh()
-        fake.queryReply(0, generation: g1, phase: initial)
-        precondition(watch.phase == .ready && !watch.pending)
-        var gesture = RemotePress()
-        gesture.begin(at: 0)
-        precondition(fake.sent.count == 1, "press must not send before release")
-        if let action = gesture.release(at: 0.6, primary: watch.primaryAction) { watch.command(action) }
-        if let action = gesture.release(at: 2.1, primary: watch.primaryAction) { watch.command(action) }
-        precondition(fake.sent.count == 2, "one press must send exactly one command")
-        let start = fake.sent[1]
-        let startID = start.payload["id"] as! String
-        precondition(watch.pending && watch.phase == .ready && watch.primaryLabel == "START" && !watch.available)
-        watch.command(.start)
-        precondition(fake.sent.count == 2, "pending command must not dispatch twice")
-        precondition(phone.execute(id: startID, generation: g1, action: .start).0)
-        // Fire the actual command's scheduled timeout, then resolve its refresh.
-        fake.timers[1]()
-        precondition(fake.sent.count == 3 && fake.sent[2].payload["kind"] as? String == "query")
-        let (g2, afterTimeout) = phone.refresh()
-        fake.queryReply(2, generation: g2, phase: afterTimeout)
-        precondition(watch.phase == .running && watch.primaryLabel == "PAUSA" && !watch.pending)
-        fake.commandReply(1, accepted: true, phase: .ready)
-        precondition(watch.phase == .running, "late ACK must not overwrite the refreshed state")
-        fake.timers[1]() // Duplicate timeout delivery must not issue another query.
-        precondition(fake.sent.count == 3)
-        precondition(fake.sent.filter { $0.payload["action"] as? String == "start" }.count == 1)
-        precondition(g1 == g2, "queries must preserve command generation")
-        precondition(phone.phase == .running)
+        // Foreground synchronization remains available and same-state replies do not change phase.
+        watch.foreground()
+        precondition(fake.sent.count == 2 && watch.available && watch.status == "Ansluten")
+        let old = phone.snapshot
+        _ = phone.execute(id: UUID().uuidString, generation: phone.generation, action: .start)
+        let running = phone.snapshot
+        watch.receiveState(running.message)
+        precondition(watch.phase == .running && watch.available)
+        fake.queryReply(1, snapshot: old)
+        precondition(watch.phase == .running && watch.status == "Ansluten", "stale query cannot overwrite event")
+        watch.receiveState(old.message)
+        watch.receiveState(running.message)
+        precondition(watch.phase == .running, "old and duplicate events ignored")
 
+        // A pending command cannot be completed by a push; newer events beat an older ACK.
         watch.command(.pause)
-        let pendingPause = fake.sent.count - 1
-        fake.reachable = false
-        watch.reachabilityChanged()
-        precondition(!watch.pending && watch.status == "Ej tillgänglig" && watch.mode == "remote")
-        fake.reachable = true
-        watch.reachabilityChanged()
+        let commandIndex = fake.sent.count - 1
+        let payload = fake.sent[commandIndex].payload
+        precondition(watch.pending && !watch.available && watch.phase == .running)
+        let accepted = phone.execute(id: payload["id"] as! String, generation: payload["generation"] as! String, action: .pause)
+        let paused = phone.snapshot
+        precondition(accepted.0)
+        watch.receiveState(paused.message)
+        precondition(watch.pending && watch.phase == .running && watch.status == "Väntar")
+        watch.foreground()
+        let queryDuringCommand = fake.sent.count - 1
+        fake.queryReply(queryDuringCommand, snapshot: paused)
+        precondition(watch.pending && watch.phase == .running, "query must not acknowledge command")
+        _ = phone.execute(id: UUID().uuidString, generation: phone.generation, action: .resume)
+        let newer = phone.snapshot
+        watch.receiveState(newer.message)
+        fake.commandReply(commandIndex, accepted: true, snapshot: paused)
+        precondition(!watch.pending && watch.available && watch.phase == .running, "newer event wins after ACK")
+
+        // Timeout triggers only a query, never a replay; late ACK is ignored.
+        watch.command(.pause)
+        let uncertainIndex = fake.sent.count - 1
+        let uncertainPayload = fake.sent[uncertainIndex].payload
+        precondition(phone.execute(id: uncertainPayload["id"] as! String, generation: uncertainPayload["generation"] as! String, action: .pause).0)
+        let afterPause = phone.snapshot
+        fake.timers.last!()
+        let recovery = fake.sent.count - 1
+        precondition(fake.sent[recovery].payload["kind"] as? String == "query")
+        fake.queryReply(recovery, snapshot: afterPause)
+        precondition(watch.phase == .paused && watch.available)
+        fake.commandReply(uncertainIndex, accepted: true, snapshot: newer)
+        precondition(watch.phase == .paused, "late ACK must not override recovery")
+        precondition(fake.sent.filter { $0.payload["action"] as? String == "pause" }.count == 2)
+
+        // Reconnect queries after missed transitions; stale messages cannot roll back.
+        fake.reachable = false; watch.reachabilityChanged()
+        precondition(!watch.available && watch.status == "Ej tillgänglig")
+        phone.invalidateSession()
+        _ = phone.execute(id: UUID().uuidString, generation: phone.generation, action: .reset)
+        fake.reachable = true; watch.reachabilityChanged()
         let reconnect = fake.sent.count - 1
-        precondition(fake.sent[reconnect].payload["kind"] as? String == "query")
-        phone.invalidateSession() // Phone observes the real reachability loss.
-        let (g3, state) = phone.refresh()
-        fake.queryReply(reconnect, generation: g3, phase: state)
-        let oldPause = fake.sent[pendingPause].payload
-        precondition(!phone.execute(id: oldPause["id"] as! String, generation: oldPause["generation"] as! String, action: .pause).0)
-        precondition(phone.phase == .running, "old in-flight command must not execute after refresh")
-        fake.commandReply(pendingPause, accepted: true, phase: .paused)
-        precondition(watch.phase == .running && watch.mode == "remote")
-        precondition(fake.sent.filter { $0.payload["action"] as? String == "start" }.count == 1)
+        fake.queryReply(reconnect, snapshot: phone.snapshot)
+        precondition(watch.phase == .ready && watch.available)
+        watch.receiveState(afterPause.message)
+        precondition(watch.phase == .ready)
 
-        // A periodic refresh must not invalidate a press or its generation.
-        for phase in [Phase.running, .paused] {
-            if phase == .paused {
-                watch.command(.pause)
-                let index = fake.sent.count - 1
-                let payload = fake.sent[index].payload
-                let reply = phone.execute(id: payload["id"] as! String, generation: payload["generation"] as! String, action: .pause)
-                precondition(reply.0 && reply.1 == .paused)
-                fake.commandReply(index, accepted: reply.0, phase: reply.1)
-            }
-            precondition(watch.phase == phase)
-            var hold = RemotePress()
-            hold.begin(at: 0)
-            watch.setPressActive(true)
-            let count = fake.sent.count
-            for _ in 0..<50 { watch.tick() }
-            precondition(fake.sent.count == count && watch.available, "poll must not interrupt a hold")
-            let action = hold.release(at: 2, primary: watch.primaryAction)!
-            precondition(action == .reset && fake.sent.count == count)
-            watch.setPressActive(false)
-            watch.command(action)
-            let payload = fake.sent.last!.payload
-            precondition(fake.sent.count == count + 1 && payload["action"] as? String == "reset")
-            let reply = phone.execute(id: payload["id"] as! String, generation: payload["generation"] as! String, action: action)
-            precondition(reply.0 && reply.1 == .ready)
-            precondition(watch.phase == phase, "wait for phone acknowledgment")
-            fake.commandReply(fake.sent.count - 1, accepted: reply.0, phase: reply.1)
-            precondition(watch.phase == .ready)
-            if phase == .running {
-                watch.command(.start)
-                let index = fake.sent.count - 1
-                let payload = fake.sent[index].payload
-                let reply = phone.execute(id: payload["id"] as! String, generation: payload["generation"] as! String, action: .start)
-                precondition(reply.0)
-                fake.commandReply(index, accepted: reply.0, phase: reply.1)
-            }
-        }
-
+        // Unsolicited new epochs are reconciled through an identified query.
+        let restarted = Authority()
+        watch.foreground()
+        let outdatedQuery = fake.sent.count - 1
+        watch.receiveState(restarted.snapshot.message)
+        fake.queryReply(outdatedQuery, snapshot: phone.snapshot)
+        precondition(!watch.available, "query superseded by a new epoch must be ignored")
+        precondition(!watch.available && fake.sent.last?.payload["kind"] as? String == "query")
+        fake.queryReply(fake.sent.count - 1, snapshot: restarted.snapshot)
+        precondition(watch.phase == .ready && watch.available)
+        let sentBeforeOldEpoch = fake.sent.count
+        watch.receiveState(phone.snapshot.message)
+        precondition(watch.available && fake.sent.count == sentBeforeOldEpoch, "retired epoch must not disrupt interaction")
         watch.soloAction(.start)
-        precondition(watch.mode == "remote" && watch.solo.phase == .ready, "SOLO action must remain disabled")
-        print("REMOTE transport tests passed")
+        precondition(watch.solo.phase == .ready)
+        print("REMOTE event and transport tests passed")
     }
 }

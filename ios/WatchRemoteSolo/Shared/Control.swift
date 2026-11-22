@@ -38,9 +38,13 @@ struct ControlSnapshot {
 
 struct ControlRevisionGate {
     private(set) var snapshot: ControlSnapshot?
+    private var retiredEpochs: Set<String> = []
+    func isRetired(_ epoch: String) -> Bool { retiredEpochs.contains(epoch) }
     // Only a current, identified query may establish a different authority epoch.
     mutating func establish(_ next: ControlSnapshot) -> Bool {
         if let current = snapshot, current.epoch == next.epoch { return accept(next) }
+        guard !retiredEpochs.contains(next.epoch) else { return false }
+        if let current = snapshot { retiredEpochs.insert(current.epoch) }
         snapshot = next; return true
     }
     mutating func accept(_ next: ControlSnapshot) -> Bool {
