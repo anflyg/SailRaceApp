@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { WatchCountdown, watchAvailable, type WatchAction, type WatchPhase } from '../../services/watchCountdown'
+import { runCountdownAction } from './countdownActions'
 import { formatMeters } from '../../domain/format'
 import { calculateStartMetrics } from '../../domain/startLine'
 import { useCountdown } from '../../hooks/useCountdown'
@@ -32,6 +34,7 @@ interface StartTimerViewProps {
   recordingActive?: boolean
   recordingMessageKey?: TranslationKey | null
   onStopRecording?: () => void
+  watchEnabled?: boolean
 }
 
 function getGpsPosition(gps: LiveGpsReading): GeoPoint | null {
@@ -79,6 +82,7 @@ export function StartTimerView({
   onFinish,
   recordingActive = false,
   onStopRecording = () => {},
+  watchEnabled = false,
 }: StartTimerViewProps) {
   const { t } = useTranslation()
   const { seconds, status, toggle, pause, reset } = useCountdown(selectedMinutes * 60)
@@ -120,6 +124,80 @@ export function StartTimerView({
     }
   }, [seconds, status, onStartGun, countdownToken])
 
+  const resetCountdown = () => {
+    onCountdownPause?.()
+    setCountdownToken(null)
+    onRunningChange?.(false)
+    startGunMarkedRef.current = false
+    reset(selectedMinutes * 60)
+  }
+
+  const executeAction = (action: WatchAction): boolean => runCountdownAction(status, action, {
+    reset: resetCountdown,
+    start: () => {
+      startGunMarkedRef.current = false
+      setCountdownToken(onCountdownStart?.(seconds) ?? null)
+      onRunningChange?.(true)
+      toggle()
+    },
+    pause: () => {
+      onCountdownPause?.()
+      setCountdownToken(null)
+      onRunningChange?.(false)
+      toggle()
+    },
+    resume: () => {
+      if (recordingActive) setCountdownToken(onCountdownResume?.(seconds) ?? null)
+      else {
+        startGunMarkedRef.current = false
+        setCountdownToken(onCountdownStart?.(Math.max(0, seconds)) ?? null)
+      }
+      onRunningChange?.(true)
+      toggle()
+    },
+  })
+
+  const phase: WatchPhase = status === 'stopped' ? 'ready' : status
+  const current = useRef({ phase, executeAction })
+  const pendingWatch = useRef<{ id: string; phase: WatchPhase } | null>(null)
+  const [watchCommit, setWatchCommit] = useState(0)
+  useLayoutEffect(() => { current.current = { phase, executeAction } })
+
+  // A reply is sent only after React commits the requested phase.
+  useEffect(() => {
+    if (!watchEnabled || !watchAvailable()) return
+    const pending = pendingWatch.current
+    if (pending && pending.phase === phase) {
+      pendingWatch.current = null
+      void WatchCountdown.confirm({ phase, id: pending.id }).catch(() => {})
+    } else if (!pending) {
+      void WatchCountdown.confirm({ phase }).catch(() => {})
+    }
+  }, [phase, watchEnabled, watchCommit])
+
+  useEffect(() => {
+    if (!watchEnabled || !watchAvailable()) return
+    let live = true
+    let listener: { remove(): Promise<void> } | undefined
+    void (async () => {
+      listener = await WatchCountdown.addListener('command', ({ id, action, expiresAt }) => {
+        if (!live || pendingWatch.current || Date.now() >= expiresAt) return
+        const target: WatchPhase = action === 'reset' ? 'ready' : action === 'pause' ? 'paused' : 'running'
+        if (!current.current.executeAction(action)) return
+        pendingWatch.current = { id, phase: target }
+        setWatchCommit(value => value + 1)
+      })
+      if (live) await WatchCountdown.available({ phase: current.current.phase })
+      else await listener.remove()
+    })().catch(() => {})
+    return () => {
+      live = false
+      pendingWatch.current = null
+      void WatchCountdown.unavailable().catch(() => {})
+      if (listener) void listener.remove()
+    }
+  }, [watchEnabled])
+
   const handleDisplayPointerDown = () => {
     longPressTriggered.current = false
     if (longPressRef.current) {
@@ -128,11 +206,7 @@ export function StartTimerView({
 
     longPressRef.current = window.setTimeout(() => {
       longPressTriggered.current = true
-      onCountdownPause?.()
-      setCountdownToken(null)
-      onRunningChange?.(false)
-      startGunMarkedRef.current = false
-      reset(selectedMinutes * 60)
+      resetCountdown()
     }, 500)
   }
 
@@ -145,25 +219,7 @@ export function StartTimerView({
 
   const handleDisplayClick = () => {
     if (!longPressTriggered.current) {
-      if (status === 'stopped') {
-        startGunMarkedRef.current = false
-        setCountdownToken(onCountdownStart?.(seconds) ?? null)
-        onRunningChange?.(true)
-        toggle()
-        return
-      }
-
-      if (status === 'running') {
-        onCountdownPause?.()
-        setCountdownToken(null)
-      } else if (recordingActive) {
-        setCountdownToken(onCountdownResume?.(seconds) ?? null)
-      } else {
-        startGunMarkedRef.current = false
-        setCountdownToken(onCountdownStart?.(Math.max(0, seconds)) ?? null)
-      }
-      onRunningChange?.(status !== 'running')
-      toggle()
+      executeAction(status === 'stopped' ? 'start' : status === 'running' ? 'pause' : 'resume')
     }
   }
 
