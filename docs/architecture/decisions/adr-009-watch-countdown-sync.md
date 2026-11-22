@@ -1,91 +1,92 @@
-# ADR-009: Watch countdown sync and iPhone recording boundary (approved product requirements; technical design proposed)
+# ADR-009: Isolated Watch REMOTE and SOLO modes
 
-- **Status:** MIXED: five **product requirements approved 2026-11-18**; protocol/bridge implementation and native feasibility remain **PROPOSED and unverified**. Not a released or fully accepted implementation ADR.
-- **Scope:** Apple Watch Start Timer v1 with paired TackWise Race on iPhone
-- **Owner decision:** approved five explicit rules for iPhone authority/SOLO conflicts, timer STOP versus End race, RUNNING-only minute skip, iPhone preference for conflicting explicit offline preset changes, and safe restart recovery. The remainder of the exact synchronization protocol is a proposed technical implementation needing review.
-- **Separately approved decision (2026-11-18):** Watch v1 stays as a SwiftUI watchOS target in `anflyg/SailRaceApp`'s existing Xcode project and uses Xcode Cloud for builds; see the build plan. Neither product nor repo decisions approve HealthKit entitlements, technical implementation, CI activation, signing, merge or release.
-- **Product proposal:** [TackWise Watch](../../product/tackwise-watch.md)
-- **Build/release proposal:** [Watch build and Xcode Cloud](../watch-build-and-release-plan.md)
+- **Status:** Watch v2 product direction is **OWNER-APPROVED (2026-11-22)**. The revised technical implementation is **PROPOSED pending review**. No Watch app implementation, native validation, merge or release is approved by this ADR.
+- **Scope:** One native TackWise Watch app in `anflyg/SailRaceApp`, with two strictly isolated operating modes and preserved iPhone race semantics.
+- **Supersedes:** Conflicting product and technical requirements for connected countdown synchronization, automatic SOLO fallback, Rejoin/reconciliation and cross-device preset conflict resolution in the earlier Watch Start Timer v1/v1.3 design. Historical decisions remain traceable in repository and PR history.
+- **Product specification:** [TackWise Watch](../../product/tackwise-watch.md)
+- **Build arrangement:** [Watch native build and Xcode Cloud plan](../watch-build-and-release-plan.md)
+- **iPhone race semantics:** [TackWise Race](../../product/tackwise-race.md)
 
 ## Context
 
-TackWise Race is offline-first. Its current Start view owns a local second-tick UI, but `raceLogger` owns a separate planned start time, countdown revision/token, and iPhone race recording. Starting countdown starts local recording; pre-gun pause/reset retains it; after the gun a new countdown can close a current race. A new iPhone process applies checkpoint/recovery rules, potentially finalizing an earlier active recording. Watch support must not bypass these established controls.
+TackWise Race on iPhone owns its countdown, preset, countdown audio, start-gun event and race recording. Its existing `raceLogger`, gun token/revision and recovery behavior must remain authoritative. Earlier Watch proposals mixed a local Watch timer with bidirectional state synchronization and automatic fallback/reconciliation. Those mechanisms made mode boundaries unclear and could make a Watch action appear successful without the iPhone executing it.
 
-Watch v1 needs a local timer that keeps working when the connection drops, with two-way **event** sync (no second-by-second traffic). A watch-only timer cannot create or guarantee a phone recording.
+The owner approved a redesign on 2026-11-22: a single Watch app offers REMOTE, a control surface for the iPhone, and SOLO, an independent local timer. The modes have no shared timer or cross-mode state synchronization.
 
-## Owner-approved behavior and proposed technical realization
+## Decision
 
-### Five accepted product constraints (2026-11-18)
+### App identity and mode selection
 
-1. **iPhone authoritative for race/gun and shared-state conflicts:** preserve iPhone race recording and start-gun authority. If independent watch/phone countdowns diverge, Watch remains locally RUNNING in **SOLO**, without mutating iPhone's countdown or race. An explicit user action is required to return to shared state.
-2. **STOP_RESET is not End race:** timer stop invalidates countdown/planned gun but does **not** stop a pre-gun race recording. Preserve the separate confirmed iPhone End race flow and existing post-gun recording behavior.
-3. **SKIP_MINUTE only while RUNNING:** while PAUSED the skip action is unavailable; first resume, then skip if more than 1:00 remains. A skip never changes persisted duration.
-4. **Offline preset conflicts:** if exactly one device explicitly changed its stored preset offline, propagate it. If both independently changed and disagree, **iPhone's stored preset wins**, with no effect on active countdowns. Do not use wall-clock last-writer-wins.
-5. **Conservative app restart recovery:** resume a countdown only when its state/revision and time continuity can be reconstructed safely. Otherwise fail closed to a stopped/recovery state; never backfill race data, retrospectively mark a gun, or replay missed cues.
+- Ship one native TackWise Watch app with one Watch target and one app identity, retaining the previously approved repository/build arrangement.
+- REMOTE is the default mode on first launch. Persist the user's last explicitly selected mode.
+- A small secondary settings/menu entry opens a two-option selector labeled **“Fjärrkontroll”** and **“SOLO”**. Never present mode selection as part of the normal START flow.
+- Connectivity changes never change the selected mode.
+- Keep mode state, timer state and event handling strictly separated. Disable iPhone command exchange while SOLO is selected.
+- Switching away from REMOTE must not alter any iPhone countdown or race. Switching away from a running SOLO countdown requires explicit confirmation to cancel that local countdown; cancelling the switch leaves SOLO running.
 
-The sections below describe the **proposed technical protocol** for implementing these approved behavior constraints. They are not all themselves accepted architecture decisions.
+### REMOTE: iPhone control only
 
-### Source of truth and ownership
+- The iPhone owns the countdown, preset, countdown audio at 5–0, start gun and recording.
+- The Watch displays only iPhone connection state, one primary button labeled **START**, **PAUSA** or **FORTSÄTT** to reflect iPhone-confirmed state, and one red secondary button labeled exactly **AVSLUTA**.
+- No countdown digits, preset controls, local Watch countdown, Watch countdown cues, or countdown-time synchronization exist in REMOTE.
+- A REMOTE command is successful only after iPhone acknowledgment. Until then, show a pending or unavailable state without claiming success.
+- On disconnection or absent acknowledgment, show unavailable. Reconnect automatically when possible, never enter SOLO automatically, and never replay stale commands after reconnection.
+- Normal sailing assumes the iPhone display is awake. This ADR makes no background-delivery guarantee.
+- **AVSLUTA** cancels/resets only the iPhone countdown. It must never end race recording. End race remains the separate, confirmed iPhone action.
 
-- **iPhone** exclusively owns the race recording lifecycle, local race ID, scheduled start gun and validity token/revision. Never let a watch message call recording persistence through a separate competing implementation.
-- A **watch-local countdown** may run independently. Being locally RUNNING does not assert phone recording authority.
-- Keep preset configuration separate from the active countdown. Store the last explicitly selected 1–5 minute preset on each device; a skip does not change the preset.
-- Add a small native iOS/Capacitor bridge to the established countdown domain/service rather than having a second JS-only timer plus parallel native race logger.
+### SOLO: independent local countdown
 
-### Command/state envelope (conceptual; finalize exact schema after native feasibility)
+- SOLO is entered only by explicit user selection.
+- Provide local 1–5 whole-minute presets and local START, PAUSA, FORTSÄTT and red AVSLUTA actions, with local countdown audio/haptics.
+- AVSLUTA cancels/resets the SOLO countdown.
+- SOLO does not communicate with the iPhone, record a race, synchronize its timer or preset, or alter any iPhone countdown or race.
+- SOLO timer state and events remain isolated from REMOTE state. Persisting the selected mode and SOLO preset locally is allowed; no cross-mode timer state is shared.
 
-- Protocol version, opaque countdown-session UUID, unique command UUID, origin device, command kind, expected revision, bounded parameters.
-- Acknowledgment/state snapshot includes accepted revision, READY/RUNNING/PAUSED/FINISHED, preset, effective current remaining/deadline, recording acceptance status and relevant clock-correlation data.
-- Commands: SET_DURATION, START, PAUSE, RESUME, SKIP_MINUTE, STOP_RESET. Gun/completion is a *derived event* and should never be replayed as a stand-alone command authorizing recording.
-- The authoritative revision advances for each accepted connected transition. Reject malformed, duplicate, old-generation, invalid-transition and stale-expected-revision commands; respond with the actual state.
-- Only **one** side may authorize a connected shared transition at a time (iPhone when reachable). Watch may optimistically show its local action, but must indicate **pending** until accepted; on rejection it must not silently claim shared sync.
-- Preserve the iPhone logger's gun token/revision protection. A replaced deadline invalidates all prior pending gun callbacks and haptics; a gun must be idempotent per accepted generation.
+## Preserved iPhone race boundary
 
-### Timekeeping
+No Watch mode adds a race logger or changes existing iPhone rules. Preserve `raceLogger`, start-gun registration/token behavior, recovery/checkpoint behavior, pre-gun recording retention, post-gun transitions and separate confirmed End race semantics documented in `docs/product/tackwise-race.md`.
 
-- Time remaining is calculated from a **deadline/timestamp anchor and monotonic elapsed time**, not by subtracting one on each UI tick.
-- Paused state stores remaining duration; resuming/skipping creates a new anchor and revision.
-- Because monotonic clocks differ across devices, the protocol must establish an offset/delay estimate or use a bounded timestamp exchange and measure effective skew. Do not merely exchange raw monotonic times or assume clocks match.
-- **Approved:** skip-minute is a **strict floor** to the next lower whole minute of *displayed* time, **only while RUNNING, never PAUSED**, only when the target is >=60 s. At 3:00 -> 2:00; at 2:56 -> 2:00; at <=1:00 -> reject. Source of truth evaluates the action at acceptance; stale menu values cannot cause a gun.
-- Target acceptance: <=1 displayed second discrepancy for actively connected devices under normal conditions. Not a network guarantee offline.
+Watch AVSLUTA is strictly a countdown action. A Watch command cannot claim an iPhone state transition before acknowledgment. Switching modes cannot silently alter or end a race. This design does not authorize cloud/API changes or new persistence of Watch or race telemetry.
 
-### Connectivity, reconciliation, and recovery
+## Proposed technical constraints for review
 
-- Use WatchConnectivity immediate messaging only when the counterpart can participate; separately maintain latest state via the system-provided deferred context mechanism. No per-second messages or cloud.
-- An unanswered watch command does not prove the phone applied it. Watch continues its local timer and marks it as SOLO/PENDING as appropriate.
-- **Approved:** if both sides continue offline and diverge, do **not** use arrival-time last-writer-wins to mutate the active race. Preserve phone recording and the iPhone countdown; the watch stays in **SOLO** with its local timer until explicit user action reconciles it.
-- **Approved:** if only one side explicitly changed its selected preset offline, propagate it on reconnection; if both independently changed the preset and their values conflict, the **iPhone preset wins**, without changing any active countdown. Do not infer freshness solely from an untrusted device-wall-clock timestamp.
-- A watch that opens late may join a valid phone state snapshot. Missed vibration cues are not replayed. A watch not opened/prepared cannot be promised reliable activation of a workout/background session by a phone start.
-- New-process iPhone recovery must preserve the documented checkpoint/manual intervention behavior; do not synthesize race history or retroactively start recording on reconnection.
-- **Approved:** Watch relaunch restores the preset and resumes an active timer only when trusted local state/revision and time/session continuity permit; otherwise fail closed to an explicit non-running/recovery state. No retrospective gun or missed alerts.
+The following implementation details remain proposals and require technical review before coding:
 
-### Phone recording semantics and STOP
+1. Define the minimal REMOTE command/acknowledgment contract for START, PAUSA, FORTSÄTT and AVSLUTA, including timeout, unavailable presentation, duplicate handling and stale-command rejection. The implementation must not use queued/eventual delivery as proof that a time-sensitive command ran.
+2. Determine the narrowest supported WatchConnectivity mechanism consistent with the awake-iPhone assumption. Do not add countdown snapshots, per-second transfer or state reconciliation.
+3. Specify persistence and lifecycle behavior for selected mode and SOLO's local preset/countdown. A mode switch must not expose stale state from the other mode; no automatic mode fallback or rejoin is permitted.
+4. Verify local SOLO countdown audio/haptics and state restoration limits on supported hardware. Do not introduce HealthKit or background capabilities as an assumed solution.
+5. Retain one Watch target, one app identity and the approved repository/build arrangement. Signing, entitlements, CI activation and distribution remain separate approvals.
 
-- Start from iPhone always follows the current phone path, whether or not watch is available.
-- Accepted watch START triggers the existing iPhone recording-start path once; no recording claim before acknowledgement.
-- **Approved:** before gun, PAUSE, SKIP, STOP_RESET and preset changes retain the active recording as established. SKIP reschedules the **same** race's planned gun and invalidates older gun tokens. SKIP is unavailable while PAUSED.
-- STOP_RESET affects only the countdown, not the separately confirmed **End race** flow.
-- **Preserve existing iPhone Race behavior:** after gun, resuming the same countdown retains the recording; starting a **new countdown** closes the current recording and starts a new race as documented in `docs/product/tackwise-race.md`. A new requirement for mandatory confirmation before this transition would be a separate, not-yet-approved change; do not silently alter it in Watch v1.
-- At 0, phone registers a valid gun at most once and continues recording; watch gives haptics, displays START! and returns to passive mode. Never infer that a watch-only 0 means phone gun occurred.
+## Alternatives rejected
 
-## Alternatives rejected (proposal)
+- **Continuous or event-based shared countdown synchronization:** rejected; REMOTE controls acknowledged iPhone state, while SOLO is independent.
+- **Automatic SOLO fallback on disconnect:** rejected; disconnection shows unavailable in REMOTE and the mode never changes automatically.
+- **Rejoin/reconciliation and conflict resolution:** rejected; modes do not reconcile timer or preset state.
+- **Watch-controlled or parallel race logger:** rejected; iPhone recording, gun and recovery remain authoritative.
+- **AVSLUTA as End race:** rejected; Watch AVSLUTA affects countdown only and End race remains a separate confirmed iPhone action.
+- **Two separately distributed Watch apps:** rejected; use one native app with two isolated modes.
+- **HealthKit workout as an assumed countdown/background mechanism:** rejected; historical feasibility evidence remains separate and grants no production approval.
 
-- Second-by-second remote ticks: high traffic, fragile, unnecessary.
-- Cloud-authoritative start timer: conflicts with offline-first and increases latency and infrastructure complexity.
-- Blind last-writer-wins event replay on reconnect: could overwrite a newer countdown or create a false gun.
-- Independent watch-controlled race logger: conflicts with iPhone recording and recovery authority.
+## Acceptance criteria
 
-## Security/privacy/CRA review gates
+1. First launch selects REMOTE; last explicit selection persists. The secondary menu opens exactly the “Fjärrkontroll” and “SOLO” choices, outside the normal START flow.
+2. REMOTE UI contains only connection state, state-reflecting START/PAUSA/FORTSÄTT, and red AVSLUTA. It contains no digits, presets, local timer or Watch countdown cues.
+3. REMOTE commands only claim success after iPhone acknowledgment. Disconnect/unavailable does not select SOLO; reconnection does not replay stale commands.
+4. REMOTE AVSLUTA cancels/resets the iPhone countdown only and cannot end recording. Existing iPhone raceLogger, gun, recovery and confirmed End race behavior are preserved.
+5. SOLO has local 1–5 minute selection, countdown, audio/haptics and START/PAUSA/FORTSÄTT/AVSLUTA; it performs no iPhone exchange or recording.
+6. Mode switching never silently changes an iPhone timer/race. Leaving running SOLO requires explicit confirmation; declining leaves its timer intact. Connectivity never switches modes.
+7. One Watch app/target/identity and the existing repository/build arrangement are retained.
+8. REMOTE/SOLO state isolation, command acknowledgment and local SOLO behavior are validated on supported hardware before implementation is considered ready. No test result is implied by this proposal.
 
-The watch transmits only opaque session/control metadata; no location samples, auth tokens, user email, private R2 keys or cloud access. Validate command schema, bounded value domains, idempotency and versioning. Watch workout-background execution (if adopted) requires separate review of HealthKit entitlements, App Review legitimacy, privacy manifests, permissions, actual health/workout data processing and saved workout handling. No cloud data/contract change is approved. Record changes in appropriate existing security/privacy documentation before release.
+## Security, privacy and platform boundaries
 
-## Acceptance and evidence required
+REMOTE exchanges only the minimum command and confirmed control state needed to operate the iPhone timer. SOLO uses local timer/preset state. No GPS, race telemetry, health data, email, account identity or cloud credential is introduced by this decision. Do not log sensitive race or location payloads. Any future health/workout processing, additional data retention, permission, entitlement or cloud behavior requires separate review and approval.
 
-- Unit/fake-clock tests: transitions, strict minute-floor, duplicate/out-of-order commands, race token invalidation, delayed or lost acks, independent offline edits, reconnection and recovery.
-- Regression tests: current phone race logging, start gun, previous-process recovery, End race confirmation.
-- Native Xcode simulator Build and Run; paired real iPhone + Watch test for locked/background phone, wrist-down haptics, screen dim/raise, permissions, touch/rain behavior.
-- Document clock skew, observed sync delay, missing HealthKit capabilities and exact platform/model constraints. CI success is not equivalent to physical-hardware evidence or permission to ship.
+Historical Watch platform feasibility and optional Sailing Workout evidence remain in `docs/architecture/watch-platform-feasibility.md`. The former v1.3 Workout behavior was approved only as a feasibility experiment. This ADR grants no new production HealthKit approval, processing, entitlement or release authority.
 
-## Approval state
+## Historical traceability
 
-The product owner **approved five product constraints** plus the single-repository SwiftUI Watch target/Xcode Cloud approach on 2026-11-18. Detailed protocol mechanisms (including precise clock-offset estimation, message envelope, pending ACK UI and reconciliation implementation) are still **PROPOSED** pending technical review. Native feasibility, HealthKit legitimacy, signing and entitlement/privacy reviews remain unverified. No CI activation, TestFlight release or merge is authorized by this draft.
+On 2026-11-18 the owner approved Watch v1.3 requirements including iPhone authority, timer stop distinct from End race, RUNNING-only minute skip, iPhone-wins offline preset conflicts and fail-safe restart recovery. On 2026-11-20/21 additional countdown UI, skip and optional Sailing Workout test clarifications were recorded. Those decisions remain historical evidence but are superseded wherever they require behavior incompatible with the 2026-11-22 two-mode design. The established iPhone raceLogger, gun, recovery and separate End race semantics remain preserved.
+
+The 2026-11-22 product direction and one-app/two-mode navigation are OWNER-APPROVED. The technical command and lifecycle mechanisms above remain PROPOSED pending review. No implementation, signing, CI activation, TestFlight, production change, merge or release is approved here.
