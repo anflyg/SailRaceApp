@@ -16,7 +16,7 @@ final class WatchFeasibilityReceiver: NSObject, WCSessionDelegate {
     func syncStatus() -> [String: Any] {
         var result = authority.snapshot(at: TestSyncClock.now, issueLease: false)
         result["reachable"] = WCSession.default.isReachable
-        if let acknowledged = watchAckRevision, acknowledged == authority.revision, TestSyncClock.now - watchAckTime <= 6 { result["watchAckRevision"] = acknowledged }
+        if let acknowledged = watchAckRevision, acknowledged == authority.revision, TestSyncClock.now - watchAckTime <= 15 { result["watchAckRevision"] = acknowledged }
         return result
     }
 
@@ -47,10 +47,14 @@ final class WatchFeasibilityReceiver: NSObject, WCSessionDelegate {
     func sessionDidBecomeInactive(_ session: WCSession) {}
     func sessionDidDeactivate(_ session: WCSession) { session.activate() }
     func session(_ session: WCSession, didReceiveMessage message: [String: Any], replyHandler: @escaping ([String: Any]) -> Void) {
+        #if WATCH_TEST_CANDIDATE
+        let receivedAt = TestSyncClock.now
+        #endif
         DispatchQueue.main.async {
             #if WATCH_TEST_CANDIDATE
             if message["kind"] as? String == "watch-sync-test" {
-                let result = self.authority.handle(message, at: TestSyncClock.now)
+                var result = self.authority.handle(message, at: TestSyncClock.now)
+                result["clockReceive"] = receivedAt
                 if result["confirmed"] as? Bool == true { self.watchAckRevision = result["revision"] as? Int; self.watchAckTime = TestSyncClock.now }
                 else if result["solo"] as? Bool == true { self.watchAckRevision = nil }
                 else if result["ok"] as? Bool == true && ["start", "pause"].contains(message["action"] as? String ?? "") { self.watchAckRevision = nil }

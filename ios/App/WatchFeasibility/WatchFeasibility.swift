@@ -20,6 +20,15 @@ final class Experiment: NSObject, ObservableObject, WCSessionDelegate {
     private var zeroBeep: AVAudioPlayer?
     #if WATCH_TEST_CANDIDATE
     @Published private(set) var syncStatus = "UNCONFIRMED"
+    @Published private(set) var syncReason = "Preparing connection"
+    @Published private(set) var syncRoundTripMs = 0
+    @Published private(set) var syncUncertaintyMs = -1
+    private var syncRequiresRejoin = false
+    private var syncTimeline: String?
+    private var clockCorrelation = TestSyncCorrelation()
+    private var pendingWatchCommand: (id: String, action: String, seconds: Int, expires: Double)?
+    private var acceptedCommandTimeline: String?
+    private var acceptedCommandSession: String?
     private var syncSession: String?
     private var syncRevision: Int?
     private var syncGeneration = 0
@@ -59,8 +68,9 @@ final class Experiment: NSObject, ObservableObject, WCSessionDelegate {
         #endif
     }
     func selectPreset(_ minutes: Int) {
+        guard phase == .ready, (1...5).contains(minutes), minutes != presetMinutes else { return }
         #if WATCH_TEST_CANDIDATE
-        if syncStatus == "PENDING" { solo() }
+        if syncStatus == "PENDING" { solo("Preset changed") }
         #endif
         guard countdown.selectPreset(minutes) else { return }
         presetMinutes = countdown.presetMinutes
@@ -100,7 +110,7 @@ final class Experiment: NSObject, ObservableObject, WCSessionDelegate {
             phase = .running
             updateExecution()
             #if WATCH_TEST_CANDIDATE
-            solo()
+            independentEdit()
             #endif
         }
     }
@@ -112,7 +122,7 @@ final class Experiment: NSObject, ObservableObject, WCSessionDelegate {
         if countdown.skip(at: now) {
             remaining = countdown.remaining(at: now)
             #if WATCH_TEST_CANDIDATE
-            solo()
+            independentEdit()
             #endif
         }
         else if phase == .running { tick(allowCue: false) }
@@ -128,18 +138,24 @@ final class Experiment: NSObject, ObservableObject, WCSessionDelegate {
         phase = .ready
         remaining = countdown.presetSeconds
         #if WATCH_TEST_CANDIDATE
-        solo()
+        independentEdit()
         #endif
     }
     func setActive(_ active: Bool) {
         sceneIsActive = active
         #if WATCH_TEST_CANDIDATE
-        if active { enforceSyncFreshness() }
+        if active {
+            enforceSyncFreshness()
+            if syncStatus != "SHARED" && syncStatus != "PENDING" { refreshSync(explicit: false) }
+        }
         #endif
         updateExecution()
     }
     func setWorkoutActive(_ active: Bool) {
         workoutIsActive = active
+        #if WATCH_TEST_CANDIDATE
+        if active && syncStatus != "SHARED" && syncStatus != "PENDING" { refreshSync(explicit: false) }
+        #endif
         updateExecution()
     }
     private func updateExecution() {
@@ -219,7 +235,7 @@ final class Experiment: NSObject, ObservableObject, WCSessionDelegate {
         #if WATCH_TEST_CANDIDATE
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
-            if activationState == .activated && session.isReachable && self.syncStatus == "UNCONFIRMED" && self.phase == .ready { self.refreshSync(explicit: false) }
+            if activationState == .activated && self.syncStatus != "PENDING" { self.refreshSync(explicit: false) }
         }
         #endif
     }
@@ -228,9 +244,9 @@ final class Experiment: NSObject, ObservableObject, WCSessionDelegate {
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
             if !session.isReachable {
-                if self.syncStatus != "UNCONFIRMED" || self.phase != .ready { self.solo() }
+                if self.syncStatus == "SHARED" { self.solo("Connection unavailable") }
             }
-            else if self.syncStatus == "UNCONFIRMED" && self.phase == .ready { self.refreshSync(explicit: false) }
+            else if self.syncStatus != "PENDING" { self.refreshSync(explicit: false) }
         }
     }
     func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
@@ -240,79 +256,149 @@ final class Experiment: NSObject, ObservableObject, WCSessionDelegate {
               let revision = syncInteger(message["revision"]), (0...1_000_000).contains(revision),
               let state = message["state"] as? String, ["ready", "running", "paused", "finished"].contains(state) else { return }
         DispatchQueue.main.async { [weak self] in
-            guard let self, self.syncStatus == "SHARED" || (self.syncStatus == "UNCONFIRMED" && self.phase == .ready) else { return }
+            guard let self, !self.syncRequiresRejoin, self.syncStatus != "PENDING" else { return }
             self.refreshSync(explicit: false)
         }
     }
-    private func solo() {
-        let oldSession = syncSession
+    private func scheduleSyncCheck(after seconds: Double) {
+        syncCheck?.invalidate()
+        let check = Timer(timeInterval: seconds, repeats: false) { [weak self] _ in
+            guard let self, !self.syncRequiresRejoin else { return }
+            self.refreshSync(explicit: false)
+        }
+        RunLoop.main.add(check, forMode: .common)
+        syncCheck = check
+    }
+    private func solo(_ reason: String = "Connection unconfirmed", conflict: Bool = false) {
         let notifyPhone = syncStatus == "SHARED" || syncStatus == "PENDING"
+        let oldSession = syncSession
         syncCheck?.invalidate(); syncCheck = nil; syncGeneration += 1; syncStatus = "SOLO"
+        syncRequiresRejoin = syncRequiresRejoin || conflict
+        syncReason = syncRequiresRejoin ? reason + "; Rejoin required" : reason + "; retrying"
+        NSLog("Watch sync: %@", syncReason)
         let rollback = pendingSyncRollback; pendingSyncRollback = nil
         rollback?()
         if notifyPhone, let oldSession, WCSession.default.isReachable {
             WCSession.default.sendMessage(["kind": "watch-sync-test", "version": 1, "origin": "watch",
                 "commandId": UUID().uuidString, "action": "solo", "session": oldSession], replyHandler: { _ in }, errorHandler: { _ in })
         }
+        if !syncRequiresRejoin { scheduleSyncCheck(after: 2) }
+    }
+    private func independentEdit() {
+        pendingWatchCommand = nil
+        acceptedCommandTimeline = nil; acceptedCommandSession = nil
+        solo("Local-only control", conflict: true)
     }
     private func enforceSyncFreshness() {
-        guard syncStatus == "SHARED" || syncStatus == "PENDING", let last = lastSyncConfirmed else { return }
-        if ContinuousClock.now > last.advanced(by: .seconds(6)) { solo() }
+        // An in-flight exchange has its own timeout. Do not race it with the heartbeat.
+        guard syncStatus == "SHARED", let last = lastSyncConfirmed else { return }
+        if ContinuousClock.now > last.advanced(by: .seconds(15)) { solo("State confirmation expired") }
     }
 
-    private func request(_ payload: [String: Any], generation: Int, completion: @escaping (TestSyncSnapshot, Duration) -> Void) {
-        guard WCSession.default.activationState == .activated, WCSession.default.isReachable else { solo(); return }
-        let id = UUID().uuidString
+    private func request(_ payload: [String: Any], generation: Int, requiresRunningTime: Bool = true, completion: @escaping (TestSyncSnapshot, Duration) -> Void) {
+        guard WCSession.default.activationState == .activated else { solo("Session activating"); return }
+        let id = payload["commandId"] as? String ?? UUID().uuidString
         var message = payload
         message["kind"] = "watch-sync-test"; message["version"] = 1
         message["origin"] = "watch"; message["commandId"] = id
         let sent = ContinuousClock.now
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
+        let clockSent = TestSyncClock.now
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak self] in
             guard let self, self.syncGeneration == generation else { return }
-            self.solo()
+            self.solo("Reply timeout")
         }
         WCSession.default.sendMessage(message, replyHandler: { [weak self] reply in
             DispatchQueue.main.async {
                 let received = ContinuousClock.now
                 guard let self, self.syncGeneration == generation else { return }
-                guard reply["commandId"] as? String == id, let snapshot = TestSyncSnapshot(reply),
-                      snapshot.correlatedRemaining(roundTrip: self.elapsed(sent.duration(to: received))) != nil else { self.solo(); return }
+                if let pending = self.pendingWatchCommand,
+                   !TestSyncReconciliation.commandIsFresh(expiry: pending.expires, now: TestSyncClock.now) {
+                    self.pendingWatchCommand = nil
+                    self.solo("Command expired; local timer preserved", conflict: true); return
+                }
+                guard reply["commandId"] as? String == id else { self.solo("Invalid reply"); return }
+                if reply["ok"] as? Bool != true {
+                    let reason = reply["reason"] as? String ?? "rejected"
+                    if reason == "stale" || reason == "duplicate", let pending = self.pendingWatchCommand {
+                        self.pendingWatchCommand = (UUID().uuidString, pending.action, pending.seconds, pending.expires)
+                    }
+                    self.solo("Command " + reason, conflict: reason == "preset-conflict")
+                    return
+                }
+                guard let snapshot = TestSyncSnapshot(reply) else { self.solo("Invalid state"); return }
+                if snapshot.lastCommandID == self.pendingWatchCommand?.id {
+                    self.acceptedCommandTimeline = snapshot.timeline
+                    self.acceptedCommandSession = snapshot.session
+                }
+                let rtt = self.elapsed(sent.duration(to: received))
+                self.syncRoundTripMs = Int(rtt * 1000)
+                self.syncReason = "Round trip \(Int(rtt * 1000)) ms"
+                let observed = self.clockCorrelation.observe(snapshot, sent: clockSent, received: TestSyncClock.now)
+                let uncertainty = self.clockCorrelation.uncertainty
+                self.syncUncertaintyMs = uncertainty.isFinite ? Int(uncertainty * 1000) : -1
+                guard observed,
+                      !requiresRunningTime || self.clockCorrelation.remaining(snapshot, at: TestSyncClock.now) != nil else {
+                    self.solo("Clock uncertainty \(uncertainty.isFinite ? Int(uncertainty * 1000) : -1) ms; sample \(Int(rtt * 1000)) ms")
+                    return
+                }
                 completion(snapshot, sent.duration(to: received))
             }
         }, errorHandler: { [weak self] _ in DispatchQueue.main.async {
-            guard let self, self.syncGeneration == generation else { return }; self.solo()
+            guard let self, self.syncGeneration == generation else { return }; self.solo("Delivery unavailable")
         } })
     }
     private func syncCommand(_ action: String, seconds: Int = 0) {
-        enforceSyncFreshness()
-        guard syncStatus == "SHARED", let session = syncSession, let revision = syncRevision else { solo(); return }
-        syncCheck?.invalidate(); syncCheck = nil
-        syncGeneration += 1; let generation = syncGeneration; syncStatus = "PENDING"
-        request(["action": "snapshot"], generation: generation) { [weak self] snapshot, _ in
-            guard let self, snapshot.session == session, snapshot.revision == revision,
-                  (action == "start" ? ["ready", "finished"].contains(snapshot.state) : snapshot.state == "running") else { self?.solo(); return }
-            self.syncGeneration += 1; let commandGeneration = self.syncGeneration
-            self.request(["action": action, "session": session, "revision": revision, "lease": snapshot.lease, "seconds": seconds], generation: commandGeneration) { [weak self] reply, rtt in
-                guard let self, reply.session == session, reply.revision == revision + 1,
-                      reply.state == (action == "start" ? "running" : "paused") else { self?.solo(); return }
-                self.applySnapshot(reply, roundTrip: rtt, explicit: false)
-            }
-        }
+        guard !syncRequiresRejoin else { solo("Independent countdown", conflict: true); return }
+        pendingWatchCommand = (UUID().uuidString, action, seconds, TestSyncClock.now + 10)
+        refreshSync(explicit: false)
     }
     func rejoinPhone() { refreshSync(explicit: true) }
     private func refreshSync(explicit: Bool) {
-        guard explicit || syncStatus != "SOLO" else { return }
+        guard explicit || !syncRequiresRejoin else { return }
+        if !explicit, let pending = pendingWatchCommand,
+           !TestSyncReconciliation.commandIsFresh(expiry: pending.expires, now: TestSyncClock.now) {
+            pendingWatchCommand = nil
+            solo("Command expired; local timer preserved", conflict: true); return
+        }
         if explicit {
-            if syncStatus == "PENDING" { solo() }
-            lastSyncConfirmed = nil
+            if syncStatus == "PENDING" { solo("Rejoining") }
+            pendingWatchCommand = nil
+            syncRequiresRejoin = false
         }
         syncCheck?.invalidate(); syncCheck = nil
         syncGeneration += 1; let generation = syncGeneration; syncStatus = "PENDING"
-        request(["action": "snapshot"], generation: generation) { [weak self] snapshot, rtt in
+        request(["action": "snapshot"], generation: generation, requiresRunningTime: pendingWatchCommand == nil) { [weak self] snapshot, rtt in
             guard let self else { return }
-            if !explicit, let oldSession = self.syncSession, let oldRevision = self.syncRevision,
-               (snapshot.session != oldSession || snapshot.revision < oldRevision || snapshot.revision > oldRevision + 1) { self.solo(); return }
-            self.applySnapshot(snapshot, roundTrip: rtt, explicit: explicit)
+            if let pending = self.pendingWatchCommand {
+                if snapshot.lastCommandID == pending.id {
+                    self.applySnapshot(snapshot, roundTrip: rtt, explicit: true)
+                    return
+                }
+                let canStart = pending.action == "start" && ["ready", "finished"].contains(snapshot.state)
+                let sameTimeline = (self.syncTimeline == snapshot.timeline && self.syncSession == snapshot.session) ||
+                    (self.acceptedCommandTimeline == snapshot.timeline && self.acceptedCommandSession == snapshot.session)
+                if pending.action == "pause" && sameTimeline && snapshot.state == "paused" {
+                    self.applySnapshot(snapshot, roundTrip: rtt, explicit: true)
+                    return
+                }
+                guard canStart || (pending.action == "pause" && sameTimeline && snapshot.state == "running") else {
+                    self.solo("Conflicting command", conflict: true); return
+                }
+                self.syncGeneration += 1; let commandGeneration = self.syncGeneration
+                self.request(["action": pending.action, "session": snapshot.session, "revision": snapshot.revision,
+                              "lease": snapshot.lease, "seconds": pending.seconds, "commandId": pending.id], generation: commandGeneration) { [weak self] reply, commandRTT in
+                    guard let self, reply.lastCommandID == pending.id,
+                          reply.state == (pending.action == "start" ? "running" : "paused") else { self?.solo("Command state changed"); return }
+                    self.applySnapshot(reply, roundTrip: commandRTT, explicit: true)
+                }
+                return
+            }
+            guard explicit || TestSyncReconciliation.mayAutomaticallyJoin(localReady: self.phase == .ready || self.phase == .finished,
+                    knownTimeline: self.syncTimeline, remoteTimeline: snapshot.timeline, independent: self.syncRequiresRejoin) else {
+                self.solo("Different active timeline", conflict: true); return
+            }
+            // Same lineage follows the authoritative phone, including a PAUSE missed while unreachable.
+            self.applySnapshot(snapshot, roundTrip: rtt, explicit: true)
         }
     }
     private func elapsed(_ duration: Duration) -> Double {
@@ -320,7 +406,7 @@ final class Experiment: NSObject, ObservableObject, WCSessionDelegate {
         return Double(c.seconds) + Double(c.attoseconds) / 1e18
     }
     private func applySnapshot(_ snapshot: TestSyncSnapshot, roundTrip: Duration, explicit: Bool) {
-        guard let seconds = snapshot.correlatedRemaining(roundTrip: elapsed(roundTrip)) else { solo(); return }
+        guard let seconds = clockCorrelation.remaining(snapshot, at: TestSyncClock.now) else { solo("Clock not calibrated"); return }
         let correlated = Duration.milliseconds(Int64(seconds * 1000))
         let now = ContinuousClock.now
         let localState: String
@@ -335,32 +421,44 @@ final class Experiment: NSObject, ObservableObject, WCSessionDelegate {
         let priorCountdown = countdown
         let priorPhase = phase
         let priorRemaining = remaining
+        var replacedCountdown = false
+        let sameAnchor = syncTimeline == snapshot.timeline && syncRevision == snapshot.revision && localState == snapshot.state
+        if sameAnchor && snapshot.state == "running" && abs(Double(countdown.remaining(at: now)) - seconds) > 1.5 {
+            solo("Clock discrepancy"); return
+        }
         lastSyncConfirmed = now
         if snapshot.state == "running" || snapshot.state == "paused" {
             guard correlated > .zero else { solo(); return }
-            countdown.adopt(remaining: correlated, running: snapshot.state == "running", at: now)
-            phase = snapshot.state == "running" ? .running : .paused
-            remaining = countdown.remaining(at: now)
-            updateExecution()
-        } else if phase != .ready {
+            // Read-only confirmations must not suppress an imminent 5–0 cue.
+            if !sameAnchor {
+                replacedCountdown = true
+                countdown.adopt(remaining: correlated, running: snapshot.state == "running", at: now)
+                phase = snapshot.state == "running" ? .running : .paused
+                remaining = countdown.remaining(at: now)
+                updateExecution()
+            }
+        } else if phase != .ready && phase != .finished {
             if !explicit { solo(); return }
+            replacedCountdown = true
             timer?.invalidate(); timer = nil; countdown.cancel(); phase = .ready; remaining = countdown.presetSeconds
         }
         syncSession = snapshot.session; syncRevision = snapshot.revision
         syncGeneration += 1; let generation = syncGeneration; syncStatus = "PENDING"
-        pendingSyncRollback = { [weak self] in
-            guard let self else { return }
-            self.finishTask?.cancel(); self.finishTask = nil
-            self.countdown = priorCountdown; self.phase = priorPhase; self.remaining = priorRemaining
-            self.updateExecution()
+        if replacedCountdown {
+            pendingSyncRollback = { [weak self] in
+                guard let self else { return }
+                self.finishTask?.cancel(); self.finishTask = nil
+                self.countdown = priorCountdown; self.phase = priorPhase; self.remaining = priorRemaining
+                self.updateExecution()
+            }
         }
         let rollback: () -> Void = { [weak self] in
             guard let self, self.syncGeneration == generation else { return }
             self.solo()
         }
-        guard WCSession.default.isReachable else { rollback(); return }
+        guard WCSession.default.activationState == .activated else { rollback(); return }
         let ackID = UUID().uuidString
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1, execute: rollback)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5, execute: rollback)
         WCSession.default.sendMessage(["kind": "watch-sync-test", "version": 1, "origin": "watch",
             "commandId": ackID, "action": "ack", "session": snapshot.session,
             "revision": snapshot.revision, "state": snapshot.state], replyHandler: { [weak self] reply in
@@ -369,18 +467,18 @@ final class Experiment: NSObject, ObservableObject, WCSessionDelegate {
                     guard reply["ok"] as? Bool == true, reply["acknowledged"] as? Bool == true,
                           reply["commandId"] as? String == ackID, syncInteger(reply["revision"]) == snapshot.revision else { rollback(); return }
                     self.pendingSyncRollback = nil
+                    self.pendingWatchCommand = nil
+                    self.acceptedCommandTimeline = nil; self.acceptedCommandSession = nil
+                    self.syncRequiresRejoin = false
+                    self.syncTimeline = snapshot.timeline
                     self.syncGeneration += 1; self.syncStatus = "SHARED"; self.lastSyncConfirmed = .now
+                    self.syncReason = "Phone state confirmed"
                     if WCSession.default.isReachable {
                         WCSession.default.sendMessage(["kind": "watch-sync-test", "version": 1, "origin": "watch",
                             "commandId": UUID().uuidString, "action": "confirm", "session": snapshot.session,
                             "revision": snapshot.revision, "state": snapshot.state], replyHandler: { _ in }, errorHandler: { _ in })
                     }
-                    let check = Timer(timeInterval: 5, repeats: false) { [weak self] _ in
-                        guard let self, self.syncStatus == "SHARED" else { return }
-                        self.refreshSync(explicit: false)
-                    }
-                    RunLoop.main.add(check, forMode: .common)
-                    self.syncCheck = check
+                    self.scheduleSyncCheck(after: self.clockCorrelation.uncertainty > 0.25 ? 2 : 5)
                 }
             }, errorHandler: { [weak self] _ in DispatchQueue.main.async {
                 guard let self, self.syncGeneration == generation else { return }; rollback()
@@ -506,6 +604,9 @@ final class Experiment: NSObject, ObservableObject, WCSessionDelegate {
                                 #if WATCH_TEST_CANDIDATE
                                 NavigationLink("Sailing workout") { SailingWorkoutView(workout: workout) }
                                 Text("Sync: \(experiment.syncStatus)")
+                                Text(experiment.syncReason).font(.caption2)
+                                Text("Clock sample: \(experiment.syncRoundTripMs) ms").font(.caption2)
+                                Text("Uncertainty: \(experiment.syncUncertaintyMs) ms").font(.caption2)
                                 Button("Rejoin phone countdown") { experiment.rejoinPhone() }
                                 #endif
                                 Toggle("Sound cues", isOn: $experiment.soundEnabled)
