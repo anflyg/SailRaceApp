@@ -23,7 +23,7 @@ struct RemoteIO {
 }
 
 final class WatchModel: NSObject, ObservableObject, WCSessionDelegate {
-    @Published var mode: String
+    let mode = "remote"
     @Published var phase: Phase = .ready
     @Published var status = "Ej tillgänglig"
     @Published private var requestGate = RemoteRequestGate()
@@ -49,29 +49,15 @@ final class WatchModel: NSObject, ObservableObject, WCSessionDelegate {
     init(io: RemoteIO, defaults: UserDefaults, startServices: Bool) {
         self.io = io
         self.defaults = defaults
-        let savedMode = defaults.string(forKey: "watchMode")
-        mode = savedMode == "solo" ? "solo" : "remote"
+        defaults.set("remote", forKey: "watchMode")
         let preset = CountdownPresetStore(defaults: defaults).load()
         solo = CountdownState(presetMinutes: preset); remaining = preset * 60
         super.init()
         guard startServices else { return }
-        for name in ["CountdownShort", "CountdownZero"] {
-            if let url = Bundle.main.url(forResource: name, withExtension: "wav"), let player = try? AVAudioPlayer(contentsOf: url) { players[name] = player; player.prepareToPlay() }
-        }
         if mode == "remote", WCSession.isSupported() { WCSession.default.delegate = self; WCSession.default.activate() }
         timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in self?.tick() }
     }
-    func select(_ newMode: String) {
-        guard newMode != mode else { return }
-        if mode == "solo" { solo.cancel(); remaining = solo.presetSeconds }
-        requestGate.invalidate(); generation = nil; status = "Ej tillgänglig"
-        mode = newMode; defaults.set(mode, forKey: "watchMode")
-        if mode == "remote", WCSession.isSupported() {
-            WCSession.default.delegate = self
-            if WCSession.default.activationState == .activated { refresh() } else { WCSession.default.activate() }
-        }
-    }
-    func selectPreset(_ value: Int) { if solo.selectPreset(value) { remaining = solo.presetSeconds; CountdownPresetStore(defaults: defaults).save(value) } }
+    func selectPreset(_ value: Int) { guard mode == "solo" else { return }; if solo.selectPreset(value) { remaining = solo.presetSeconds; CountdownPresetStore(defaults: defaults).save(value) } }
     func soloAction(_ action: Action) {
         guard mode == "solo" else { return }
         switch action {
@@ -131,28 +117,13 @@ final class WatchModel: NSObject, ObservableObject, WCSessionDelegate {
 #if !WATCH_REMOTE_TEST
 @main struct WatchApp: App {
     @StateObject private var model = WatchModel()
-    @State private var confirm = false
     var body: some Scene { WindowGroup { NavigationStack {
         VStack {
-            if model.mode == "remote" {
-                Text(model.status).font(.caption)
-                Button(model.phase == .ready ? "START" : model.phase == .running ? "PAUSA" : "FORTSÄTT") { model.command(model.phase == .ready ? .start : model.phase == .running ? .pause : .resume) }
-                    .tint(.blue).disabled(model.pending || model.status != "Ansluten")
-                Button("AVSLUTA") { model.command(.reset) }.tint(.red).disabled(model.pending || model.status != "Ansluten")
-            } else {
-                Text(String(format: "%02d:%02d", model.remaining / 60, model.remaining % 60)).font(.title2.monospacedDigit())
-                if model.solo.phase == .ready { Picker("Minuter", selection: Binding(get: { model.solo.presetMinutes }, set: { model.selectPreset($0) })) { ForEach(1...5, id: \.self) { Text("\($0) min").tag($0) } } }
-                Button(model.solo.phase == .ready || model.solo.phase == .finished ? "START" : model.solo.phase == .running ? "PAUSA" : "FORTSÄTT") {
-                    if model.solo.phase == .finished { model.soloAction(.reset) }
-                    model.soloAction(model.solo.phase == .ready ? .start : model.solo.phase == .running ? .pause : .resume)
-                }.tint(.blue)
-                Button("AVSLUTA") { model.soloAction(.reset) }.tint(.red)
-            }
+            Text(model.status).font(.caption)
+            Button(model.phase == .ready ? "START" : model.phase == .running ? "PAUSA" : "FORTSÄTT") { model.command(model.phase == .ready ? .start : model.phase == .running ? .pause : .resume) }
+                .tint(.blue).disabled(model.pending || model.status != "Ansluten")
+            Button("AVSLUTA") { model.command(.reset) }.tint(.red).disabled(model.pending || model.status != "Ansluten")
         }.buttonStyle(.borderedProminent)
-        .toolbar { ToolbarItem(placement: .topBarTrailing) { NavigationLink { List {
-            Button("Fjärrkontroll") { if model.mode == "solo" && model.solo.phase == .running { confirm = true } else { model.select("remote") } }
-            Button("SOLO") { model.select("solo") }
-        }.confirmationDialog("Avsluta SOLO-nedräkningen?", isPresented: $confirm) { Button("Avsluta och byt", role: .destructive) { model.select("remote") } } } label: { Image(systemName: "ellipsis") } } }
     } } }
 }
 

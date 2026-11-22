@@ -29,6 +29,14 @@ final class FakeTransport {
         defer { defaults.removePersistentDomain(forName: suite) }
         let fake = FakeTransport()
         let watch = WatchModel(io: fake.io(), defaults: defaults, startServices: false)
+        precondition(watch.mode == "remote" && defaults.string(forKey: "watchMode") == "remote")
+        defaults.set("solo", forKey: "watchMode")
+        let migrated = WatchModel(io: fake.io(), defaults: defaults, startServices: false)
+        precondition(migrated.mode == "remote" && defaults.string(forKey: "watchMode") == "remote")
+        let originalPreset = migrated.solo.presetMinutes
+        migrated.selectPreset(originalPreset == 5 ? 1 : 5)
+        migrated.soloAction(.start)
+        precondition(migrated.solo.phase == .ready && migrated.solo.presetMinutes == originalPreset && fake.sent.isEmpty, "SOLO must be inaccessible")
         var phone = Authority()
 
         watch.refresh()
@@ -72,36 +80,8 @@ final class FakeTransport {
         precondition(watch.phase == .running && watch.mode == "remote")
         precondition(fake.sent.filter { $0.payload["action"] as? String == "start" }.count == 1)
 
-        watch.command(.pause)
-        let beforeSolo = fake.sent.count - 1
-        watch.select("solo")
         watch.soloAction(.start)
-        let soloPhase = watch.solo.phase
-        let soloRemaining = watch.remaining
-        let count = fake.sent.count
-        watch.command(.start)
-        watch.refresh()
-        watch.reachabilityChanged()
-        fake.commandReply(beforeSolo, accepted: true, phase: .paused)
-        fake.timers.last?() // timeout after entering SOLO must not refresh
-        precondition(fake.sent.count == count, "SOLO must not send messages")
-        precondition(watch.mode == "solo" && watch.solo.phase == soloPhase && watch.remaining == soloRemaining)
-        precondition(watch.phase == .running, "late REMOTE ACK changed state in SOLO")
-        watch.soloAction(.pause); watch.soloAction(.resume); watch.soloAction(.reset)
-        precondition(fake.sent.count == count && watch.solo.phase == .ready)
-
-        watch.select("remote")
-        watch.refresh()
-        let pendingQuery = fake.sent.count - 1
-        watch.select("solo")
-        fake.queryReply(pendingQuery, generation: "late", phase: .ready)
-        precondition(watch.mode == "solo" && watch.phase == .running)
-        watch.select("remote")
-        watch.refresh()
-        let freshQuery = fake.sent.count - 1
-        fake.queryReply(freshQuery, generation: "fresh", phase: .paused)
-        fake.queryReply(pendingQuery, generation: "late", phase: .ready)
-        precondition(watch.mode == "remote" && watch.phase == .paused, "old query overwrote a newer confirmed state")
+        precondition(watch.mode == "remote" && watch.solo.phase == .ready, "SOLO action must remain disabled")
         print("REMOTE transport tests passed")
     }
 }
