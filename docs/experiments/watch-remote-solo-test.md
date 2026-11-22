@@ -22,3 +22,12 @@ SOLO stores the mode and preset locally. It uses a monotonic countdown while the
 - Confirm state refresh after phone-side actions and expiry, and that AVSLUTA affects only the test countdown.
 - Confirm SOLO presets, cue volume, haptics, background/sleep behavior and termination limits on supported watches. Verify that changing modes does not alter the phone countdown and that declining the running SOLO cancellation leaves it running.
 - Assess the UI in sunlight and with wet hands. This prototype does not establish production reliability or release authorization.
+
+## WatchTest icon archive validation on 2026-11-22
+
+- PASS: WatchTest Debug and Release generic iOS builds using Xcode 27.2, including the embedded watchOS target.
+- PASS: Unsigned generic iOS Release archive at `/tmp/WatchTest.xcarchive` (local validation only; not exported or distributed).
+- PASS: Archive inspection found an iPhone `CFBundleIcons.CFBundlePrimaryIcon.CFBundleIconName` of `AppIcon`, `CFBundleIconFiles` naming `AppIcon60x60`, and the generated `AppIcon60x60@2x.png` (120×120) plus `Assets.car`.
+- PASS: Embedded Watch archive bundle has `CFBundleIcons.CFBundlePrimaryIcon.CFBundleIconName` set to `AppIcon` and a compiled `Assets.car`.
+- PASS: Both source images are 1024×1024 and visibly labeled for the WatchTest prototype; production Race asset catalog remains unchanged.
+- Archive was unsigned with `CODE_SIGNING_ALLOWED=NO`; this validates generated bundle resources and metadata, not App Store Connect processing or signing.
