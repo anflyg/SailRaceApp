@@ -60,6 +60,8 @@ final class WatchModel: NSObject, ObservableObject, WCSessionDelegate {
     private var generation: String?
     private var timer: Timer?
     private var refreshTicks = 0
+    private var pressActive = false
+    func setPressActive(_ active: Bool) { pressActive = active }
     private var players: [String: AVAudioPlayer] = [:]
     #if !WATCH_REMOTE_TEST
     override convenience init() {
@@ -93,10 +95,10 @@ final class WatchModel: NSObject, ObservableObject, WCSessionDelegate {
         }
         remaining = solo.remaining(at: .now)
     }
-    private func tick() {
+    func tick() {
         if mode == "remote" {
             refreshTicks += 1
-            if refreshTicks >= 50 { refreshTicks = 0; if !pending { refresh() } }
+            if refreshTicks >= 50 { refreshTicks = 0; if !pending && !pressActive { refresh() } }
             return
         }
         guard let update = solo.update(at: .now, allowCue: true) else { return }
@@ -159,12 +161,14 @@ struct RemoteControlView: View {
     private func cancelPress() {
         pressTimer?.invalidate(); pressTimer = nil
         press.cancel(); capturedAction = nil; progress = 0
+        model.setPressActive(false)
     }
     private func beginPress() {
         guard !touchConsumed else { return }
         touchConsumed = true
         guard model.available else { return }
         capturedAction = model.primaryAction
+        model.setPressActive(true)
         press.begin(at: now)
         let timer = Timer(timeInterval: 0.05, repeats: true) { _ in
             guard model.available, let start = press.startedAt else { cancelPress(); return }

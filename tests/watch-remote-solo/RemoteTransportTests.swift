@@ -113,6 +113,44 @@ final class FakeTransport {
         precondition(watch.phase == .running && watch.mode == "remote")
         precondition(fake.sent.filter { $0.payload["action"] as? String == "start" }.count == 1)
 
+        // A periodic refresh must not invalidate a press or its generation.
+        for phase in [Phase.running, .paused] {
+            if phase == .paused {
+                watch.command(.pause)
+                let index = fake.sent.count - 1
+                let payload = fake.sent[index].payload
+                let reply = phone.execute(id: payload["id"] as! String, generation: payload["generation"] as! String, action: .pause)
+                precondition(reply.0 && reply.1 == .paused)
+                fake.commandReply(index, accepted: reply.0, phase: reply.1)
+            }
+            precondition(watch.phase == phase)
+            var hold = RemotePress()
+            hold.begin(at: 0)
+            watch.setPressActive(true)
+            let count = fake.sent.count
+            for _ in 0..<50 { watch.tick() }
+            precondition(fake.sent.count == count && watch.available, "poll must not interrupt a hold")
+            let action = hold.release(at: 2, primary: watch.primaryAction)!
+            precondition(action == .reset && fake.sent.count == count)
+            watch.setPressActive(false)
+            watch.command(action)
+            let payload = fake.sent.last!.payload
+            precondition(fake.sent.count == count + 1 && payload["action"] as? String == "reset")
+            let reply = phone.execute(id: payload["id"] as! String, generation: payload["generation"] as! String, action: action)
+            precondition(reply.0 && reply.1 == .ready)
+            precondition(watch.phase == phase, "wait for phone acknowledgment")
+            fake.commandReply(fake.sent.count - 1, accepted: reply.0, phase: reply.1)
+            precondition(watch.phase == .ready)
+            if phase == .running {
+                watch.command(.start)
+                let index = fake.sent.count - 1
+                let payload = fake.sent[index].payload
+                let reply = phone.execute(id: payload["id"] as! String, generation: payload["generation"] as! String, action: .start)
+                precondition(reply.0)
+                fake.commandReply(index, accepted: reply.0, phase: reply.1)
+            }
+        }
+
         watch.soloAction(.start)
         precondition(watch.mode == "remote" && watch.solo.phase == .ready, "SOLO action must remain disabled")
         print("REMOTE transport tests passed")

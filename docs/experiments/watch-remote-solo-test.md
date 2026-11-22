@@ -6,6 +6,14 @@ REMOTE uses reachable-only WatchConnectivity messages. A query returns a fresh g
 
 Owner decision 2026-11-22: the initial Watch release is REMOTE-only; SOLO development is paused indefinitely. The Watch always starts in REMOTE and replaces a previously saved SOLO mode. The selector, SOLO screen and startup audio preparation are disabled. The standalone countdown and cue implementation is retained for possible future use. No workout, background entitlement or HealthKit access is used.
 
+## Running-state long-press follow-up on 2026-11-22
+
+Physical testing reported that a hold reset the ready control, while the red running PAUSA control did not reset; normal taps worked. Periodic five-second queries temporarily mark the Watch unavailable and canceled an active hold. This is a plausible timing-dependent cause, not a confirmed device diagnosis. Periodic polling now waits until the press ends; actual reachability loss, phase changes, scene interruption and drag-out still cancel. The phone already accepts reset from every phase and acknowledgment remains authoritative.
+
+- PASS: Focused fake-transport tests exercise a poll during a hold, release-only reset from running and paused, phone acceptance and confirmed-state update after acknowledgment. These do not exercise watchOS gesture delivery or actual radio behavior.
+- PASS: WatchTest Debug and Release generic iOS Simulator builds, including the embedded Watch target (unsigned).
+- Physical verification still required on this revision: long holds in ready, running and paused, including across a five-second poll boundary; no START/PAUSA before or after long release; normal taps, drag-out and interruptions; progress/haptic and phone acknowledgment; disconnect/reconnect and VoiceOver.
+
 ## Tap interaction follow-up
 
 The owner requested normal taps for the primary action and a two-second hold for AVSLUTA, superseding the 0.4-second minimum and dead zone in PR #80 commit `964d15b`. PR #80 still needs a corresponding product documentation update. The action remains release-only; dragging outside cancels the gesture even if the touch returns inside.
