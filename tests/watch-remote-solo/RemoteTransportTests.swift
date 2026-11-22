@@ -103,7 +103,7 @@ final class FakeTransport {
         fake.timers[1]() // Duplicate timeout delivery must not issue another query.
         precondition(fake.sent.count == 3)
         precondition(fake.sent.filter { $0.payload["action"] as? String == "start" }.count == 1)
-        precondition(!phone.execute(id: UUID().uuidString, generation: g1, action: .reset).0)
+        precondition(g1 == g2, "queries must preserve command generation")
         precondition(phone.phase == .running)
 
         watch.command(.pause)
@@ -115,6 +115,7 @@ final class FakeTransport {
         watch.reachabilityChanged()
         let reconnect = fake.sent.count - 1
         precondition(fake.sent[reconnect].payload["kind"] as? String == "query")
+        phone.invalidateSession() // Phone observes the real reachability loss.
         let (g3, state) = phone.refresh()
         fake.queryReply(reconnect, generation: g3, phase: state)
         let oldPause = fake.sent[pendingPause].payload

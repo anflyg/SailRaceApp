@@ -18,15 +18,47 @@ struct Command {
     }
 }
 
-// Phone-only authority. A new query invalidates any commands from prior sessions.
+// Revisions are scoped to one authority lifetime. A receiver must establish a
+// new epoch through a fresh query before accepting unsolicited snapshots.
+struct ControlSnapshot {
+    let epoch: String
+    let generation: String
+    let revision: Int
+    let phase: Phase
+    var message: [String: Any] { ["kind": "state", "epoch": epoch, "generation": generation, "revision": revision, "phase": phase.rawValue] }
+    static func parse(_ message: [String: Any]) -> ControlSnapshot? {
+        guard message["kind"] as? String == "state",
+              let epoch = message["epoch"] as? String, UUID(uuidString: epoch) != nil,
+              let generation = message["generation"] as? String, UUID(uuidString: generation) != nil,
+              let revision = message["revision"] as? Int, revision >= 0,
+              let raw = message["phase"] as? String, let phase = Phase(rawValue: raw) else { return nil }
+        return ControlSnapshot(epoch: epoch, generation: generation, revision: revision, phase: phase)
+    }
+}
+
+struct ControlRevisionGate {
+    private(set) var snapshot: ControlSnapshot?
+    // Only a current, identified query may establish a different authority epoch.
+    mutating func establish(_ next: ControlSnapshot) -> Bool {
+        if let current = snapshot, current.epoch == next.epoch { return accept(next) }
+        snapshot = next; return true
+    }
+    mutating func accept(_ next: ControlSnapshot) -> Bool {
+        guard let current = snapshot, current.epoch == next.epoch, next.revision > current.revision else { return false }
+        snapshot = next; return true
+    }
+}
+
+// Phone-only authority; queries do not invalidate commands.
 struct Authority {
     private(set) var phase: Phase = .ready
     private(set) var generation = UUID().uuidString
+    private let epoch = UUID().uuidString
+    private(set) var revision = 0
+    var snapshot: ControlSnapshot { ControlSnapshot(epoch: epoch, generation: generation, revision: revision, phase: phase) }
+    mutating func invalidateSession() { generation = UUID().uuidString; revision += 1 }
     private var replies: [String: (generation: String, action: Action, accepted: Bool)] = [:]
-    mutating func refresh() -> (String, Phase) {
-        generation = UUID().uuidString
-        return (generation, phase)
-    }
+    func refresh() -> (String, Phase) { (generation, phase) }
     mutating func execute(id: String, generation: String, action: Action) -> (Bool, Phase, Bool) {
         guard generation == self.generation else { return (false, phase, false) }
         if let prior = replies[id] {
@@ -40,7 +72,7 @@ struct Authority {
         case (_, .reset): next = .ready
         default: next = nil
         }
-        if let next { phase = next }
+        if let next, next != phase { phase = next; revision += 1 }
         let accepted = next != nil
         replies[id] = (generation, action, accepted)
         return (accepted, phase, true)
