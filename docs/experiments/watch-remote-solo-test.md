@@ -1,6 +1,6 @@
 # Watch REMOTE test prototype
 
-This isolated test depends on the owner-approved product direction in [PR #80](https://github.com/anflyg/SailRaceApp/pull/80), commit `4f4e952`; its technical design remains proposed. The WatchTest scheme contains an independent test phone and a single Watch target. It does not use the production Race UI or race logger.
+This isolated test depends on the owner-approved product direction in [PR #80](https://github.com/anflyg/SailRaceApp/pull/80), including the updated decisions at commit `99c3367`; its technical design remains proposed. The WatchTest scheme contains an independent test phone and a single Watch target. It does not use the production Race UI or race logger.
 
 REMOTE uses WatchConnectivity messages for commands and queries. The phone publishes each confirmed phase transition as a revisioned state message when reachable and as latest application context for recovery; it republishes on activation and reachability changes. Snapshots contain only an authority epoch, command generation, monotonic revision and phase, with no countdown value or race data. Queries return the current snapshot without changing generation. The phone rotates the generation when it observes loss of reachability; a process restart also creates a new epoch and generation. Each command carries a UUID and generation. The phone processes requests serially on the main queue, retains command IDs, generations, actions and results for the lifetime of the phone process, applies accepted actions before replying, and rejects invalid transitions. The Watch waits for an identified reply. A three-second timeout or send error makes the outcome uncertain and triggers a query, never a command replay. The Watch consumes both delivery paths and no longer polls. It queries on activation, foreground, reconnect and uncertain command outcomes. Ordinary refresh retains connected availability; a pending command is completed only by its identified acknowledgement.
 
@@ -8,18 +8,26 @@ The Watch applies only newer revisions in the current epoch; unfamiliar epochs r
 
 Owner decision 2026-11-22: the initial Watch release is REMOTE-only; SOLO development is paused indefinitely. The Watch always starts in REMOTE and replaces a previously saved SOLO mode. The selector, SOLO screen and startup audio preparation are disabled. The standalone countdown and cue implementation is retained for possible future use. No workout, background entitlement or HealthKit access is used.
 
+## Current verification status
+
+- **Automated evidence:** Focused Swift model, authority and phone-publication tests passed, and unsigned WatchTest Debug and Release generic iOS Simulator builds passed. These tests use fake transport and do not establish physical WatchConnectivity or gesture behavior. The paired simulator launch evidence is recorded below.
+- **Owner-reported physical behavior:** The owner reports that WatchTest works correctly on the Watch after the event-driven changes. The report does not identify individual cases, device details, a build number or an exact tested commit; those details have not been independently established.
+- **Remaining acceptance and release verification:** Formally verify the approved interaction and accessibility criteria, iPhone acknowledgment and state changes, cancellation, foreground recovery and reconnect including uncertain commands and no replay. Complete required native review, Xcode simulator Build and Run or an explicitly approved exceptional path, physical release checks and separate signing/distribution approvals. The isolated prototype does not establish production integration or release authorization.
+
+The earlier running-hold failure below is historical evidence from a pre-event-driven revision. The owner's later general success report is encouraging but does not identify which specific cases were exercised or independently establish the earlier failure's cause.
+
 ## Watch event synchronization follow-up
 
 - Focused fake-transport tests cover activation, foreground synchronization without availability changes, missed events and reconnection, old and duplicate revisions, authority epoch changes, an event and query during a pending command, stale acknowledgment ordering, timeout recovery and no command replay. Tests exercise the model, not SwiftUI touch delivery or real WatchConnectivity.
 - PASS: WatchTest Debug and Release generic iOS Simulator builds. On the existing iOS 27.0/watchOS 27.2 pair, both Debug apps were installed and launched with simctl; screenshots showed the phone START screen and Watch START with “Ansluten”. No interactive button or recovery checks were performed; Xcode GUI Build and Run was unavailable because Simulator.app was not present.
-- Best-effort background event delivery is not assumed immediate. Confirm foreground recovery, actual connectivity changes, acknowledgment behavior and long-press cancellation on paired hardware. The previously observed running long-press issue remains unconfirmed.
+- Best-effort background event delivery is not assumed immediate. Confirm foreground recovery, actual connectivity changes, acknowledgment behavior and long-press cancellation on paired hardware. The earlier running long-press failure and its cause have not been independently retested or established for a specific later build.
 
 ## Phone event publication follow-up
 
 - Focused authority and phone model tests cover phase transitions, countdown completion, duplicate and rejected commands, stable query generation, revision ordering, epoch changes and minimal payloads. Watch transport tests cover timeout and reconnect behavior using fake delivery.
-- WatchTest Debug and Release generic iOS Simulator builds include the embedded Watch target; actual WatchConnectivity delivery and device lifecycle remain to be verified. Watch gesture behavior remains under investigation.
+- WatchTest Debug and Release generic iOS Simulator builds include the embedded Watch target; actual WatchConnectivity delivery and device lifecycle remain to be verified. This evidence does not independently establish physical gesture behavior.
 
-## Physical running-hold diagnosis follow-up
+## Earlier physical running-hold diagnosis
 
 Physical testing of commit `6d80bf6` reported that ready-state long press reached full progress, produced a haptic and reset, while running-state progress appeared full without haptic or reset. Normal taps worked; occasional flashing has no established cause. Deferring polling did not resolve the reported failure.
 
@@ -27,11 +35,11 @@ The classifier uses the same elapsed time for progress and threshold, and releas
 
 Focused Swift classifier/transport tests and WatchTest Debug and Release generic iOS Simulator builds (including Watch) pass for this diagnostic revision. These do not verify physical gesture delivery.
 
-A Debug-only Watch log under subsystem `se.tackwise.watchtest`, category `RemotePress`, records press begin and phase, one near-threshold elapsed time, threshold/haptic request, release result and cancellation reason. It contains no identifiers, transport payloads or location data. On the paired physical Watch, run the WatchTest Debug build with Xcode's device console, filter for that subsystem/category, and capture a successful ready hold followed by a failed running hold, including release. Compare near-threshold, threshold, release and cancellation events. A threshold event proves only that the haptic was requested, not that it was felt. Keep this PR draft until those observations identify the failure and a targeted fix is verified.
+A Debug-only Watch log under subsystem `se.tackwise.watchtest`, category `RemotePress`, records press begin and phase, one near-threshold elapsed time, threshold/haptic request, release result and cancellation reason. It contains no identifiers, transport payloads or location data. On the paired physical Watch, run the WatchTest Debug build with Xcode's device console, filter for that subsystem/category, and capture a successful ready hold followed by a failed running hold, including release. Compare near-threshold, threshold, release and cancellation events. A threshold event proves only that the haptic was requested, not that it was felt. If the earlier failure recurs during formal verification, use these diagnostics to investigate. Keep this PR draft until required validation and review are complete.
 
-## Running-state long-press follow-up on 2026-11-22
+## Earlier running-state long-press follow-up on 2026-11-22
 
-Physical testing reported that a hold reset the ready control, while the red running PAUSA control did not reset; normal taps worked. Periodic five-second queries temporarily mark the Watch unavailable and canceled an active hold. This is a plausible timing-dependent cause, not a confirmed device diagnosis. Periodic polling now waits until the press ends; actual reachability loss, phase changes, scene interruption and drag-out still cancel. The phone already accepts reset from every phase and acknowledgment remains authoritative.
+Physical testing reported that a hold reset the ready control, while the red running PAUSA control did not reset; normal taps worked. Periodic five-second queries temporarily mark the Watch unavailable and canceled an active hold. This is a plausible timing-dependent cause, not a confirmed device diagnosis. At that revision, periodic polling waited until the press ended; actual reachability loss, phase changes, scene interruption and drag-out still cancel. The phone already accepts reset from every phase and acknowledgment remains authoritative.
 
 - PASS: Focused fake-transport tests exercise a poll during a hold, release-only reset from running and paused, phone acceptance and confirmed-state update after acknowledgment. These do not exercise watchOS gesture delivery or actual radio behavior.
 - PASS: WatchTest Debug and Release generic iOS Simulator builds, including the embedded Watch target (unsigned).
@@ -39,7 +47,7 @@ Physical testing reported that a hold reset the ready control, while the red run
 
 ## Tap interaction follow-up
 
-The owner requested normal taps for the primary action and a two-second hold for AVSLUTA, superseding the 0.4-second minimum and dead zone in PR #80 commit `964d15b`. PR #80 still needs a corresponding product documentation update. The action remains release-only; dragging outside cancels the gesture even if the touch returns inside.
+The owner requested normal taps for the primary action and a two-second hold for AVSLUTA, superseding the 0.4-second minimum and dead zone in PR #80 commit `964d15b`. PR #80 records the later approved interaction in commit `99c3367`. The action remains release-only; dragging outside cancels the gesture even if the touch returns inside.
 
 - PASS: Focused Swift tests cover normal taps, durations below and at two seconds, long press, canceled gestures, drag outside and return, threshold feedback suppression after cancellation, and existing REMOTE acknowledgment/transport behavior.
 - PASS: WatchTest Debug and Release generic iOS builds include the Watch target.
@@ -48,16 +56,16 @@ The owner requested normal taps for the primary action and a two-second hold for
 
 ## Earlier single-surface REMOTE verification on 2026-11-22
 
-The owner-approved interaction in [PR #80](https://github.com/anflyg/SailRaceApp/pull/80), commit `964d15b`, is the product dependency. The prototype uses one surface with release-based actions and retained confirmed-state transport.
+The then-current owner-approved interaction in [PR #80](https://github.com/anflyg/SailRaceApp/pull/80), commit `964d15b`, was the product dependency for this earlier revision. The prototype uses one surface with release-based actions and retained confirmed-state transport.
 
 - PASS: Focused Swift tests cover durations just below and at 0.4, 1.2 and 2.0 seconds, the dead zone, cancellation, repeated release, one command per press, pending command suppression, confirmed label changes, stale ACK/reconnect handling and saved SOLO migration. They exercise the press classifier and fake transport, not actual watchOS touch delivery or haptics.
 - PASS: WatchTest Debug and Release generic iOS builds, including the watchOS target. Paired simulator Debug build succeeded.
 - PARTIAL: On the iOS 27.0/watchOS 27.2 pair, 0.7-second Watch presses produced START then PAUSA; the Watch changed from green START to red PAUSA and green FORTSÄTT, and the phone showed a paused countdown. The phone subsequently became unavailable; FORTSÄTT, long-press AVSLUTA, dead-zone input, progress display, and VoiceOver were not verified in this simulator run. This run preceded the common-run-loop timer adjustment.
 - NOT VERIFIED: physical Watch gesture timing, threshold haptic, progress during tracking, VoiceOver actions and system navigation, interrupted presses, and real transport disconnect/reconnect. The haptic is a threshold indication, not confirmation of phone execution.
 
-### Physical-device verification required
+### Physical-device verification required for the earlier revision
 
-- With the phone awake, exercise every boundary and dead zone, cancel/interruption and unavailable/pending states; verify no command before release and no short action after a long press.
+- With the phone awake, exercise the then-applicable timing boundaries, cancel/interruption and unavailable/pending states; verify no command before release and no short action after a long press.
 - Verify progress and threshold haptic while holding; confirm START/PAUSA/FORTSÄTT/AVSLUTA update only after phone execution and AVSLUTA resets only the test countdown.
 - Verify VoiceOver primary and named AVSLUTA actions, accessible state announcements and system gestures; check that a saved SOLO preference opens REMOTE without local countdown activity.
 - Interrupt and restore connectivity around commands, checking confirmed refresh and no stale replay. Verify the Watch remains REMOTE.
