@@ -5,6 +5,7 @@ export type WatchAction = 'start' | 'pause' | 'resume' | 'reset'
 interface Command { id: string; action: WatchAction; expiresAt: number }
 interface WatchBridge {
   addListener(event: 'command', listener: (command: Command) => void): Promise<{ remove(): Promise<void> }>
+  addListener(event: 'resync', listener: () => void): Promise<{ remove(): Promise<void> }>
   available(options: { phase: WatchPhase }): Promise<void>
   unavailable(): Promise<void>
   confirm(options: { phase: WatchPhase; id?: string }): Promise<void>

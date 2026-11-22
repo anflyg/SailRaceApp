@@ -1,0 +1,36 @@
+import { chromium } from 'playwright'
+import { strict as assert } from 'node:assert'
+const browser = await chromium.launch({ headless: true })
+try {
+  const page = await browser.newPage()
+  await page.clock.install({ time: new Date('2026-01-01T12:00:00Z') })
+  await page.goto('http://127.0.0.1:5173/tests/watch-countdown/recording.html')
+  await page.waitForFunction(() => window.ready === true)
+  const watch = async (action, id) => {
+    await page.evaluate(([action, id]) => window.sendWatch(action, id), [action, id])
+    await page.waitForFunction(id => window.confirmations.some(c => c.id === id), id)
+  }
+  await watch('start', 'start')
+  const raceId = await page.evaluate(() => window.getActiveRaceId())
+  const token = await page.evaluate(() => window.getToken())
+  assert.ok(raceId && token)
+  await page.clock.runFor(5000)
+  await watch('pause', 'pause')
+  assert.equal(await page.evaluate(() => window.getActiveRaceId()), raceId)
+  assert.equal(await page.evaluate(() => window.getToken()), null)
+  await watch('resume', 'resume')
+  const resumed = await page.evaluate(() => window.getToken())
+  assert.notDeepEqual(resumed, token)
+  await page.clock.runFor(54000)
+  assert.equal(await page.evaluate(oldToken => window.tryGun(oldToken), token), null)
+  assert.equal(await page.evaluate(id => window.getRace(id).startGunTime ?? null, raceId), null)
+  await page.clock.runFor(1000)
+  await page.waitForFunction(id => Boolean(window.getRace(id)?.startGunTime), raceId)
+  await watch('reset', 'reset')
+  assert.equal(await page.evaluate(() => window.getActiveRaceId()), raceId)
+  assert.equal(await page.evaluate(id => window.getRace(id).endTime ?? null, raceId), null)
+  await page.locator('.recording-stop-button').click()
+  assert.equal(await page.evaluate(() => window.getActiveRaceId()), null)
+  assert.ok(await page.evaluate(id => window.getRace(id).endTime, raceId))
+  console.log('Watch countdown and real race logger integration passed')
+} finally { await browser.close() }

@@ -150,6 +150,12 @@ final class WatchModel: NSObject, ObservableObject, WCSessionDelegate {
         guard revisions.accept(snapshot) else { return }
         // A push is never a command acknowledgement. Retain it until the reply.
         if !pending && status == "Ansluten" { applyLatest() }
+        else if !pending {
+            // A recovered phone announces a fresh revision. Confirm it through
+            // a new query; an earlier query may have preceded recovery.
+            queryToken = nil
+            refresh()
+        }
     }
     func command(_ action: Action) {
         guard mode == "remote", available, let generation else { return }

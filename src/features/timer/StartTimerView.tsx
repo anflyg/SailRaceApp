@@ -161,13 +161,20 @@ export function StartTimerView({
   const current = useRef({ phase, executeAction })
   const pendingWatch = useRef<{ id: string; phase: WatchPhase } | null>(null)
   const [watchCommit, setWatchCommit] = useState(0)
+  const needsWatchResync = useRef(false)
   useLayoutEffect(() => { current.current = { phase, executeAction } })
 
   // A reply is sent only after React commits the requested phase.
   useEffect(() => {
     if (!watchEnabled || !watchAvailable()) return
     const pending = pendingWatch.current
-    if (pending && pending.phase === phase) {
+    if (needsWatchResync.current) {
+      // This effect observes the committed React state, including any command
+      // that executed before its acknowledgment was lost.
+      needsWatchResync.current = false
+      pendingWatch.current = null
+      void WatchCountdown.available({ phase }).catch(() => {})
+    } else if (pending && pending.phase === phase) {
       pendingWatch.current = null
       void WatchCountdown.confirm({ phase, id: pending.id }).catch(() => {})
     } else if (!pending) {
@@ -179,7 +186,14 @@ export function StartTimerView({
     if (!watchEnabled || !watchAvailable()) return
     let live = true
     let listener: { remove(): Promise<void> } | undefined
+    let resyncListener: { remove(): Promise<void> } | undefined
     void (async () => {
+      resyncListener = await WatchCountdown.addListener('resync', () => {
+        if (!live) return
+        needsWatchResync.current = true
+        setWatchCommit(value => value + 1)
+      })
+      if (!live) { await resyncListener.remove(); return }
       listener = await WatchCountdown.addListener('command', ({ id, action, expiresAt }) => {
         if (!live || pendingWatch.current || Date.now() >= expiresAt) return
         const target: WatchPhase = action === 'reset' ? 'ready' : action === 'pause' ? 'paused' : 'running'
@@ -188,13 +202,15 @@ export function StartTimerView({
         setWatchCommit(value => value + 1)
       })
       if (live) await WatchCountdown.available({ phase: current.current.phase })
-      else await listener.remove()
+      else { await listener.remove(); await resyncListener.remove() }
     })().catch(() => {})
     return () => {
       live = false
       pendingWatch.current = null
+      needsWatchResync.current = false
       void WatchCountdown.unavailable().catch(() => {})
       if (listener) void listener.remove()
+      if (resyncListener) void resyncListener.remove()
     }
   }, [watchEnabled])
 

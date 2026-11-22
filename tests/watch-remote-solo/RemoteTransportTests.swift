@@ -131,6 +131,26 @@ final class FakeTransport {
         precondition(watch.phase == .paused, "late ACK must not override recovery")
         precondition(fake.sent.filter { $0.payload["action"] as? String == "pause" }.count == 2)
 
+        // A recovery publication triggers a fresh query even if a prior query
+        // failed while the phone was still waiting for React. Never replay.
+        watch.command(.resume)
+        let lost = fake.sent.count - 1
+        fake.timers.last!() // command timeout issues a query
+        let earlyQuery = fake.sent.count - 1
+        fake.timers.last!() // the early query itself times out
+        precondition(!watch.available)
+        phone.invalidateSession()
+        let recoveryState = phone.snapshot
+        let sentBefore = fake.sent.count
+        watch.receiveState(recoveryState.message)
+        precondition(fake.sent.count == sentBefore + 1 && fake.sent.last!.payload["kind"] as? String == "query")
+        fake.queryReply(fake.sent.count - 1, snapshot: recoveryState)
+        precondition(watch.available && watch.phase == recoveryState.phase)
+        fake.commandReply(lost, accepted: true, snapshot: afterPause)
+        fake.queryReply(earlyQuery, snapshot: afterPause)
+        precondition(watch.available && watch.phase == recoveryState.phase, "late replies must not roll back recovery")
+        precondition(fake.sent.dropFirst(sentBefore).allSatisfy { $0.payload["kind"] as? String == "query" }, "recovery must never replay a command")
+
         // Reconnect queries after missed transitions; stale messages cannot roll back.
         fake.reachable = false; watch.reachabilityChanged()
         precondition(!watch.available && watch.status == "Ej tillgänglig")
