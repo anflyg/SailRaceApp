@@ -8,12 +8,13 @@ SOLO stores the mode and preset locally. It uses a monotonic countdown while the
 
 ## Verification on 2026-11-22
 
-- PASS: Swift authority tests cover duplicate START and RESET, conflicting action or generation for a reused ID, malformed extra command fields, invalid transitions and stale generations. The request gate tests invalidate a pending token, accept a newer token and reject the old callback and callbacks in SOLO. These gate tests do not exercise WatchConnectivity delivery or the actual three-second scheduler.
+- PASS: Swift authority tests cover duplicate START and RESET, conflicting action or generation for a reused ID, malformed extra command fields, invalid transitions and stale generations. The request gate tests invalidate a pending token, accept a newer token and reject old callbacks and callbacks in SOLO.
+- PASS: Deterministic tests drive the actual WatchModel request handlers using an injected fake transport, callback dispatcher and manually fired timeout. They cover a START that executes but times out, query-only recovery, delayed ACK after newer confirmation, reconnect while a command is in flight, stale phone generation, no START replay, pending command and query while switching modes, and no new phone messages from SOLO actions or callbacks. The fake scheduler does not measure the real three-second wall-clock delay or exercise Apple's transport.
 - PASS: SOLO countdown tests cover preset, pause, resume, reset and cue mapping.
 - PASS: WatchTest Debug and Release simulator builds.
-- PASS: On the dedicated iOS 27.0 / watchOS 27.2 pair, Watch START, PAUSA, FORTSÄTT and AVSLUTA produced the expected phone state. A phone-side START refreshed the Watch. These full interactive checks ran before the final duplicate-reset guard change; after that change, a final Watch START smoke check again started the phone countdown.
+- PASS: On the dedicated iOS 27.0 / watchOS 27.2 pair, Watch START, PAUSA, FORTSÄTT and AVSLUTA produced the expected phone state. A phone-side START refreshed the Watch. These full interactive checks ran before the duplicate-reset guard change and the test seam; after each, a Watch START smoke check again started the phone countdown.
 - PASS: Switching from REMOTE to SOLO left the phone countdown running; starting SOLO also left it running. Declining the running SOLO cancellation returned to a still-running local countdown. SOLO reset and return to REMOTE were exercised. This does not verify every SOLO action or the absence of all transport traffic.
-- NOT VERIFIED: A controlled disconnect and reconnect with an in-flight command, delayed WatchConnectivity replies, and absence of stale replay. The available simulator UI did not provide a controlled way to interrupt the pair's transport at a specific delivery point. Full transport-level automated timeout/reconnect and mode-isolation tests remain outstanding.
+- NOT VERIFIED on a paired simulator or physical hardware: radio disconnect and reconnect with an in-flight command, delayed WatchConnectivity delivery, and stale replay under real transport conditions. Deterministic tests cover simulated events, not radio behavior.
 
 ## Validation still required on physical devices
 

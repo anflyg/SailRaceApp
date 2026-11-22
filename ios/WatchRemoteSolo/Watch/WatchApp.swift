@@ -1,7 +1,26 @@
 import SwiftUI
+#if !WATCH_REMOTE_TEST
 import WatchConnectivity
 import WatchKit
+#else
+protocol WCSessionDelegate {}
+enum WCSessionActivationState { case activated }
+final class WCSession {
+    static let `default` = WCSession()
+    static func isSupported() -> Bool { false }
+    var delegate: WCSessionDelegate?
+    var activationState: WCSessionActivationState = .activated
+    func activate() {}
+}
+#endif
 import AVFoundation
+
+struct RemoteIO {
+    var isReachable: () -> Bool
+    var send: ([String: Any], @escaping ([String: Any]) -> Void, @escaping (Error) -> Void) -> Void
+    var schedule: (@escaping () -> Void) -> Void
+    var deliver: (@escaping () -> Void) -> Void
+}
 
 final class WatchModel: NSObject, ObservableObject, WCSessionDelegate {
     @Published var mode: String
@@ -11,16 +30,31 @@ final class WatchModel: NSObject, ObservableObject, WCSessionDelegate {
     var pending: Bool { requestGate.pending }
     @Published var solo: CountdownState
     @Published var remaining: Int
+    private let io: RemoteIO
+    private let defaults: UserDefaults
     private var generation: String?
     private var timer: Timer?
     private var refreshTicks = 0
     private var players: [String: AVAudioPlayer] = [:]
-    override init() {
-        let savedMode = UserDefaults.standard.string(forKey: "watchMode")
+    #if !WATCH_REMOTE_TEST
+    override convenience init() {
+        self.init(io: RemoteIO(
+            isReachable: { WCSession.default.isReachable },
+            send: { message, reply, error in WCSession.default.sendMessage(message, replyHandler: reply, errorHandler: error) },
+            schedule: { callback in DispatchQueue.main.asyncAfter(deadline: .now() + 3, execute: callback) },
+            deliver: { callback in DispatchQueue.main.async(execute: callback) }
+        ), defaults: .standard, startServices: true)
+    }
+    #endif
+    init(io: RemoteIO, defaults: UserDefaults, startServices: Bool) {
+        self.io = io
+        self.defaults = defaults
+        let savedMode = defaults.string(forKey: "watchMode")
         mode = savedMode == "solo" ? "solo" : "remote"
-        let preset = CountdownPresetStore(defaults: .standard).load()
+        let preset = CountdownPresetStore(defaults: defaults).load()
         solo = CountdownState(presetMinutes: preset); remaining = preset * 60
         super.init()
+        guard startServices else { return }
         for name in ["CountdownShort", "CountdownZero"] {
             if let url = Bundle.main.url(forResource: name, withExtension: "wav"), let player = try? AVAudioPlayer(contentsOf: url) { players[name] = player; player.prepareToPlay() }
         }
@@ -31,13 +65,13 @@ final class WatchModel: NSObject, ObservableObject, WCSessionDelegate {
         guard newMode != mode else { return }
         if mode == "solo" { solo.cancel(); remaining = solo.presetSeconds }
         requestGate.invalidate(); generation = nil; status = "Ej tillgänglig"
-        mode = newMode; UserDefaults.standard.set(mode, forKey: "watchMode")
+        mode = newMode; defaults.set(mode, forKey: "watchMode")
         if mode == "remote", WCSession.isSupported() {
             WCSession.default.delegate = self
             if WCSession.default.activationState == .activated { refresh() } else { WCSession.default.activate() }
         }
     }
-    func selectPreset(_ value: Int) { if solo.selectPreset(value) { remaining = solo.presetSeconds; CountdownPresetStore(defaults: .standard).save(value) } }
+    func selectPreset(_ value: Int) { if solo.selectPreset(value) { remaining = solo.presetSeconds; CountdownPresetStore(defaults: defaults).save(value) } }
     func soloAction(_ action: Action) {
         guard mode == "solo" else { return }
         switch action {
@@ -57,40 +91,44 @@ final class WatchModel: NSObject, ObservableObject, WCSessionDelegate {
         guard let update = solo.update(at: .now, allowCue: true) else { return }
         remaining = update.remaining
         if let second = update.cue, let cue = CountdownCueOutput.forSecond(second) {
+            #if !WATCH_REMOTE_TEST
             WKInterfaceDevice.current().play(cue.haptic == .success ? .success : .click)
+            #endif
             let player = players[cue.sound == .zero ? "CountdownZero" : "CountdownShort"]
             player?.currentTime = 0; player?.play()
         }
     }
     func refresh() {
-        guard mode == "remote", WCSession.default.isReachable else { status = "Ej tillgänglig"; generation = nil; return }
+        guard mode == "remote", io.isReachable() else { status = "Ej tillgänglig"; generation = nil; return }
         let token = requestGate.begin(); status = "Ansluter"
-        WCSession.default.sendMessage(["kind": "query"], replyHandler: { reply in DispatchQueue.main.async {
+        io.send(["kind": "query"], { reply in self.io.deliver {
             guard self.requestGate.accepts(token, mode: self.mode), let generation = reply["generation"] as? String,
                   let raw = reply["phase"] as? String, let phase = Phase(rawValue: raw) else { return }
             guard self.requestGate.complete(token, mode: self.mode) else { return }
             self.generation = generation; self.phase = phase; self.status = "Ansluten"
-        } }, errorHandler: { _ in DispatchQueue.main.async { self.fail(token) } })
+        } }, { _ in self.io.deliver { self.fail(token) } })
         timeout(token)
     }
     func command(_ action: Action) {
-        guard mode == "remote", !pending, let generation, WCSession.default.isReachable else { return }
+        guard mode == "remote", !pending, let generation, io.isReachable() else { return }
         let token = requestGate.begin(), id = UUID().uuidString; status = "Väntar"
-        WCSession.default.sendMessage(["kind": "command", "id": id, "generation": generation, "action": action.rawValue], replyHandler: { reply in DispatchQueue.main.async {
+        io.send(["kind": "command", "id": id, "generation": generation, "action": action.rawValue], { reply in self.io.deliver {
             guard self.requestGate.accepts(token, mode: self.mode), reply["id"] as? String == id,
                   let ok = reply["ok"] as? Bool, let raw = reply["phase"] as? String, let phase = Phase(rawValue: raw) else { return }
             guard self.requestGate.complete(token, mode: self.mode) else { return }
             self.phase = phase; self.status = ok ? "Ansluten" : "Avvisad"
-        } }, errorHandler: { _ in DispatchQueue.main.async { self.uncertain(token) } })
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3) { self.uncertain(token) }
+        } }, { _ in self.io.deliver { self.uncertain(token) } })
+        io.schedule { self.uncertain(token) }
     }
-    private func timeout(_ token: UUID) { DispatchQueue.main.asyncAfter(deadline: .now() + 3) { self.fail(token) } }
+    private func timeout(_ token: UUID) { io.schedule { self.fail(token) } }
     private func fail(_ token: UUID) { guard requestGate.accepts(token, mode: mode) else { return }; requestGate.invalidate(); generation = nil; status = "Ej tillgänglig" }
     private func uncertain(_ token: UUID) { guard requestGate.accepts(token, mode: mode) else { return }; fail(token); refresh() }
-    func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) { DispatchQueue.main.async { if self.mode == "remote" { self.refresh() } } }
-    func sessionReachabilityDidChange(_ session: WCSession) { DispatchQueue.main.async { guard self.mode == "remote" else { return }; self.requestGate.invalidate(); self.generation = nil; self.refresh() } }
+    func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) { io.deliver { if self.mode == "remote" { self.refresh() } } }
+    func sessionReachabilityDidChange(_ session: WCSession) { io.deliver { self.reachabilityChanged() } }
+    func reachabilityChanged() { guard mode == "remote" else { return }; requestGate.invalidate(); generation = nil; refresh() }
 }
 
+#if !WATCH_REMOTE_TEST
 @main struct WatchApp: App {
     @StateObject private var model = WatchModel()
     @State private var confirm = false
@@ -117,3 +155,5 @@ final class WatchModel: NSObject, ObservableObject, WCSessionDelegate {
         }.confirmationDialog("Avsluta SOLO-nedräkningen?", isPresented: $confirm) { Button("Avsluta och byt", role: .destructive) { model.select("remote") } } } label: { Image(systemName: "ellipsis") } } }
     } } }
 }
+
+#endif
