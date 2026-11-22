@@ -1,9 +1,25 @@
 import { useEffect, useState, useSyncExternalStore } from 'react'
 import { createRoot } from 'react-dom/client'
+import { registerPlugin } from '@capacitor/core'
 import { NativeTestControl, testConfig } from './control'
 import './style.css'
 
+const watchTest = registerPlugin<{ addListener: (event: 'watchTest', callback: (value: { id: string }) => void) => Promise<{ remove: () => Promise<void> }>; confirm: (value: { id: string }) => Promise<void>; testMode: () => Promise<{ listen: boolean }> }>('WatchFeasibility')
+
 function TestScreen() {
+  const [watchStatus, setWatchStatus] = useState('Waiting for Watch test')
+  const [watchListening, setWatchListening] = useState(false)
+  useEffect(() => { void watchTest.testMode().then(mode => setWatchListening(mode.listen)).catch(() => setWatchStatus('Watch experiment unavailable')) }, [])
+  useEffect(() => {
+    if (!watchListening) { setWatchStatus('Listener disabled'); return }
+    let disposed = false
+    let remove: (() => Promise<void>) | undefined
+    void watchTest.addListener('watchTest', ({ id }) => {
+      setWatchStatus('Watch test callback ran')
+      void watchTest.confirm({ id })
+    }).then(listener => { if (disposed) void listener.remove(); else remove = listener.remove })
+    return () => { disposed = true; if (remove) void remove() }
+  }, [watchListening])
   const [control] = useState(() => new NativeTestControl(testConfig({
     VITE_NATIVE_TEST_APPROVAL: import.meta.env.VITE_NATIVE_TEST_APPROVAL,
     VITE_NATIVE_TEST_WORKER_ORIGIN: import.meta.env.VITE_NATIVE_TEST_WORKER_ORIGIN,
@@ -20,6 +36,8 @@ function TestScreen() {
   }, [control])
   return <main style={{ maxWidth: 600, margin: 'auto', padding: 'max(24px, env(safe-area-inset-top)) 20px', fontFamily: 'system-ui', lineHeight: 1.5 }}>
     <h1>SYNTHETIC NATIVE WORKER TEST</h1>
+    <p>Watch connectivity: {watchStatus}</p>
+    <button onClick={() => setWatchListening(value => !value)}>{watchListening ? 'Disable Watch listener' : 'Enable Watch listener'}</button>
     <strong>NONPRODUCTION — NOT FOR DISTRIBUTION</strong>
     <p>Fixed fictional telemetry only. No user recordings. Every request requires a manual action. Submitted server work may complete after stop.</p>
     {!control.configured && <p role="alert">NO-GO: approved local test configuration is missing. All provider actions are unavailable.</p>}
