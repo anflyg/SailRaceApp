@@ -1,4 +1,7 @@
 import SwiftUI
+#if DEBUG && !WATCH_REMOTE_TEST
+import OSLog
+#endif
 #if !WATCH_REMOTE_TEST
 import WatchConnectivity
 import WatchKit
@@ -156,32 +159,52 @@ struct RemoteControlView: View {
     @State private var capturedAction: Action?
     @State private var touchConsumed = false
     @State private var pressTimer: Timer?
+    #if DEBUG
+    @State private var loggedNearThreshold = false
+    #endif
 
     private var now: TimeInterval { ProcessInfo.processInfo.systemUptime }
-    private func cancelPress() {
+    private func trace(_ event: String) {
+        #if DEBUG
+        Logger(subsystem: "se.tackwise.watchtest", category: "RemotePress").notice("\(event, privacy: .public)")
+        #endif
+    }
+    private func cancelPress(_ reason: String = "cancel") {
+        if press.startedAt != nil { trace("cancel: " + reason) }
         pressTimer?.invalidate(); pressTimer = nil
         press.cancel(); capturedAction = nil; progress = 0
+        #if DEBUG
+        loggedNearThreshold = false
+        #endif
         model.setPressActive(false)
     }
     private func beginPress() {
         guard !touchConsumed else { return }
         touchConsumed = true
-        guard model.available else { return }
+        guard model.available else { trace("begin unavailable"); return }
+        trace("begin " + model.phase.rawValue)
         capturedAction = model.primaryAction
         model.setPressActive(true)
         press.begin(at: now)
         let timer = Timer(timeInterval: 0.05, repeats: true) { _ in
-            guard model.available, let start = press.startedAt else { cancelPress(); return }
+            guard model.available, let start = press.startedAt else { cancelPress("timer unavailable or missing press"); return }
             let time = now
             progress = min(1, max(0, (time - start) / 2))
-            if press.update(at: time) { WKInterfaceDevice.current().play(.click) }
+            #if DEBUG
+            if time - start >= 1.9 && !loggedNearThreshold {
+                loggedNearThreshold = true
+                trace("near threshold; elapsed milliseconds " + String(Int((time - start) * 1000)))
+            }
+            #endif
+            if press.update(at: time) { trace("threshold; requesting haptic"); WKInterfaceDevice.current().play(.click) }
         }
         pressTimer = timer
         RunLoop.main.add(timer, forMode: .common)
     }
     private func endPress() {
-        guard model.available, let action = capturedAction else { cancelPress(); return }
+        guard model.available, let action = capturedAction else { cancelPress("release unavailable or missing action"); return }
         let result = press.release(at: now, primary: action)
+        trace("release " + (result?.rawValue ?? "no action"))
         cancelPress()
         if let result { model.command(result) }
     }
@@ -209,13 +232,15 @@ struct RemoteControlView: View {
                     beginPress()
                     if !CGRect(origin: .zero, size: geometry.size).contains(value.location) {
                         press.updateLocation(isInside: false)
-                        cancelPress()
+                        trace("drag outside")
+                        cancelPress("drag outside")
                     }
                 }
                 .onEnded { value in
                     if !CGRect(origin: .zero, size: geometry.size).contains(value.location) {
                         press.updateLocation(isInside: false)
-                        cancelPress()
+                        trace("drag outside")
+                        cancelPress("drag outside")
                     } else { endPress() }
                 })
             .accessibilityElement(children: .ignore)
@@ -229,12 +254,12 @@ struct RemoteControlView: View {
             }
         }
         .onChange(of: touching) { _, active in
-            if !active { DispatchQueue.main.async { if !touching { cancelPress(); touchConsumed = false } } }
+            if !active { DispatchQueue.main.async { if !touching { trace("touch ended or canceled"); cancelPress("touch ended or canceled"); touchConsumed = false } } }
         }
-        .onChange(of: model.available) { _, available in if !available { cancelPress() } }
-        .onChange(of: model.phase) { _, _ in cancelPress() }
-        .onChange(of: scenePhase) { _, phase in if phase != .active { cancelPress() } }
-        .onDisappear { cancelPress() }
+        .onChange(of: model.available) { _, available in if !available { cancelPress("availability changed") } }
+        .onChange(of: model.phase) { _, _ in cancelPress("phase changed") }
+        .onChange(of: scenePhase) { _, phase in if phase != .active { cancelPress("scene inactive") } }
+        .onDisappear { cancelPress("view disappeared") }
     }
 }
 #endif

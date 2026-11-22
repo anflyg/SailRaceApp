@@ -63,6 +63,17 @@ final class FakeTransport {
         press.begin(at: 0)
         press.updateLocation(isInside: false)
         precondition(!press.update(at: 2.1) && press.release(at: 2.1, primary: .pause) == nil, "outside long press must not cue or dispatch")
+        // Running uses the same threshold clock and release classifier as ready.
+        var runningHold = RemotePress()
+        runningHold.begin(at: 100)
+        precondition(!runningHold.update(at: 101.999))
+        precondition(runningHold.update(at: 102.0))
+        precondition(!runningHold.update(at: 102.1))
+        precondition(runningHold.release(at: 102.1, primary: .pause) == .reset)
+        runningHold.begin(at: 200)
+        precondition(runningHold.update(at: 202.0))
+        runningHold.cancel() // Simulates an actual cancellation after threshold.
+        precondition(runningHold.release(at: 202.1, primary: .pause) == nil)
         var phone = Authority()
 
         watch.refresh()

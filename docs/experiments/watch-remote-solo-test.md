@@ -6,6 +6,16 @@ REMOTE uses reachable-only WatchConnectivity messages. A query returns a fresh g
 
 Owner decision 2026-11-22: the initial Watch release is REMOTE-only; SOLO development is paused indefinitely. The Watch always starts in REMOTE and replaces a previously saved SOLO mode. The selector, SOLO screen and startup audio preparation are disabled. The standalone countdown and cue implementation is retained for possible future use. No workout, background entitlement or HealthKit access is used.
 
+## Physical running-hold diagnosis follow-up
+
+Physical testing of commit `6d80bf6` reported that ready-state long press reached full progress, produced a haptic and reset, while running-state progress appeared full without haptic or reset. Normal taps worked; occasional flashing has no established cause. Deferring polling did not resolve the reported failure.
+
+The classifier uses the same elapsed time for progress and threshold, and release independently classifies elapsed time. The current tests do not exercise SwiftUI gesture delivery, view state or the physical haptic. A full-looking progress indicator does not establish that the threshold callback ran. The cause remains unconfirmed; no gesture fix is claimed.
+
+Focused Swift classifier/transport tests and WatchTest Debug and Release generic iOS Simulator builds (including Watch) pass for this diagnostic revision. These do not verify physical gesture delivery.
+
+A Debug-only Watch log under subsystem `se.tackwise.watchtest`, category `RemotePress`, records press begin and phase, one near-threshold elapsed time, threshold/haptic request, release result and cancellation reason. It contains no identifiers, transport payloads or location data. On the paired physical Watch, run the WatchTest Debug build with Xcode's device console, filter for that subsystem/category, and capture a successful ready hold followed by a failed running hold, including release. Compare near-threshold, threshold, release and cancellation events. A threshold event proves only that the haptic was requested, not that it was felt. Keep this PR draft until those observations identify the failure and a targeted fix is verified.
+
 ## Running-state long-press follow-up on 2026-11-22
 
 Physical testing reported that a hold reset the ready control, while the red running PAUSA control did not reset; normal taps worked. Periodic five-second queries temporarily mark the Watch unavailable and canceled an active hold. This is a plausible timing-dependent cause, not a confirmed device diagnosis. Periodic polling now waits until the press ends; actual reachability loss, phase changes, scene interruption and drag-out still cancel. The phone already accepts reset from every phase and acknowledgment remains authoritative.
