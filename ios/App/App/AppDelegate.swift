@@ -61,6 +61,7 @@ class AppBridgeViewController: CAPBridgeViewController {
         super.capacitorDidLoad()
         bridge?.registerPluginInstance(WindHeadingPlugin())
         bridge?.registerPluginInstance(TackWiseAuthPlugin())
+        bridge?.registerPluginInstance(WatchCountdownPlugin())
         bridge?.registerPluginInstance(TackWiseAppInfoPlugin())
     }
 }

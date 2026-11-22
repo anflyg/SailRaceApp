@@ -532,6 +532,7 @@ export function AppShell() {
     timer: (
       <StartTimerView
         key={timerResetVersion}
+        watchEnabled={!recoveryPending && !endRaceDialogOpen}
         selectedMinutes={selectedCountdownMinutes}
         course={course}
         gps={liveGps}

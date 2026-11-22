@@ -6,6 +6,49 @@
 	objectVersion = 60;
 	objects = {
 
+AA5541000000000000000001 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../WatchRemoteSolo/Phone/PhoneApp.swift; sourceTree = "<group>";};
+AA5541000000000000000002 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../WatchRemoteSolo/Watch/WatchApp.swift; sourceTree = "<group>";};
+AA5541000000000000000003 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../WatchRemoteSolo/Shared/Control.swift; sourceTree = "<group>";};
+AA5541000000000000000004 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../WatchRemoteSolo/Watch/CountdownState.swift; sourceTree = "<group>";};
+AA5541000000000000000005 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../WatchRemoteSolo/Watch/CountdownCueOutput.swift; sourceTree = "<group>";};
+AA5541000000000000000006 = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = ../WatchRemoteSolo/Watch/CountdownShort.wav; sourceTree = "<group>";};
+AA5541000000000000000007 = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = ../WatchRemoteSolo/Watch/CountdownZero.wav; sourceTree = "<group>";};
+AA5541000000000000000010 = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = WatchTest-iOS-Assets.xcassets; sourceTree = "<group>";};
+AA5541000000000000000011 = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = WatchTest-Watch-Assets.xcassets; sourceTree = "<group>";};
+AA5541000000000000000008 = {isa = PBXFileReference; explicitFileType = wrapper.application; path = "Watch Test.app"; sourceTree = BUILT_PRODUCTS_DIR;};
+AA5541000000000000000009 = {isa = PBXFileReference; explicitFileType = wrapper.application; path = "Watch Test Watch.app"; sourceTree = BUILT_PRODUCTS_DIR;};
+AA5542000000000000000001 = {isa = PBXBuildFile; fileRef = AA5541000000000000000001;};
+AA5542000000000000000002 = {isa = PBXBuildFile; fileRef = AA5541000000000000000003;};
+AA5542000000000000000003 = {isa = PBXBuildFile; fileRef = AA5541000000000000000002;};
+AA5542000000000000000004 = {isa = PBXBuildFile; fileRef = AA5541000000000000000003;};
+AA5542000000000000000005 = {isa = PBXBuildFile; fileRef = AA5541000000000000000004;};
+AA5542000000000000000006 = {isa = PBXBuildFile; fileRef = AA5541000000000000000005;};
+AA5542000000000000000007 = {isa = PBXBuildFile; fileRef = AA5541000000000000000006;};
+AA5542000000000000000008 = {isa = PBXBuildFile; fileRef = AA5541000000000000000007;};
+AA5542000000000000000009 = {isa = PBXBuildFile; fileRef = AA5541000000000000000009; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); };};
+AA5542000000000000000010 = {isa = PBXBuildFile; fileRef = AA5541000000000000000010;};
+AA5542000000000000000011 = {isa = PBXBuildFile; fileRef = AA5541000000000000000011;};
+AA5544000000000000000001 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (AA5542000000000000000001, AA5542000000000000000002,); runOnlyForDeploymentPostprocessing = 0;};
+AA5544000000000000000002 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (AA5542000000000000000003, AA5542000000000000000004, AA5542000000000000000005, AA5542000000000000000006,); runOnlyForDeploymentPostprocessing = 0;};
+AA5544000000000000000003 = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (AA5542000000000000000010,); runOnlyForDeploymentPostprocessing = 0;};
+AA5544000000000000000004 = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (AA5542000000000000000007, AA5542000000000000000008, AA5542000000000000000011,); runOnlyForDeploymentPostprocessing = 0;};
+AA5544000000000000000005 = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0;};
+AA5544000000000000000006 = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0;};
+AA5544000000000000000007 = {isa = PBXCopyFilesBuildPhase; buildActionMask = 2147483647; dstPath = "$(CONTENTS_FOLDER_PATH)/Watch"; dstSubfolderSpec = 16; files = (AA5542000000000000000009,); name = "Embed Watch Content"; runOnlyForDeploymentPostprocessing = 0;};
+AA5545000000000000000001 = {isa = PBXContainerItemProxy; containerPortal = 504EC2FC1FED79650016851F; proxyType = 1; remoteGlobalIDString = AA5546000000000000000003; remoteInfo = "Watch Test Watch";};
+AA5545000000000000000002 = {isa = PBXTargetDependency; target = AA5546000000000000000003; targetProxy = AA5545000000000000000001;};
+AA5546000000000000000002 = {isa = PBXNativeTarget; buildConfigurationList = AA5547000000000000000002; buildPhases = (AA5544000000000000000001, AA5544000000000000000005, AA5544000000000000000003, AA5544000000000000000007,); buildRules = (); dependencies = (AA5545000000000000000002,); name = "Watch Test"; productName = "Watch Test"; productReference = AA5541000000000000000008; productType = "com.apple.product-type.application";};
+AA5546000000000000000003 = {isa = PBXNativeTarget; buildConfigurationList = AA5547000000000000000003; buildPhases = (AA5544000000000000000002, AA5544000000000000000006, AA5544000000000000000004,); buildRules = (); dependencies = (); name = "Watch Test Watch"; productName = "Watch Test Watch"; productReference = AA5541000000000000000009; productType = "com.apple.product-type.application";};
+AA5547000000000000000002 = {isa = XCConfigurationList; buildConfigurations = (AA5548000000000000000003, AA5548000000000000000004,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release;};
+AA5547000000000000000003 = {isa = XCConfigurationList; buildConfigurations = (AA5548000000000000000005, AA5548000000000000000006,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release;};
+AA5548000000000000000003 = {isa = XCBuildConfiguration; buildSettings = {SDKROOT = iphoneos; IPHONEOS_DEPLOYMENT_TARGET = 16.0; TARGETED_DEVICE_FAMILY = 1; GENERATE_INFOPLIST_FILE = YES; ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon; MARKETING_VERSION = 0.1.0; CURRENT_PROJECT_VERSION = 1; VERSIONING_SYSTEM = "apple-generic"; INFOPLIST_KEY_CFBundleShortVersionString = "$(MARKETING_VERSION)"; INFOPLIST_KEY_CFBundleVersion = "$(CURRENT_PROJECT_VERSION)"; INFOPLIST_KEY_UILaunchScreen_Generation = YES; PRODUCT_BUNDLE_IDENTIFIER = com.anflyg.sailraceapp.watchtest; PRODUCT_NAME = "Watch Test"; SWIFT_VERSION = 5.0;}; name = Debug;};
+AA5548000000000000000004 = {isa = XCBuildConfiguration; buildSettings = {SDKROOT = iphoneos; IPHONEOS_DEPLOYMENT_TARGET = 16.0; TARGETED_DEVICE_FAMILY = 1; GENERATE_INFOPLIST_FILE = YES; ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon; MARKETING_VERSION = 0.1.0; CURRENT_PROJECT_VERSION = 1; VERSIONING_SYSTEM = "apple-generic"; INFOPLIST_KEY_CFBundleShortVersionString = "$(MARKETING_VERSION)"; INFOPLIST_KEY_CFBundleVersion = "$(CURRENT_PROJECT_VERSION)"; INFOPLIST_KEY_UILaunchScreen_Generation = YES; PRODUCT_BUNDLE_IDENTIFIER = com.anflyg.sailraceapp.watchtest; PRODUCT_NAME = "Watch Test"; SWIFT_VERSION = 5.0;}; name = Release;};
+AA5548000000000000000005 = {isa = XCBuildConfiguration; buildSettings = {SDKROOT = watchos; WATCHOS_DEPLOYMENT_TARGET = 10.0; TARGETED_DEVICE_FAMILY = 4; GENERATE_INFOPLIST_FILE = YES; ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon; MARKETING_VERSION = "$(TACKWISE_RACE_VERSION)"; CURRENT_PROJECT_VERSION = "$(TACKWISE_RACE_BUILD_NUMBER)"; VERSIONING_SYSTEM = "apple-generic"; INFOPLIST_KEY_CFBundleShortVersionString = "$(MARKETING_VERSION)"; INFOPLIST_KEY_CFBundleVersion = "$(CURRENT_PROJECT_VERSION)"; INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.anflyg.sailraceapp; INFOPLIST_KEY_CFBundleDisplayName = "TackWise Watch"; PRODUCT_BUNDLE_IDENTIFIER = com.anflyg.sailraceapp.watchkitapp; PRODUCT_NAME = "Watch Test Watch"; SKIP_INSTALL = YES; SWIFT_VERSION = 5.0;}; name = Debug;};
+AA5548000000000000000006 = {isa = XCBuildConfiguration; buildSettings = {SDKROOT = watchos; WATCHOS_DEPLOYMENT_TARGET = 10.0; TARGETED_DEVICE_FAMILY = 4; GENERATE_INFOPLIST_FILE = YES; ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon; MARKETING_VERSION = "$(TACKWISE_RACE_VERSION)"; CURRENT_PROJECT_VERSION = "$(TACKWISE_RACE_BUILD_NUMBER)"; VERSIONING_SYSTEM = "apple-generic"; INFOPLIST_KEY_CFBundleShortVersionString = "$(MARKETING_VERSION)"; INFOPLIST_KEY_CFBundleVersion = "$(CURRENT_PROJECT_VERSION)"; INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.anflyg.sailraceapp; INFOPLIST_KEY_CFBundleDisplayName = "TackWise Watch"; PRODUCT_BUNDLE_IDENTIFIER = com.anflyg.sailraceapp.watchkitapp; PRODUCT_NAME = "Watch Test Watch"; SKIP_INSTALL = YES; SWIFT_VERSION = 5.0;}; name = Release;};
+A82500000000000000000001 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchCountdownPlugin.swift; sourceTree = "<group>";};
+A82500000000000000000002 = {isa = PBXBuildFile; fileRef = A82500000000000000000001;};
+A82500000000000000000003 = {isa = PBXBuildFile; fileRef = AA5541000000000000000009; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); };};
+A82500000000000000000004 = {isa = PBXCopyFilesBuildPhase; buildActionMask = 2147483647; dstPath = "$(CONTENTS_FOLDER_PATH)/Watch"; dstSubfolderSpec = 16; files = (A82500000000000000000003,); name = "Embed Watch Content"; runOnlyForDeploymentPostprocessing = 0;};
 /* Begin PBXBuildFile section */
 		A82400000000000000000001 /* WindHeadingMath.swift in Sources */ = {isa = PBXBuildFile; fileRef = A82400000000000000000002 /* WindHeadingMath.swift */; };
 		A82300000000000000000001 /* WindSampleFreshness.swift in Sources */ = {isa = PBXBuildFile; fileRef = A82300000000000000000002 /* WindSampleFreshness.swift */; };
@@ -57,6 +100,7 @@
 			isa = PBXGroup;
 			children = (
 				958DCC722DB07C7200EA8C5F /* debug.xcconfig */,
+                AA5541000000000000000001, AA5541000000000000000002, AA5541000000000000000003, AA5541000000000000000004, AA5541000000000000000005, AA5541000000000000000006, AA5541000000000000000007,
 				504EC3061FED79650016851F /* App */,
 				504EC3051FED79650016851F /* Products */,
 			);
@@ -66,6 +110,7 @@
 			isa = PBXGroup;
 			children = (
 				504EC3041FED79650016851F /* TackWise Race.app */,
+                AA5541000000000000000008, AA5541000000000000000009,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -81,6 +126,7 @@
 				A82300000000000000000004 /* PrivacyInfo.xcprivacy */,
 				A82200000000000000000002 /* SceneDelegate.swift */,
 				A82100000000000000000002 /* TackWiseAuthPlugin.swift */,
+                A82500000000000000000001,
 				504EC30B1FED79650016851F /* Main.storyboard */,
 				504EC30E1FED79650016851F /* Assets.xcassets */,
 				504EC3101FED79650016851F /* LaunchScreen.storyboard */,
@@ -102,10 +148,12 @@
 				504EC3001FED79650016851F /* Sources */,
 				504EC3011FED79650016851F /* Frameworks */,
 				504EC3021FED79650016851F /* Resources */,
+                A82500000000000000000004,
 			);
 			buildRules = (
 			);
 			dependencies = (
+                AA5545000000000000000002,
 			);
 			name = App;
 			packageProductDependencies = (
@@ -148,6 +196,7 @@
 			projectRoot = "";
 			targets = (
 				504EC3031FED79650016851F /* App */,
+                AA5546000000000000000002, AA5546000000000000000003,
 			);
 		};
 /* End PBXProject section */
@@ -194,6 +243,7 @@
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 				A82200000000000000000001 /* SceneDelegate.swift in Sources */,
 				A82100000000000000000001 /* TackWiseAuthPlugin.swift in Sources */,
+                A82500000000000000000002,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -254,6 +304,8 @@
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = 6B3BH96Z45;
+				TACKWISE_RACE_VERSION = 0.1.0;
+				TACKWISE_RACE_BUILD_NUMBER = 14;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
@@ -313,6 +365,8 @@
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = 6B3BH96Z45;
+				TACKWISE_RACE_VERSION = 0.1.0;
+				TACKWISE_RACE_BUILD_NUMBER = 14;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
@@ -340,7 +394,7 @@
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 14;
+				CURRENT_PROJECT_VERSION = "$(TACKWISE_RACE_BUILD_NUMBER)";
 				DEVELOPMENT_TEAM = 6B3BH96Z45;
 				INFOPLIST_FILE = App/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.sports";
@@ -349,7 +403,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = "$(TACKWISE_RACE_VERSION)";
 				OTHER_SWIFT_FLAGS = "$(inherited) \"-D\" \"COCOAPODS\" \"-DDEBUG\"";
 				PRODUCT_BUNDLE_IDENTIFIER = com.anflyg.sailraceapp;
 				PRODUCT_NAME = "TackWise Race";
@@ -366,7 +420,7 @@
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 14;
+				CURRENT_PROJECT_VERSION = "$(TACKWISE_RACE_BUILD_NUMBER)";
 				DEVELOPMENT_TEAM = 6B3BH96Z45;
 				INFOPLIST_FILE = App/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.sports";
@@ -375,7 +429,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = "$(TACKWISE_RACE_VERSION)";
 				PRODUCT_BUNDLE_IDENTIFIER = com.anflyg.sailraceapp;
 				PRODUCT_NAME = "TackWise Race";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "";
