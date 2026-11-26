@@ -2,7 +2,7 @@
 
 **Owner-approved product direction:** 2026-11-26.  
 **Document status:** Draft PR; decisions below are approved at product level but **not implemented, technically approved, or released**. This file is a working register to extend with later explicitly approved decisions before review/merge.  
-**Scope:** TackWise Race live VMG, wind-shift instruments, tack-angle feedback, and later race analysis. No changes to start features, watch, or unrelated product areas.
+**Scope:** TackWise Race live VMG, wind-shift instruments, tack-angle feedback, start geometry and calibrated attitude display, with later race analysis. Watch and unrelated product areas remain outside this draft.
 
 ## Decision 1 — Separate the three wind references
 
@@ -40,11 +40,11 @@ After sailing, compare **accepted stable heading references** from starboard and
 
 The exact confidence criteria, treatment of wind shifts between the two legs, and placement of post-race Settings feedback need technical/UI design.
 
-## Decision 4 — No live UI/presentation changes
+## Decision 4 — No changes to the live wind/VMG presentation
 
-Retain the existing Sailing view unchanged, including its main FART/RIKTNING/VMG figures, the six lift/header dots, the wind-shift scale, and all existing captions/colors/interactions. The change is to the **underlying VMG wind-reference calculation only**.
+Retain the existing **wind/VMG instrumentation and presentation** in Sailing: main FART/RIKTNING/VMG figures, six lift/header dots, wind-shift scale, captions, colors and wind-specific interactions. The VMG decision changes only the **underlying wind-reference calculation**, not the way VMG or wind shifts are shown.
 
-The only newly approved presentation is **post-race tack-angle feedback in Settings and Analysis**. Do not add live badges, labels, extra VMG values, or settings to the Sailing view under this decision.
+The only new wind-calibration-related presentation is **post-race tack-angle feedback in Settings and Analysis**. No live wind/VMG badges, labels, extra VMG values, or new wind controls are approved. The separate owner decision below to restore **R/S (roll/pitch)** to Sailing is an explicit, independent addition whose placement remains to be specified by the owner.
 
 ## Decision 5 — Offline behavior and fallback
 
@@ -87,6 +87,34 @@ These are **technical follow-up questions**, not additional product approvals:
 - `src/services/raceLogger.ts` — currently records initial wind on samples.
 - `anflyg/tackwise-contracts/schemas/raw-race-v1.schema.json` and `anflyg/tackwise-api/src/analysis-v1/analyze.ts` — existing raw format and backend VMG computation.
 - `AGENTS.md` and relevant security/privacy docs — mandatory before implementation.
+
+## Decision 7 — Correct start geometry for the distance from iPhone to bow (2026-11-26)
+
+**Approved product behavior:** Add a configurable distance, in meters, between the iPhone's mast-mounted location and the boat's bow. Apply this to the **bow position used for start-line calculations**, including the existing time-to-line (TTL) and therefore BURN. Do not merely display the distance; make it affect the underlying calculations.
+
+- The GPS location is the **phone's**, not automatically the bow's. For the assumed centerline mast mount, calculate the estimated bow position by offsetting the phone's position forward by the configured distance along the boat's **fresh, reliable true-north HDG**. Do not use GPS COG to orient the bow offset; HDG and COG can differ.
+- Continue using GPS-based SOG and COG for projected motion towards the line, as today; only the **geometric position origin** changes. Preserve the current validity checks for the start line and GPS.
+- Allow a zero distance (no correction) and avoid requiring any additional hardware or network service. Exact settings placement, persistence, validation range, and what the UI says when HDG is unavailable are implementation/design follow-ups.
+- This removes a known mounting-position offset but **does not improve GPS coordinate accuracy**. The user noted roughly 3 m GPS uncertainty as an illustration, not a guaranteed or fixed device error; the start-point/committee-end GPS positions may also be uncertain. Avoid any promise of centimeter accuracy or guaranteed legal starts.
+- Consider both crossing/intersection geometry and time-to-line/BURN for regression tests, including courses oblique to the line, phone mounted close to the bow and unavailable heading.
+
+**Not approved yet:** a new distance-to-line (DTL) display or a start-line bias/advantaged-end feature. Discuss these separately before any product scope decision.
+
+## Decision 8 — Restore calibrated roll and pitch on the Sailing screen (2026-11-26)
+
+**Approved product behavior:** Display existing calibrated `R` (rullning/roll) and `S` (stampning/pitch) **again in Segling/Sailing**. Reuse the sensor/calibration values already available in Setup (Core Motion gravity-axis mapping and existing session zero calibration). Do **not** create a different sensor concept.
+
+- The owner will specify the **exact location and presentation** in detail; **do not design, implement, or assume placement** before that input.
+- Preserve the current dominant FART / RIKTNING / VMG display and existing wind-shift cues. The addition of R/S is separate from Decision 4's **no changes to wind/VMG presentation**.
+- No new recording, persistence, cloud telemetry or API contract changes for R/S are authorized by this decision. Behavior for uncalibrated/missing values and native verification require design.
+
+## Topics reviewed but not approved for implementation (2026-11-26)
+
+- **Start-line bias (linjefördel):** needs an explanation and a separate owner decision. Not part of the bow-offset approval.
+- **Tack/gybe performance-loss analysis:** needs an explanation and a separate owner decision; high-rate data may be prerequisite.
+- **Additional speed statistics/live performance indicators:** owner does not see a need; not in current scope.
+- **Import from third-party sailing instruments:** deferred.
+- **Dedicated hardware and RaceSense-like regatta integrations:** no action.
 
 ## Further approved decisions
 
