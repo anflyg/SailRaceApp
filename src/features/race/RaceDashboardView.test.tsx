@@ -253,3 +253,19 @@ describe('restored calibrated attitude', () => {
     expect(render(null)).toContain('<small>S</small> —')
   })
 })
+
+
+describe('development race VMG projection', () => {
+  it('renders the accepted runtime value even with a missing gun wind snapshot (D11)', () => {
+    const now = Date.now()
+    const render = (value: number | null) => renderToStaticMarkup(
+      <LanguageProvider language="en" setLanguage={() => {}}><RaceDashboardView
+        course={{ ...course, windHeadingDegrees: 180, windMeasurement: measurement(180) }}
+        gps={{ ...gps, timestamp: now }} raceReference={{ id: 'race', course: {} }}
+        compassDisplayMode="normal" laylineAlphaDegrees={90} liveRaceVmg={{ value }} />
+      </LanguageProvider>)
+    expect(render(4.2)).toContain('<span class="metric-value">4,2</span>')
+    expect(render(4.2)).not.toContain('vmg-unavailable-reason')
+    expect(render(null)).toContain('<span class="metric-value">--</span><span class="metric-label">VMG</span>')
+  })
+})

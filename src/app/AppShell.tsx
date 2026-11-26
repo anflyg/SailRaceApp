@@ -1,3 +1,5 @@
+import { useRaceVmgWind } from '../hooks/useRaceVmgWind'
+import { localRaceVmgEnabled } from '../domain/raceVmgWind'
 import { useTacticalHeading } from '../hooks/useTacticalHeading'
 import { getDevelopmentTacticalHeading } from './tacticalHeadingSource'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -213,6 +215,7 @@ export function AppShell() {
     simulationMode.enabled && simulationMode.scenario !== 'analysis-validation' && simulationMode.scenario !== 'logged-race-analysis'
   ) ? getDevelopmentTacticalHeading(true, filteredGps, Date.now(), manualMode.enabled ? Date.now() : undefined) : undefined
   const tacticalHeading = useTacticalHeading(!manualMode.enabled && (activeView === 'race' || activeView === 'course' || activeView === 'timer' || activeRaceId !== null), developmentHeading)
+  const raceVmg = useRaceVmgWind(activeRaceId, course, tacticalHeading, laylineAlphaDegrees, filteredGps, localRaceVmgEnabled(import.meta.env.DEV))
   const windInstrumentOutput = useWindShiftInstrumentOutput(course, tacticalHeading, laylineAlphaDegrees, windShiftDegreesPerDot, recoveryPending || activeRaceId === null ? null : startGunTimeMs, activeRaceId)
   const simulationAppVmgKnots = simulationMode.scenario === 'wind-vmg' &&
     isUsableWindReference(course.windHeadingDegrees, course.windMeasurement) &&
@@ -350,11 +353,13 @@ export function AppShell() {
   }, [course, courseDefinition])
 
   const handleStartGun = useCallback((token: CountdownToken) => {
+    const alreadyStarted = getRace(token.raceId)?.startGunTime
     const race = markStartGun(new Date(), token)
     if (race?.id !== token.raceId || !race.startGunTime) return false
+    if (!alreadyStarted) raceVmg.begin(race.id, Date.parse(race.startGunTime), restoreCourse(race))
     setStartGunTimeMs(Date.parse(race.startGunTime))
     return true
-  }, [])
+  }, [raceVmg.begin])
 
   const refreshActiveRace = useCallback(() => {
     const nextActiveRaceId = getActiveRaceId()
@@ -373,6 +378,7 @@ export function AppShell() {
   }, [])
 
   const handleStopRecording = useCallback(() => {
+    raceVmg.invalidate()
     setEndRaceDialogOpen(false)
     const stoppedRace = stopActiveRace()
     setRecoveryPending(false)
@@ -498,6 +504,7 @@ export function AppShell() {
   }
 
   const setWindMeasurement = (measurement: WindHeadingMeasurementResult | null) => {
+    if (measurement) raceVmg.approve({ ...course, windHeadingDegrees: measurement.headingDegrees, windMeasurement: measurement })
     setCourse((current) => ({ ...current, windMeasurement: measurement ?? undefined }))
   }
 
@@ -579,6 +586,7 @@ export function AppShell() {
         windInstrumentOutput={windInstrumentOutput}
         recordingActive={activeRaceId !== null}
         raceReference={activeRaceReference}
+        liveRaceVmg={localRaceVmgEnabled(import.meta.env.DEV) ? { value: raceVmg.value } : undefined}
         onStopRecording={() => setEndRaceDialogOpen(true)}
       />
     ),
@@ -602,7 +610,7 @@ export function AppShell() {
         {activeViewContent}
       </main>
       {recoveryPending && !endRaceDialogOpen ? <RaceRecoveryDialog
-        onContinue={() => { const race = activeRaceId ? getRace(activeRaceId) : null; if (race) { skipRestoredCourseSync.current = true; setCourse(restoreCourse(race)); setActiveRaceReference(raceReference(race)); setStartGunTimeMs(race.startGunTime ? Date.parse(race.startGunTime) : null) }; pausePlannedStart(); recoveryResumedAtRef.current = Date.now(); setRecoveryPending(false) }}
+        onContinue={() => { raceVmg.invalidate(); const race = activeRaceId ? getRace(activeRaceId) : null; if (race) { skipRestoredCourseSync.current = true; setCourse(restoreCourse(race)); setActiveRaceReference(raceReference(race)); setStartGunTimeMs(race.startGunTime ? Date.parse(race.startGunTime) : null) }; pausePlannedStart(); recoveryResumedAtRef.current = Date.now(); setRecoveryPending(false) }}
         onEnd={() => setEndRaceDialogOpen(true)} /> : null}
       {endRaceDialogOpen ? <EndRaceDialog onCancel={() => setEndRaceDialogOpen(false)} onConfirm={handleStopRecording} /> : null}
     </div>
