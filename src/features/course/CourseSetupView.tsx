@@ -1,6 +1,7 @@
 import { normalizeDegrees, shortestAngleDeltaDegrees } from '../../domain/angles'
 import { formatDegrees, formatSignedDegrees } from '../../domain/format'
 import { getGpsStatusDisplay, getStartLineQuality } from '../../domain/gps'
+import { lineAdvantage } from '../../domain/bowGeometry'
 import { assessWindReference } from '../../domain/windReference'
 import {
   getCourseDisplayReference,
@@ -138,8 +139,9 @@ export function CourseSetupView({
     ? t('course.measuringWind')
     : windMeasurementStatus === 'error' || windMeasurementStatus === 'unavailable'
       ? t('course.windMeasurementFailed')
-      : gpsStatusMessage === 'gps-position-unavailable' ? t('course.gpsPositionUnavailable') : gpsStatusMessage
+      : gpsStatusMessage === 'heading-unavailable' ? t('start.status.heading_unavailable') : gpsStatusMessage === 'gps-position-unavailable' ? t('course.gpsPositionUnavailable') : gpsStatusMessage
   const gpsStatus = getGpsStatusDisplay(gps)
+  const advantage = lineAdvantage(course.points.startA, course.points.startB, assessWindReference(course.windHeadingDegrees, course.windMeasurement).usable ? course.windHeadingDegrees : null)
   const startLineQuality = getStartLineQuality(course.points.startA, course.points.startB)
 
   return (
@@ -178,6 +180,10 @@ export function CourseSetupView({
       </div>
 
       <div className="course-footer">
+        <p className="course-status">{t('course.bowCapture')}</p>
+        {advantage ? <p className="start-advantage">{t('course.advantage')}: {advantage.favored
+          ? t('course.favoredEnd', { end: advantage.favored, degrees: String(advantage.degrees) })
+          : t('course.neutral')}</p> : startLineQuality === 'poor' ? <p role="status">{t('course.biasPoorGps')}</p> : null}
         <div className="course-gps-status" role="status">
           <span>{gpsStatus.isGood ? gpsStatus.label : 'GPS —'}</span>
           {gpsStatus.status ? <span>{gpsStatus.status === 'missing' ? t('status.gpsUnavailable') : t('status.gpsUnreliable')}</span> : null}

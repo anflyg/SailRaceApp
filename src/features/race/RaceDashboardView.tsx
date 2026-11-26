@@ -1,4 +1,4 @@
-import { formatDegrees, formatKnots, formatSignedKnots } from '../../domain/format'
+import { formatSignedDegrees, formatDegrees, formatKnots, formatSignedKnots } from '../../domain/format'
 import { calculateVelocityMadeGood } from '../../domain/navigation'
 import { useTranslation } from '../../i18n/LanguageContext'
 import { normalizeDegrees } from '../../domain/angles'
@@ -10,11 +10,12 @@ import { WindShiftDots, WindShiftScale, emptyOutput } from './WindShiftInstrumen
 import type { WindInstrumentOutput } from '../../domain/windShiftInstrument'
 import { isFreshTacticalHeading, NO_TACTICAL_HEADING, type TacticalHeading } from '../../hooks/useTacticalHeading'
 import type { CompassDisplayMode } from '../../services/appSettingsStorage'
-import type { CourseState, FilteredGpsReading, Race } from '../../types'
+import type { CourseState, FilteredGpsReading, Race, RollPitchValues } from '../../types'
 
 interface RaceDashboardViewProps {
   course: CourseState
   gps: FilteredGpsReading
+  rollPitch?: RollPitchValues | null
   heading?: TacticalHeading
   compassDisplayMode: CompassDisplayMode
   laylineAlphaDegrees: number
@@ -28,6 +29,7 @@ export function RaceDashboardView({
   course,
   gps,
   heading = NO_TACTICAL_HEADING,
+  rollPitch = null,
   compassDisplayMode,
   laylineAlphaDegrees,
   windInstrumentOutput = emptyOutput,
@@ -76,9 +78,13 @@ export function RaceDashboardView({
   return (
     <section className="view-section race-view">
       <div className="race-grid with-wind-cues">
-        <div className="metric-box" aria-label={t('sailing.speed')}>
+        <div className="metric-box speed-with-attitude" aria-label={t('sailing.speed')}>
+          <div className="speed-secondary-row">
+            <span className="sailing-roll"><small>R</small> {rollPitch && Number.isFinite(rollPitch.rollDegrees) ? formatSignedDegrees(rollPitch.rollDegrees) : '—'}</span>
+            <span className="speed-caption">{t('sailing.speed')}</span>
+            <span className="sailing-pitch"><small>S</small> {rollPitch && Number.isFinite(rollPitch.pitchDegrees) ? formatSignedDegrees(rollPitch.pitchDegrees) : '—'}</span>
+          </div>
           <span className="metric-value">{speedKnots !== null ? formatKnots(speedKnots) : '--'}</span>
-          <span className="metric-label">{t('sailing.speed')}</span>
         </div>
 
         <WindShiftDots validReference={matchingWindReference && freshDisplayCourse} output={windInstrumentOutput} />

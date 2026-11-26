@@ -4,6 +4,7 @@ import {
   MIN_LAYLINE_ALPHA_DEGREES,
   type LaylineSettings,
 } from '../types'
+import { isValidBowDistance } from '../domain/bowGeometry'
 import type { AppLanguage } from '../i18n/translations'
 
 const STORAGE_KEY = 'aster-race:app-settings:v1'
@@ -19,6 +20,7 @@ export const DEFAULT_LAYLINE_SETTINGS: LaylineSettings = {
 export type CompassDisplayMode = 'normal' | 'wind-relative'
 
 export interface AppSettingsState {
+  phoneToBowMeters: number
   layline: LaylineSettings
   language: AppLanguage
   compassDisplayMode: CompassDisplayMode
@@ -27,6 +29,7 @@ export interface AppSettingsState {
 
 function createDefaultSettingsState(): AppSettingsState {
   return {
+    phoneToBowMeters: 0,
     layline: DEFAULT_LAYLINE_SETTINGS,
     language: 'sv',
     compassDisplayMode: 'normal',
@@ -62,7 +65,7 @@ export function clampWindShiftDegreesPerDot(degrees: number): number {
   return Math.min(MAX_WIND_SHIFT_DEGREES_PER_DOT, Math.max(MIN_WIND_SHIFT_DEGREES_PER_DOT, Math.round(degrees)))
 }
 
-export function saveAppSettings(state: Pick<AppSettingsState, 'layline'> & Partial<Pick<AppSettingsState, 'language' | 'compassDisplayMode' | 'windShiftDegreesPerDot'>>): void {
+export function saveAppSettings(state: Pick<AppSettingsState, 'layline'> & Partial<Pick<AppSettingsState, 'language' | 'compassDisplayMode' | 'windShiftDegreesPerDot' | 'phoneToBowMeters'>>): void {
   const storage = getLocalStorage()
 
   if (!storage) {
@@ -84,6 +87,7 @@ function normalizeSettingsState(value: unknown): AppSettingsState {
   const laylineValue = isRecord(value.layline) ? value.layline : null
 
   return {
+    phoneToBowMeters: isValidBowDistance(value.phoneToBowMeters) ? value.phoneToBowMeters : 0,
     layline: {
       enabled: typeof laylineValue?.enabled === 'boolean'
         ? laylineValue.enabled

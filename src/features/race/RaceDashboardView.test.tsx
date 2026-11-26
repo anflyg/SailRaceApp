@@ -4,6 +4,7 @@ import { LanguageProvider } from '../../i18n/LanguageContext'
 import { translations } from '../../i18n/translations'
 import type { CourseState, FilteredGpsReading } from '../../types'
 import type { WindHeadingMeasurementResult } from '../../services/sensors/windHeadingService'
+import { calculateRollPitchRelativeToCalibration } from '../../domain/motion'
 import { RaceDashboardView } from './RaceDashboardView'
 
 // Mounting the retired warning engine would reintroduce its countdown/background work.
@@ -231,5 +232,24 @@ describe('tactical heading source', () => {
         heading={{ degrees: 45, timestamp: now - 1501 }} compassDisplayMode="normal" laylineAlphaDegrees={90} />
     </LanguageProvider>)
     expect(html).toContain('<span class="metric-value">--</span><span class="metric-label">Riktning</span>')
+  })
+})
+
+describe('restored calibrated attitude', () => {
+  it('flanks FART with signed existing R/S before the speed value and keeps missing placeholders', () => {
+    const render = (rollPitch: { rollDegrees: number; pitchDegrees: number } | null) => renderToStaticMarkup(
+      <LanguageProvider language="sv" setLanguage={() => {}}><RaceDashboardView course={course} gps={gps}
+        compassDisplayMode="normal" laylineAlphaDegrees={90} rollPitch={rollPitch} /></LanguageProvider>)
+    const attitude = { status: 'watching' as const, error: null, motionAvailable: true, headingAvailable: true, timestamp: Date.now(), rollDegrees: 4, pitchDegrees: 38 }
+    const calibrated = calculateRollPitchRelativeToCalibration(attitude, { rollDegrees: 10, pitchDegrees: 20 })
+    const html = render(calibrated)
+    expect(html).toContain('<small>R</small> -6°')
+    expect(html).toContain('<small>S</small> +18°')
+    expect(html.indexOf('sailing-roll')).toBeLessThan(html.indexOf('speed-caption'))
+    expect(html.indexOf('speed-caption')).toBeLessThan(html.indexOf('sailing-pitch'))
+    expect(html.indexOf('sailing-pitch')).toBeLessThan(html.indexOf('metric-value'))
+    expect(render(calculateRollPitchRelativeToCalibration(attitude, null))).toContain('<small>R</small> —')
+    expect(render(calculateRollPitchRelativeToCalibration({ ...attitude, pitchDegrees: null }, { rollDegrees: 10, pitchDegrees: 20 }))).toContain('<small>S</small> —')
+    expect(render(null)).toContain('<small>S</small> —')
   })
 })

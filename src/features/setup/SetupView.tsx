@@ -22,6 +22,8 @@ import type {
 } from '../../types'
 
 interface SetupViewProps {
+  phoneToBowMeters?: number
+  onPhoneToBowMetersChange?: (meters: number) => void
   gps: LiveGpsReading
   attitude: DeviceAttitudeReading
   rollPitch: RollPitchValues | null
@@ -36,6 +38,8 @@ interface SetupViewProps {
 }
 
 export function SetupView({
+  phoneToBowMeters = 0,
+  onPhoneToBowMetersChange,
   gps,
   attitude,
   rollPitch,
@@ -90,6 +94,14 @@ export function SetupView({
         </p>
       </div>
 
+      <label className="bow-distance-setting">
+        {t('setup.phoneToBow')}
+        <input type="number" min="0" max="15" step="0.1" value={phoneToBowMeters}
+          onChange={event => {
+            if (event.target.value !== '' && event.target.validity.valid) onPhoneToBowMetersChange?.(Number(event.target.value))
+          }} />
+      </label>
+      <p className="course-status">{t('course.bowCapture')}</p>
       <h2 className="setup-section-heading">{t('sailing.windShiftInstruments')}</h2>
       <div className="setup-layline-panel" aria-label={t('setup.alpha')}>
         <div className="setup-layline-alpha-row">

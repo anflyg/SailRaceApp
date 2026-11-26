@@ -1,3 +1,5 @@
+import { bowPosition, validPosition } from './bowGeometry'
+import { NO_TACTICAL_HEADING, type TacticalHeading } from './tacticalHeading'
 import { getStartLineQuality, GOOD_GPS_ACCURACY_METERS } from './gps'
 import type { CoursePoint, GeoPoint } from '../types'
 
@@ -5,6 +7,7 @@ export const MIN_TTL_SPEED_KNOTS = 1
 export const KNOTS_TO_METERS_PER_SECOND = 0.514444
 
 export type StartMetricStatus =
+  | 'heading_unavailable'
   | 'gps_missing'
   | 'line_missing'
   | 'gps_unreliable'
@@ -26,6 +29,8 @@ export interface TimeToLineInput {
 }
 
 export interface StartMetricsInput {
+  heading?: TacticalHeading
+  phoneToBowMeters?: number
   boatPosition: GeoPoint | null
   currentAccuracyMeters: number | null
   startA: CoursePoint | null
@@ -68,7 +73,9 @@ export function calculateTimeToLine({
 }: TimeToLineInput): number | null {
   const speedMetersPerSecond = speedKnots * KNOTS_TO_METERS_PER_SECOND
 
-  if (speedMetersPerSecond <= 0) {
+  if (!validPosition(boatPosition) || !validPosition(startA) || !validPosition(startB) ||
+      !Number.isFinite(speedKnots) || !Number.isFinite(courseDegrees) || courseDegrees < 0 || courseDegrees > 360 ||
+      Math.abs(startA.longitude - startB.longitude) > 180 || speedMetersPerSecond <= 0) {
     return null
   }
 
@@ -111,6 +118,8 @@ export function calculateStartMetrics({
   courseDegrees,
   speedKnots,
   countdownSeconds,
+  heading = NO_TACTICAL_HEADING,
+  phoneToBowMeters = 0,
 }: StartMetricsInput): StartMetrics {
   if (!boatPosition) {
     return {
@@ -128,7 +137,7 @@ export function calculateStartMetrics({
     }
   }
 
-  if (currentAccuracyMeters === null || currentAccuracyMeters > GOOD_GPS_ACCURACY_METERS) {
+  if (currentAccuracyMeters === null || !Number.isFinite(currentAccuracyMeters) || currentAccuracyMeters < 0 || currentAccuracyMeters > GOOD_GPS_ACCURACY_METERS) {
     return {
       ttlSeconds: null,
       burnSeconds: null,
@@ -136,7 +145,7 @@ export function calculateStartMetrics({
     }
   }
 
-  if (speedKnots === null || speedKnots < MIN_TTL_SPEED_KNOTS) {
+  if (speedKnots === null || !Number.isFinite(speedKnots) || speedKnots < MIN_TTL_SPEED_KNOTS) {
     return {
       ttlSeconds: null,
       burnSeconds: null,
@@ -152,15 +161,18 @@ export function calculateStartMetrics({
     }
   }
 
+  const bow = bowPosition(boatPosition, phoneToBowMeters, heading)
+  if (!bow) return { ttlSeconds: null, burnSeconds: null, status: 'heading_unavailable' }
+
   const ttlSeconds = calculateTimeToLine({
-    boatPosition,
+    boatPosition: bow,
     startA,
     startB,
     courseDegrees,
     speedKnots,
   })
 
-  if (ttlSeconds === null) {
+  if (ttlSeconds === null || !Number.isFinite(countdownSeconds)) {
     return {
       ttlSeconds: null,
       burnSeconds: null,

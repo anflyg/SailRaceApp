@@ -10,6 +10,9 @@ import type { TranslationKey } from '../../i18n/translations'
 import { RecordingControl } from '../../components/RecordingControl'
 import type { CountdownToken } from '../../services/raceLogger'
 
+import { isFreshReliableGps } from '../../domain/windReference'
+import { NO_TACTICAL_HEADING, type TacticalHeading } from '../../hooks/useTacticalHeading'
+
 const durations: CountdownDuration[] = [5, 4, 3, 2, 1]
 
 function formatTime(seconds: number) {
@@ -20,6 +23,8 @@ function formatTime(seconds: number) {
 }
 
 interface StartTimerViewProps {
+  heading?: TacticalHeading
+  phoneToBowMeters?: number
   selectedMinutes: CountdownDuration
   course: CourseState
   gps: LiveGpsReading
@@ -70,6 +75,8 @@ function formatBurnSeconds(value: number): string {
 
 export function StartTimerView({
   selectedMinutes,
+  heading = NO_TACTICAL_HEADING,
+  phoneToBowMeters = 0,
   course,
   gps,
   filteredGps,
@@ -253,12 +260,14 @@ export function StartTimerView({
       ? 'timer-negative'
       : 'timer-running'
   const startMetrics = calculateStartMetrics({
-    boatPosition: getGpsPosition(gps),
+    heading,
+    phoneToBowMeters,
+    boatPosition: gps.timestamp !== null && Number.isFinite(gps.timestamp) && gps.timestamp <= Date.now() && Date.now() - gps.timestamp <= 5000 ? getGpsPosition(gps) : null,
     currentAccuracyMeters: gps.accuracyMeters,
     startA: course.points.startA,
     startB: course.points.startB,
     speedKnots: filteredGps.speedKnots,
-    courseDegrees: filteredGps.courseDegrees,
+    courseDegrees: isFreshReliableGps(filteredGps, filteredGps.courseDegrees, filteredGps.timestamp) ? filteredGps.courseDegrees : null,
     countdownSeconds: seconds,
   })
   const isTimerRunning = status === 'running'

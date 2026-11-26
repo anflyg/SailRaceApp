@@ -150,3 +150,20 @@ describe('wind shift degrees per dot setting', () => {
     expect(loadAppSettings().windShiftDegreesPerDot).toBe(value)
   })
 })
+
+describe('local phone-to-bow setting compatibility', () => {
+  it('defaults legacy settings to zero, saves distance and rejects corrupt values', () => {
+    const storage = new MockStorage()
+    vi.stubGlobal('localStorage', storage)
+    storage.setItem(STORAGE_KEY, JSON.stringify({ language: 'en' }))
+    expect(loadAppSettings().phoneToBowMeters).toBe(0)
+    for (const distance of [0, .1, 4.2, 15]) {
+      saveAppSettings({ layline: { enabled: false, alphaDegrees: 90 }, phoneToBowMeters: distance })
+      expect(loadAppSettings().phoneToBowMeters).toBe(distance)
+    }
+    for (const distance of [-1, 15.1, '4', null]) {
+      storage.setItem(STORAGE_KEY, JSON.stringify({ phoneToBowMeters: distance }))
+      expect(loadAppSettings().phoneToBowMeters).toBe(0)
+    }
+  })
+})
