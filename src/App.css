@@ -2866,3 +2866,18 @@ button:focus-visible {
 :root .race-map-modal {
   background: rgba(255, 255, 255, 0.94);
 }
+
+.app-shell .race-view .speed-with-attitude { grid-template-rows: auto minmax(0, 1fr); }
+.speed-secondary-row { display: grid; grid-template-columns: 1fr auto 1fr; align-items: baseline; gap: 8px; padding-inline: 12px; color: var(--theme-text-muted); font-size: 1rem; }
+.speed-secondary-row small, .speed-caption { font-size: .76rem; }
+.sailing-pitch { text-align: right; }
+.sailing-roll, .sailing-pitch { white-space: nowrap; }
+.bow-distance-setting { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.bow-distance-setting input { width: 5rem; font-size: 1rem; }
+/* Reserve the secondary row even at narrow widths and enlarged text. */
+.app-shell .race-view .speed-with-attitude .metric-value {
+  font-size: min(28vw, 16dvh);
+}
+.speed-caption { text-transform: uppercase; font-weight: 650; letter-spacing: .04em; }
+/* This grid row must grow with wrapped capture guidance on native WebKit. */
+.setup-view > .course-status { min-height: max-content; }

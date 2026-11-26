@@ -126,3 +126,23 @@ describe('wind VMG acceptance feedback in Course', () => {
     expect(html).not.toContain('course-wind-feedback')
   })
 })
+
+describe('Course start advantage', () => {
+  const course: CourseState = { points: { ...emptyCourse.points,
+    startA: { latitude: 0, longitude: 0, quality: 'good' },
+    startB: { latitude: Math.sin(Math.PI / 30) / 1113.2, longitude: Math.cos(Math.PI / 30) / 1113.2, quality: 'good' } },
+    windHeadingDegrees: 0, windMeasurement: measurement({ headingDegrees: 0, selectedHeadingDegrees: 0 }) }
+  it('shows original approved Course wind bias and bow-at-mark guidance', () => {
+    expect(renderCourse(course)).toContain('B-änden gynnad, 6°')
+    expect(renderCourse(course, 'en')).toContain('B end favored, 6°')
+    expect(renderCourse(course, 'en')).toContain('when the bow is at the mark')
+    expect(renderCourse(course, 'en')).toContain('Changing distance leaves saved points unchanged')
+    expect(renderCourse({ ...course, windHeadingDegrees: 180, windMeasurement: measurement({ headingDegrees: 180, selectedHeadingDegrees: 180 }) })).toContain('A-änden gynnad, 6°')
+  })
+  it('withholds rejected wind and warns for poor endpoints', () => {
+    expect(renderCourse({ ...course, windMeasurement: measurement({ quality: 'poor' }) })).not.toContain('class="start-advantage"')
+    const poor = { ...course, points: { ...course.points, startB: { ...course.points.startB!, quality: 'poor' as const } } }
+    expect(renderCourse(poor, 'en')).toContain('poor GPS endpoints')
+    expect(renderCourse(poor)).not.toContain('class="start-advantage"')
+  })
+})

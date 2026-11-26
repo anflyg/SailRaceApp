@@ -2,6 +2,13 @@ export type AppLanguage = 'sv' | 'en'
 
 export const translations = {
   sv: {
+    "setup.phoneToBow": "Telefon till för (m, 0–15)",
+    "course.bowCapture": "Tryck A/B när fören är vid märket. Ändrat avstånd påverkar inte sparade punkter; radera och fånga dem igen vid behov. GPS-osäkerheten kvarstår.",
+    "start.status.heading_unavailable": "Aktuell tillförlitlig HDG saknas",
+    "course.advantage": "Startfördel",
+    "course.favoredEnd": "{end}-änden gynnad, {degrees}°",
+    "course.neutral": "Neutral (≤2°)",
+    "course.biasPoorGps": "Startfördel visas inte: osäkra GPS-punkter. Fånga A/B igen med bättre GPS.",
     'sailing.vmgMissingWind': 'Vind ej satt', 'sailing.vmgNorth': 'Inkompatibel nordreferens', 'sailing.vmgQuality': 'Vindmätning underkänd', 'sailing.vmgGps': 'GPS-kurs otillförlitlig', 'sailing.vmgRaceMismatch': 'Vinden skiljer sig från racets referens',
     'cloud.expired': 'Testets uppladdningstid har gått ut. Tidigare testdata finns kvar.',
     'cloud.newTest': 'Starta nytt syntetiskt test',
@@ -85,6 +92,13 @@ export const translations = {
     'analysis.noStartTime': 'Ingen starttid beräknad', 'analysis.earlyRisk': 'tidig / risk för tjuvstart', 'analysis.late': 'sen', 'analysis.onLine': '0 s på linjen', 'analysis.startStatusOk': 'Tydlig linjepassage hittades i startfönstret.', 'analysis.startStatusUncertain': 'Passagen hittades, men sample-gap eller GPS accuracy gör resultatet osäkert.', 'analysis.startLineMissing': 'Startlinje saknas.', 'analysis.startGunMissing': 'Startskott saknas.', 'analysis.notEnoughSamples': 'För få datapunkter i startfönstret.', 'analysis.noCrossing': 'Ingen tydlig linjepassage hittades.',
   },
   en: {
+    "setup.phoneToBow": "Phone to bow (m, 0–15)",
+    "course.bowCapture": "Tap A/B when the bow is at the mark. Changing distance leaves saved points unchanged; clear and recapture them if needed. GPS uncertainty remains.",
+    "start.status.heading_unavailable": "Current reliable HDG unavailable",
+    "course.advantage": "Start advantage",
+    "course.favoredEnd": "{end} end favored, {degrees}°",
+    "course.neutral": "Neutral (≤2°)",
+    "course.biasPoorGps": "Start advantage withheld: poor GPS endpoints. Recapture A/B with better GPS.",
     'sailing.vmgMissingWind': 'Wind not set', 'sailing.vmgNorth': 'Incompatible north reference', 'sailing.vmgQuality': 'Wind measurement rejected', 'sailing.vmgGps': 'GPS course unreliable', 'sailing.vmgRaceMismatch': 'Wind differs from race reference',
     'cloud.expired': 'The test upload has expired. Previous test data is retained.',
     'cloud.newTest': 'Start new synthetic test',

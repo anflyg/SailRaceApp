@@ -18,7 +18,7 @@ In Sailing, FART, RIKTNING and VMG remain the dominant values and retain their e
 
 New races use the A/B two-point start line and measured wind direction. Course retains the relevant schematic and wind measurement controls, but no longer offers K1/L1 mark buttons. K1/L1 are not used to prepare or execute new races.
 
-Mark-dependent layline guidance and VMC are retired from active sailing. Setup retains Slagvinkel (including its existing local persistence and internal Alpha naming) for the wind instruments, but has no layline on/off control. Sailing always shows wind VMG, or the existing `--` placeholder without a wind reference; it offers no VMC switch. Normal races never run layline countdowns, play layline sounds or generate new layline-tack events, including when an older saved layline setting was enabled. Do not show the old K1/L1-dependent start-line advantage in Course; no replacement bias algorithm is introduced.
+Mark-dependent layline guidance and VMC are retired from active sailing. Setup retains Slagvinkel (including its existing local persistence and internal Alpha naming) for the wind instruments, but has no layline on/off control. Sailing always shows wind VMG, or the existing `--` placeholder without a wind reference; it offers no VMC switch. Normal races never run layline countdowns, play layline sounds or generate new layline-tack events, including when an older saved layline setting was enabled. The old K1/L1-dependent advantage remains retired. Phase 1 implements the separately approved A/B wind-based start advantage below.
 
 Existing recordings, saved marks, layline events, VMC sample fields, exports/imports, sync and analysis contracts remain compatible. Historical mark-based leg analysis is retained when saved marks exist. Races without marks are valid configurations; the analysis UI explains that GPS/wind-based leg identification is not yet available. The product direction is to identify upwind and downwind legs after the race from GPS and wind; this change does not implement that algorithm or a data migration.
 
@@ -139,3 +139,13 @@ Possible summary values include elapsed time, sailed distance, average/max speed
 ### Ban- och vindmetadata för en inspelning
 
 Under förstarten uppdateras det aktiva racets sparade startlinje och vindmätning när användaren ändrar eller rensar Bana, även när nedräkningen är pausad. Omsynkronisering behåller race och prover. Efter startskottet låses racets referens; aktuell vind som skiljer sig från den sparade referensen ger ingen vind-VMG i nya prover. Efter appomstart återställs den sparade banan först när användaren väljer Fortsätt, och inga prover registreras före valet. VMG-vyn visar en kort orsak när vind eller GPS inte kan användas. En godkänd mätning garanterar inte vinkelprecision.
+
+### Race performance Phase 1 (D7/D8/D9)
+
+Setup provides a locally saved phone-to-bow distance of 0–15 m (default 0, entry step 0.1 m). Tap A/B when the **bow** is at the physical mark. New captures save phone GPS plus the forward offset along current reliable true-north HDG once; at zero distance capture needs GPS only. Positive-distance captures fail without that HDG. GPS must be at most five seconds old, and HDG uses the existing 1.5-second expiry and three-second filter. These limits do not guarantee simultaneous or accurate physical observations.
+
+Saved and recovered coordinates are used as stored, including legacy endpoints. Distance edits never move them: clear and recapture A/B if correction is needed. No automatic endpoint migration or track correction occurs. TTL/BURN use the live bow position, preserving GPS COG/SOG projection; both display `—` without current reliable true-north HDG, including at zero distance.
+
+Course uses its original approved true-north wind-FROM measurement and A/B geometry for Start advantage. Show the upwind A/B end and rounded whole-degree bias; bias <=2° is neutral. Withhold missing, rejected or poor-quality inputs, degenerate lines (<1 m) and unsupported geometry (>10 km, near-polar or dateline-spanning). Poor endpoint quality receives recapture guidance. This does not remove GPS uncertainty or guarantee a legal start.
+
+Sailing restores calibrated R left and S right above speed, flanking FART, with plain secondary text and placeholders before calibration or without values. It reuses Setup's session zero and gravity-axis signs. No extra sensor stream, R/S persistence, logging, Wvmg change or raw-v1 change is introduced. Native mounted-device and on-water verification remains required before release.

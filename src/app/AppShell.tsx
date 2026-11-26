@@ -10,6 +10,8 @@ import { StartTimerView } from '../features/timer/StartTimerView'
 import { RaceDashboardView } from '../features/race/RaceDashboardView'
 import { useWindShiftInstrumentOutput } from '../features/race/WindShiftInstruments'
 import { RecordedRaceAnalysis } from '../features/analysis/RecordedRaceAnalysis'
+import { captureStartPoint } from '../domain/bowGeometry'
+import { isFreshTacticalHeading } from '../hooks/useTacticalHeading'
 import { calculateRollPitchRelativeToCalibration } from '../domain/motion'
 import { getPointQuality } from '../domain/gps'
 import { calculateVelocityMadeGood, getCourseAxisHeading } from '../domain/navigation'
@@ -197,19 +199,20 @@ export function AppShell() {
   const [laylineAlphaDegrees, setLaylineAlphaDegrees] = useState(() => simulationLaylineSettings?.alphaDegrees ?? loadAppSettings().layline.alphaDegrees)
   const [language, setLanguage] = useState<AppLanguage>(() => loadAppSettings().language)
   const [compassDisplayMode, setCompassDisplayMode] = useState<CompassDisplayMode>(() => loadAppSettings().compassDisplayMode)
+  const [phoneToBowMeters, setPhoneToBowMeters] = useState(() => loadAppSettings().phoneToBowMeters)
   const [windShiftDegreesPerDot, setWindShiftDegreesPerDot] = useState(() => loadAppSettings().windShiftDegreesPerDot)
   const liveGpsDevice = useLiveGps(
     !manualMode.enabled && (activeView !== 'analysis' || (activeRaceId !== null && !recoveryPending)),
     simulationGpsSource ?? undefined,
   )
   const filteredGpsDevice = useFilteredGps(liveGpsDevice)
-  const deviceAttitudeDevice = useDeviceAttitude(!manualMode.enabled && (activeView === 'setup' || activeView === 'course' || activeView === 'race' || activeRaceId !== null))
+  const deviceAttitudeDevice = useDeviceAttitude(!manualMode.enabled && (activeView === 'setup' || activeView === 'course' || activeView === 'timer' || activeView === 'race' || activeRaceId !== null))
   const liveGps = manualMode.enabled ? MANUAL_FIXTURES.liveGps : liveGpsDevice
   const filteredGps = manualMode.enabled ? MANUAL_FIXTURES.filteredGps : filteredGpsDevice
   const developmentHeading = manualMode.enabled || (
     simulationMode.enabled && simulationMode.scenario !== 'analysis-validation' && simulationMode.scenario !== 'logged-race-analysis'
   ) ? getDevelopmentTacticalHeading(true, filteredGps, Date.now(), manualMode.enabled ? Date.now() : undefined) : undefined
-  const tacticalHeading = useTacticalHeading(!manualMode.enabled && (activeView === 'race' || activeRaceId !== null), developmentHeading)
+  const tacticalHeading = useTacticalHeading(!manualMode.enabled && (activeView === 'race' || activeView === 'course' || activeView === 'timer' || activeRaceId !== null), developmentHeading)
   const windInstrumentOutput = useWindShiftInstrumentOutput(course, tacticalHeading, laylineAlphaDegrees, windShiftDegreesPerDot, recoveryPending || activeRaceId === null ? null : startGunTimeMs, activeRaceId)
   const simulationAppVmgKnots = simulationMode.scenario === 'wind-vmg' &&
     isUsableWindReference(course.windHeadingDegrees, course.windMeasurement) &&
@@ -315,8 +318,9 @@ export function AppShell() {
       language,
       compassDisplayMode,
       windShiftDegreesPerDot,
+      phoneToBowMeters,
     })
-  }, [compassDisplayMode, language, laylineAlphaDegrees, laylineEnabled, manualMode.enabled, simulationLaylineSettings, windShiftDegreesPerDot])
+  }, [phoneToBowMeters, compassDisplayMode, language, laylineAlphaDegrees, laylineEnabled, manualMode.enabled, simulationLaylineSettings, windShiftDegreesPerDot])
 
   const handleManualViewChange = useCallback((nextView: AppView) => {
     if (isNavigationLocked && nextView !== activeView) {
@@ -461,7 +465,18 @@ export function AppShell() {
       return
     }
 
-    const gpsPosition = getLiveGpsPosition()
+    const phone = getLiveGpsPosition()
+    const now = Date.now()
+    if (!phone || liveGps.timestamp === null || !Number.isFinite(liveGps.timestamp) || liveGps.timestamp > now || now - liveGps.timestamp > 5000) {
+      setCourseGpsStatus('gps-position-unavailable')
+      return
+    }
+    const gpsPosition = key === 'startA' || key === 'startB'
+      ? captureStartPoint(phone, phoneToBowMeters, tacticalHeading, now) : phone
+    if (!gpsPosition && phoneToBowMeters > 0 && !isFreshTacticalHeading(tacticalHeading, now)) {
+      setCourseGpsStatus('heading-unavailable')
+      return
+    }
 
     if (!gpsPosition) {
       setCourseGpsStatus('gps-position-unavailable')
@@ -508,6 +523,8 @@ export function AppShell() {
         gps={liveGps}
         attitude={deviceAttitude}
         rollPitch={rollPitch}
+        phoneToBowMeters={phoneToBowMeters}
+        onPhoneToBowMetersChange={setPhoneToBowMeters}
         isCalibrated={rollPitchCalibration !== null}
         onCalibrate={calibrateRollPitch}
         laylineAlphaDegrees={laylineAlphaDegrees}
@@ -537,6 +554,8 @@ export function AppShell() {
         course={course}
         gps={liveGps}
         filteredGps={filteredGps}
+        heading={tacticalHeading}
+        phoneToBowMeters={phoneToBowMeters}
         onSelectedMinutesChange={setSelectedCountdownMinutes}
         onCountdownStart={handleCountdownStart}
         onCountdownResume={updatePlannedStart}
@@ -554,6 +573,7 @@ export function AppShell() {
         course={course}
         gps={filteredGps}
         heading={tacticalHeading}
+        rollPitch={rollPitch}
         compassDisplayMode={compassDisplayMode}
         laylineAlphaDegrees={laylineAlphaDegrees}
         windInstrumentOutput={windInstrumentOutput}

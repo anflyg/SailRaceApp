@@ -2,9 +2,8 @@ import { useEffect, useState } from 'react'
 import { Capacitor, registerPlugin } from '@capacitor/core'
 import { averageAnglesDegrees } from '../domain/angles'
 
-export interface TacticalHeading { degrees: number | null; timestamp: number | null }
-export const NO_TACTICAL_HEADING: TacticalHeading = { degrees: null, timestamp: null }
-export const TACTICAL_HEADING_MAX_AGE_MS = 1500
+import { isFreshTacticalHeading, NO_TACTICAL_HEADING, TACTICAL_HEADING_MAX_AGE_MS, type TacticalHeading } from '../domain/tacticalHeading'
+export { isFreshTacticalHeading, NO_TACTICAL_HEADING, TACTICAL_HEADING_MAX_AGE_MS, type TacticalHeading } from '../domain/tacticalHeading'
 interface Sample { valid?: boolean; headingDegrees?: number; motionTimestamp?: number; ageMs?: number }
 const native = registerPlugin<{ getTacticalHeading(): Promise<Sample> }>('WindHeading')
 
@@ -28,11 +27,6 @@ export class TacticalHeadingFilter {
     if (!latest || now - latest.timestamp > TACTICAL_HEADING_MAX_AGE_MS) return NO_TACTICAL_HEADING
     return { degrees: averageAnglesDegrees(this.samples.map((s) => s.degrees)), timestamp: latest.timestamp }
   }
-}
-
-export function isFreshTacticalHeading(value: TacticalHeading, now = Date.now()): boolean {
-  return value.degrees !== null && Number.isFinite(value.degrees) && value.degrees >= 0 && value.degrees < 360 &&
-    value.timestamp !== null && Number.isFinite(value.timestamp) && value.timestamp <= now && now - value.timestamp <= TACTICAL_HEADING_MAX_AGE_MS
 }
 
 export function useTacticalHeading(enabled: boolean, developmentHeading: TacticalHeading = NO_TACTICAL_HEADING): TacticalHeading {
