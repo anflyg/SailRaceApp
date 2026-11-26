@@ -2,7 +2,7 @@
 
 **Status: PROPOSED — not accepted or implemented.**  
 **Date:** 2026-11-26.  
-**Product authority:** PR #84 D3/D6/D10.  
+**Product authority:** PR #84 D3/D6/D10/D11.
 **Approvals needed:** G3/G4 in the [technical design](../race-performance-technical-design.md).
 
 ## Context
@@ -20,6 +20,10 @@ A reviewed reinterpretation of v1 sample wind as effective Wvmg may support limi
 Compute post-race tack-angle observations and maneuver metrics deterministically from available evidence. **Owner approval C0:** authorize C13 as a **synthetic-only** study with known 1-second truth downsampled to the existing 5-second cadence; do not read real race data or change logging/production code. Prove feasibility on labelled synthetic traces at current cadence first. G4 confidence and maneuver-loss metrics remain undecided pending the results. Present uncertain/unavailable classifications where GPS/COG or missing HDG/wind cannot distinguish a tack/gybe. Use observed sampled minimum, explicit baseline and recovery definition; qualify any modeled speed-deficit metric. Wind/course support is required for progress/VMG loss. Exact policies in D3/D10 remain experiments pending product approval.
 
 Introduce a new `analysisVersion` for result-affecting behavior; independently version raw/result/API contracts as required. Keep v1 readers/results, require explicit reader capability for the new formats, and never automatically reanalyze/retarget historical races. Update strict backend/browser validation and owner projection only after shared contracts are approved. No extension is smuggled into existing v1 `legs`, `summary` or legacy layline events.
+
+## C3 detailed proposal
+
+The [C3 G3 data model and review record](../race-performance-g3-data-model.md) proposes exact candidate v2 fields, bounds, first late W0, sample eligibility, sampled tactical history, atomic recovery, export, sync, retention and deletion. It is a working specification for G1/G3 and C4 review, not an accepted contract or authority to collect. D11 requires pre-origin samples to remain unavailable and preserves the original gun snapshot. ADR-010 remains PROPOSED; unresolved origin binding, compatibility, corruption fallback and ownership remain dependencies.
 
 ## Alternatives
 
