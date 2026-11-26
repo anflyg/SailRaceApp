@@ -1,5 +1,7 @@
 # Race performance — dependency-ordered Codex tasks
 
+**This document is the detailed task/dependency reference, not the current execution order.** The owner-directed [lean delivery plan](race-performance-delivery-plan.md) starts with iPhone-only functionality and defers raw-v2/contract/cloud work until history synchronization is actually needed. In particular C4 is **not a prerequisite for developing local-only VMG calculations**; it remains a prerequisite for new-version recording/upload and verified app/backend parity.
+
 **Status: proposed task plan, 2026-11-26.** Only the documentation work in PR #84 is currently authorized. Requirements, acceptance IDs D1–D10 and review gates G1–G5 are defined in the [technical design](race-performance-technical-design.md). New requirements must come from explicit owner decisions appended to PR #84, not from these tasks.
 
 Each future assignment must name its owning repository, one branch/worktree/PR, approved inputs, exact scope, acceptance subset and stop condition. Fetch current main and read applicable AGENTS before edits. Reuse an existing relevant task PR for corrections. No task includes merge, deployment, feature-flag changes, live telemetry reads or production activation unless separately and explicitly authorized.
