@@ -145,6 +145,21 @@ This web feature will likely be implemented in `anflyg/TackWiseAnalysis` with re
 
 Technical follow-up documentation (all **proposed**, no additional product approval): [technical design and D1–D10 acceptance criteria](../architecture/race-performance-technical-design.md), [ADR-010](../architecture/decisions/adr-010-vmg-wind-reference-lifecycle.md), [ADR-011](../architecture/decisions/adr-011-bow-origin-and-start-line-bias.md), [ADR-012](../architecture/decisions/adr-012-wind-history-and-maneuver-analysis.md), and the [dependency-ordered Codex task plan](../architecture/race-performance-codex-plan.md). The canonical Race/Analysis documents now distinguish this approved planned direction from existing implementation; no technical proposal is promoted to an approved product decision.
 
+## C0 — owner clarifications and dispositions (2026-11-26)
+
+The following are **explicit product-level confirmations** to decisions D1–D10, not approval of ADR-010/011/012, API contracts, new data collection or production implementation.
+
+| Topic | Owner-approved position | Still requiring separate design/approval |
+| --- | --- | --- |
+| D3 / G1 — `Slagvinkel` (`alpha`) | **The sailor always sets alpha manually.** Post-race observations and recommendations never change the stored setting automatically. | What happens when the sailor manually edits alpha **during an active race** (pending window, accepted Wvmg and tactical state) remains G1 lifecycle design, not an automatically inferred policy. |
+| D7 / G2 — distance setting | Allowed configurable phone-to-bow distance: **0–15 meters**. | Default, entry step, persistence, setting location, error handling and native validation. The earlier 0–30 m range is superseded; 0.1 m precision remains only a proposal. |
+| D7 / G2 — A/B endpoint capture | **User instruction: tap A or B when the boat's BOW is at the corresponding physical start mark.** At that moment, use phone GPS position plus the configured forward phone-to-bow offset oriented with reliable true-north HDG to save the **estimated physical mark position**. Apply the same physical bow correction to live TTL/BURN geometry. | Exact missing/stale-HDG capture behavior and quality UI. Capture provenance, stored-coordinate compatibility, recapture policy and local/cloud implications need C2 review. Do not silently re-offset previously stored A/B coordinates or historical races, and do not apply the bow offset twice. Raw GPS track positions continue to represent the phone. |
+| D9 / G2 — wind-based line bias | Use the proposed geometry, **neutral when bias <=2°**, and display non-neutral magnitude in **whole degrees**. Communicate poor A/B GPS accuracy instead of claiming angular precision. | Exact poor-quality suppress/warn rules, message, responsive UI and verification. |
+| D6 / G3 — wind/calibration history | Proceed with the **preferred design of a new versioned raw race format**, retaining strict legacy v1 compatibility rather than silently reinterpreting v1 fields. | Exact fields/cadence/version identifiers, export, retention, deletion, security, privacy, CRA, GDPR and contracts still require formal review. This is **not permission to collect or upload new telemetry**. |
+| D3/D10 / G4 — feasibility | **C13 synthetic-only feasibility study approved as the next investigation**, comparing known 1-second truth to current 5-second sampling and checking tack-angle/wind-shift confounding. | Do **not** approve confidence classes, maneuver timing/recovery/loss metrics, higher-rate logging, or G4 until the study's evidence has been reviewed. |
+
+**No architecture/release gate is closed merely by these confirmations.** In particular G1 lifecycle, G2 missing-HDG/coordinate provenance, G3 complete data lifecycle and G4 measured feasibility remain outstanding. Preserve the proposal/accepted distinction in all related ADRs and plans.
+
 ## Further approved decisions
 
 Append subsequent **owner-approved decisions** here with date, a concise scope statement, intended behavior, and any remaining implementation/approval dependencies. Mark proposals separately; do not silently promote draft ideas to decisions. Reuse this draft PR/branch for these follow-ups rather than opening competing PRs. Keep unrelated implementation tasks outside this documentation-only PR.
