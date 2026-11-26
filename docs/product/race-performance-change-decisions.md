@@ -2,7 +2,7 @@
 
 **Owner-approved product direction:** 2026-11-26.  
 **Document status:** Draft PR; decisions below are approved at product level but **not implemented, technically approved, or released**. This file is a working register to extend with later explicitly approved decisions before review/merge.  
-**Scope:** TackWise Race live VMG, wind-shift instruments, tack-angle feedback, start geometry and calibrated attitude display, with later race analysis. Watch and unrelated product areas remain outside this draft.
+**Scope:** TackWise Race live VMG, wind-shift instruments, tack-angle feedback, start geometry and start-line bias, calibrated attitude display, and later race analysis including tacks and gybes. Watch and unrelated product areas remain outside this draft.
 
 ## Decision 1 — Separate the three wind references
 
@@ -44,7 +44,7 @@ The exact confidence criteria, treatment of wind shifts between the two legs, an
 
 Retain the existing **wind/VMG instrumentation and presentation** in Sailing: main FART/RIKTNING/VMG figures, six lift/header dots, wind-shift scale, captions, colors and wind-specific interactions. The VMG decision changes only the **underlying wind-reference calculation**, not the way VMG or wind shifts are shown.
 
-The only new wind-calibration-related presentation is **post-race tack-angle feedback in Settings and Analysis**. No live wind/VMG badges, labels, extra VMG values, or new wind controls are approved. The separate owner decision below to restore **R/S (roll/pitch)** to Sailing is an explicit, independent addition whose placement remains to be specified by the owner.
+The only new wind-calibration-related presentation is **post-race tack-angle feedback in Settings and Analysis**. No live wind/VMG badges, labels, extra VMG values, or new wind controls are approved. The separate owner decision below to restore **R/S (roll/pitch)** to Sailing is an explicit, independent addition. Its placement and style were specified by the owner on 2026-11-26.
 
 ## Decision 5 — Offline behavior and fallback
 
@@ -98,20 +98,45 @@ These are **technical follow-up questions**, not additional product approvals:
 - This removes a known mounting-position offset but **does not improve GPS coordinate accuracy**. The user noted roughly 3 m GPS uncertainty as an illustration, not a guaranteed or fixed device error; the start-point/committee-end GPS positions may also be uncertain. Avoid any promise of centimeter accuracy or guaranteed legal starts.
 - Consider both crossing/intersection geometry and time-to-line/BURN for regression tests, including courses oblique to the line, phone mounted close to the bow and unavailable heading.
 
-**Not approved yet:** a new distance-to-line (DTL) display or a start-line bias/advantaged-end feature. Discuss these separately before any product scope decision.
+**Not approved yet:** a new distance-to-line (DTL) display. Start-line bias is now independently approved by Decision 9 below.
 
 ## Decision 8 — Restore calibrated roll and pitch on the Sailing screen (2026-11-26)
 
 **Approved product behavior:** Display existing calibrated `R` (rullning/roll) and `S` (stampning/pitch) **again in Segling/Sailing**. Reuse the sensor/calibration values already available in Setup (Core Motion gravity-axis mapping and existing session zero calibration). Do **not** create a different sensor concept.
 
-- The owner will specify the **exact location and presentation** in detail; **do not design, implement, or assume placement** before that input.
-- Preserve the current dominant FART / RIKTNING / VMG display and existing wind-shift cues. The addition of R/S is separate from Decision 4's **no changes to wind/VMG presentation**.
-- No new recording, persistence, cloud telemetry or API contract changes for R/S are authorized by this decision. Behavior for uncalibrated/missing values and native verification require design.
+- **Placement (owner-provided Sailing mockup):** position **R** in the **upper-left** and **S** in the **upper-right** of the Sailing content, flanking the large speed/FART display, above its main numeric value. The submitted screenshot specifies the positions **only**, not a requirement for the outlined rectangles drawn in the mockup.
+- **Style:** show **small secondary labels R and S beside the numerical values**, e.g. `R -6°` on the left and `S 18°` on the right. **No boxes, borders, cards, or filled backgrounds**; plain numbers with small R/S labels. Keep the speed number visually dominant.
+- Avoid overlaps with speed digits, wind-shift dots, tab bar, and display safe areas at supported phone widths. Verify layout against the supplied reference screenshot; no claim that the layout is collision-free before implementation/testing.
+- Reuse existing Core Motion/gravity-derived R/S values and the zero calibration currently available in Setup, including current sign conventions. No new roll/pitch computation or recalibration workflow is authorized.
+- Preserve existing wind/VMG presentation per Decision 4; R/S restoration is a separate, explicitly approved addition.
+- No new R/S recording, persistence, cloud telemetry or API contract changes are authorized. Missing/uncalibrated-value handling and native validation are implementation details.
+
+## Decision 9 — Show wind-based start-line advantage in Course (2026-11-26)
+
+**Approved product behavior:** On the **Bana/Course** page, once **both start-line endpoints A and B** have been recorded and the initial wind direction has been measured and approved, display the **wind-based start-line advantage** (`Startfördel`).
+
+- Determine which A/B endpoint is farther **upwind** according to the recorded line geometry and wind-FROM direction. Display **both** the favored endpoint **and** the angular bias in **degrees**, relative to a line perpendicular to the wind.
+- Use the existing **A/B labels** of the Course UI, rather than assuming A is the port end or B the starboard end. Example Swedish presentation: **`Startfördel: B-änden gynnad, 6°`** (illustrative, not a measured result).
+- For a sufficiently square line, present a neutral result rather than choosing a favored end. Exact neutral tolerance, rounding and placement within Course remain technical/UI details.
+- Until both endpoints and a reliable, compatible initial wind reference exist, show no invented advantage. Recalculate if either endpoint or the measured wind changes; avoid misleading precision given GPS uncertainty.
+- Use the original Course wind measurement, **not** a mutable in-race VMG wind estimate, for this prestart result. Do not mix line geometry with an unsupported tactical recommendation incorporating current, traffic or preferred course side.
+- Keep current TTL/BURN presentation unchanged as part of this feature.
+
+This decision **supersedes** the older `docs/product/tackwise-race.md` wording that no replacement start-line advantage algorithm is introduced. Reconcile the canonical product document before implementing.
+
+## Decision 10 — Analyze tacks and gybes in TackWise Analysis (2026-11-26)
+
+**Approved product direction:** Add **post-race tack and gybe analysis to TackWise Analysis (web)**, not to the live Sailing display.
+
+- Identify and distinguish tacks and gybes in recorded races when the data quality permits; report maneuver timing/location and avoid false certainty where the input does not support a conclusion.
+- Analyze **minimum speed, speed reduction and recovery**, and investigate a meaningful definition of **performance loss** relative to an appropriate baseline. Evaluate progress/VMG loss only if the recorded wind and course references support it. Do not equate a temporary speed drop with a verified distance loss.
+- Enable comparison of multiple maneuvers within a race for coaching and improvement. Exact scores, metrics, visuals, thresholds and quality requirements remain open for design.
+- First assess the current **five-second normal GPS recording interval**, current availability of HDG/COG, and historical data limitations. Any increase in logging rate, new sensor persistence, changes to API contracts or cloud processing require a separate design and privacy/security/CRA/GDPR review plus owner approval.
+- Preserve existing historical race support and strict per-owner race data access. This decision does **not** approve implementation, deployment or data migration.
+
+This web feature will likely be implemented in `anflyg/TackWiseAnalysis` with related changes scoped in the owning repositories after technical review; record only the product decision here in `SailRaceApp`.
 
 ## Topics reviewed but not approved for implementation (2026-11-26)
-
-- **Start-line bias (linjefördel):** needs an explanation and a separate owner decision. Not part of the bow-offset approval.
-- **Tack/gybe performance-loss analysis:** needs an explanation and a separate owner decision; high-rate data may be prerequisite.
 - **Additional speed statistics/live performance indicators:** owner does not see a need; not in current scope.
 - **Import from third-party sailing instruments:** deferred.
 - **Dedicated hardware and RaceSense-like regatta integrations:** no action.
