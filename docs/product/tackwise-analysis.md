@@ -59,6 +59,12 @@ The TackWise server, not a client, is authoritative for paid access. A later imp
 
 Authorized beta/TestFlight participants may receive a server-controlled `plan = pro`, `access_source = beta` entitlement for unlimited cloud sync and analysis during a defined beta period. It requires a non-null future expiry, does not consume the free allowance, and may be revoked server-side before expiry. A client-supplied TestFlight/build flag is not authorization.
 
+## Approved planned maneuver analysis — 2026-11-26
+
+[PR #84 D3/D6/D10](race-performance-change-decisions.md) approves post-race tack-angle feedback and wind-history explainability, plus web tack/gybe identification, time/location, observed minimum speed, reduction/recovery and within-race comparison when input quality supports them. Performance-loss definitions, exact metrics/visuals/confidence thresholds and treatment of the current five-second GPS cadence remain open. A speed dip is not verified distance loss. This is product direction only: no higher recording rate, new sensor persistence, contract migration, cloud processing or deployment is authorized. Historical support and strict owner access remain required.
+
+The [technical design](../architecture/race-performance-technical-design.md) and proposed [ADR-012](../architecture/decisions/adr-012-wind-history-and-maneuver-analysis.md) identify the data/version/privacy reviews before implementation in the owning repositories.
+
 ## Data principles
 
 - Raw race files are private.

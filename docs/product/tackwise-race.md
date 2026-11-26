@@ -18,7 +18,7 @@ In Sailing, FART, RIKTNING and VMG remain the dominant values and retain their e
 
 New races use the A/B two-point start line and measured wind direction. Course retains the relevant schematic and wind measurement controls, but no longer offers K1/L1 mark buttons. K1/L1 are not used to prepare or execute new races.
 
-Mark-dependent layline guidance and VMC are retired from active sailing. Setup retains Slagvinkel (including its existing local persistence and internal Alpha naming) for the wind instruments, but has no layline on/off control. Sailing always shows wind VMG, or the existing `--` placeholder without a wind reference; it offers no VMC switch. Normal races never run layline countdowns, play layline sounds or generate new layline-tack events, including when an older saved layline setting was enabled. Do not show the old K1/L1-dependent start-line advantage in Course; no replacement bias algorithm is introduced.
+Mark-dependent layline guidance and VMC are retired from active sailing. Setup retains Slagvinkel (including its existing local persistence and internal Alpha naming) for the wind instruments, but has no layline on/off control. Sailing always shows wind VMG, or the existing `--` placeholder without a wind reference; it offers no VMC switch. Normal races never run layline countdowns, play layline sounds or generate new layline-tack events, including when an older saved layline setting was enabled. Do not show the old K1/L1-dependent start-line advantage in Course. [PR #84 Decision 9](race-performance-change-decisions.md#decision-9--show-wind-based-start-line-advantage-in-course-2026-11-26) approves a planned replacement based on A/B geometry and initial approved wind, showing the favored A/B end and angular bias (or neutral). It supersedes the former prohibition on a replacement bias algorithm; technical details and implementation remain unapproved.
 
 Existing recordings, saved marks, layline events, VMC sample fields, exports/imports, sync and analysis contracts remain compatible. Historical mark-based leg analysis is retained when saved marks exist. Races without marks are valid configurations; the analysis UI explains that GPS/wind-based leg identification is not yet available. The product direction is to identify upwind and downwind legs after the race from GPS and wind; this change does not implement that algorithm or a data migration.
 
@@ -127,6 +127,12 @@ The first cloud flow follows [ADR-003](../architecture/decisions/adr-003-first-r
 The iPhone app should provide a lightweight summary and sync status. Detailed analysis belongs primarily in TackWise Analysis.
 
 Possible summary values include elapsed time, sailed distance, average/max speed, manoeuvre counts and basic VMG statistics.
+
+## Approved planned race-performance changes — 2026-11-26
+
+[PR #84's decision register](race-performance-change-decisions.md) is the sole source of new product requirements D1–D10. They are approved product direction, not implemented behavior: separate initial/tactical/accepted VMG wind, single-tack stable recalibration, post-race voluntary tack-angle feedback, preserved live wind/VMG presentation, offline fallback/recovery, minimized analysis history, bow-origin start calculations, calibrated R/S at the upper left/right of Sailing without boxes, A/B wind-based Course advantage, and later web tack/gybe analysis. Existing implementation descriptions elsewhere in this file remain baseline descriptions until separately reviewed implementation. No new live wind controls, DTL display, R/S telemetry or higher recording rate is approved.
+
+See the [technical design and acceptance matrix](../architecture/race-performance-technical-design.md), proposed ADR-010/011/012 and [dependency-ordered Codex plan](../architecture/race-performance-codex-plan.md). Technical, contract, security/privacy and release decisions remain explicit gates.
 
 ## Non-functional requirements
 

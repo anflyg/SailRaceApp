@@ -1,5 +1,15 @@
 # Architecture and Design Decisions
 
+## Race-performance proposals (not accepted)
+
+PR #84 contains product-approved direction and the following technical proposals only:
+
+- [ADR-010: VMG wind reference lifecycle](adr-010-vmg-wind-reference-lifecycle.md).
+- [ADR-011: Bow origin and start-line bias](adr-011-bow-origin-and-start-line-bias.md).
+- [ADR-012: Wind history and maneuver analysis](adr-012-wind-history-and-maneuver-analysis.md).
+
+See the [technical design](../race-performance-technical-design.md) for D1–D10 traceability, open approvals and acceptance evidence, and the [Codex plan](../race-performance-codex-plan.md) for small dependent tasks. These proposals do not amend accepted ADRs or approve implementation/activation.
+
 Use this directory for durable decisions that constrain future implementation.
 
 Accepted decisions currently include:

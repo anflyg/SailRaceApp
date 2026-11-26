@@ -141,6 +141,10 @@ This web feature will likely be implemented in `anflyg/TackWiseAnalysis` with re
 - **Import from third-party sailing instruments:** deferred.
 - **Dedicated hardware and RaceSense-like regatta integrations:** no action.
 
+## Proposed technical follow-up
+
+Technical follow-up documentation (all **proposed**, no additional product approval): [technical design and D1–D10 acceptance criteria](../architecture/race-performance-technical-design.md), [ADR-010](../architecture/decisions/adr-010-vmg-wind-reference-lifecycle.md), [ADR-011](../architecture/decisions/adr-011-bow-origin-and-start-line-bias.md), [ADR-012](../architecture/decisions/adr-012-wind-history-and-maneuver-analysis.md), and the [dependency-ordered Codex task plan](../architecture/race-performance-codex-plan.md). The canonical Race/Analysis documents now distinguish this approved planned direction from existing implementation; no technical proposal is promoted to an approved product decision.
+
 ## Further approved decisions
 
 Append subsequent **owner-approved decisions** here with date, a concise scope statement, intended behavior, and any remaining implementation/approval dependencies. Mark proposals separately; do not silently promote draft ideas to decisions. Reuse this draft PR/branch for these follow-ups rather than opening competing PRs. Keep unrelated implementation tasks outside this documentation-only PR.
