@@ -4,6 +4,12 @@
 
 Each future assignment must name its owning repository, one branch/worktree/PR, approved inputs, exact scope, acceptance subset and stop condition. Fetch current main and read applicable AGENTS before edits. Reuse an existing relevant task PR for corrections. No task includes merge, deployment, feature-flag changes, live telemetry reads or production activation unless separately and explicitly authorized.
 
+## C0 status after owner responses (2026-11-26)
+
+The owner has now approved: manual-only alpha setting and advisory post-race feedback; 0–15 m phone-to-bow configuration range; bow-at-mark A/B capture corrected once; <=2° neutral start bias and whole-degree bias display; the direction of a new versioned raw format; and a **synthetic-only C13 feasibility study** using 1-second truth compared with 5-second sampling.
+
+C0 is **partially dispositioned, not closed**: G1 within-race alpha edits/recovery/snapshot handling, G2 missing-HDG behavior/default/storage/provenance and legacy A/B protection, G3 exact versioned data lifecycle/contracts/security/privacy approvals and G4 evidence-based metrics remain open. Proposed ADR-010–012 remain **PROPOSED**; no coding authorization follows. Reuse this PR for follow-up C0/C1/C2 decisions. C13 may be separately scoped and authorized for isolated synthetic investigation without any production code or real race data.
+
 ## First: resolve design choices with small documentation tasks
 
 | ID | Repository and dependencies | Concrete assignment / deliverable | Completion and stop condition |
