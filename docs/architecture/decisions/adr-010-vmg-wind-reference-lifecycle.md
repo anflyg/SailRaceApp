@@ -17,7 +17,9 @@ Validate derived wind by its accepted origin/evidence chain, separately from the
 
 Own state above tabs. Proposed recovery persists a minimal versioned local checkpoint atomically with the accepted-reference history after G3 review. Continue explicitly restores only a matching race/origin/derivation version and permitted local ownership context. Pending windows are discarded after restart/backgrounding, fresh HDG/GPS must be reacquired, and no samples are recorded before Continue. Tabs preserve runtime acquisition. New race clears the state; End stops updates. Missing/corrupt/incompatible checkpoints fall back to that race's valid W0 or unavailable, never another race's acceptance.
 
-An alpha edit never recalculates an already accepted Wvmg. Proposed policy discards pending VMG acquisition and applies the new alpha at the next acceptance. Post-gun Course mismatch must retain existing withholding rather than silently changing the race origin. Exact interaction with the tactical engine's current resets requires a reviewed lifecycle matrix.
+**Owner clarification C0 (2026-11-26):** the sailor alone sets and changes `Slagvinkel` (`alpha`) manually. TackWise may report an observed angle and a voluntary post-race suggestion, but must **never automatically change** the configured alpha. This confirms input ownership, not the lifecycle behavior of an alpha edit during a race.
+
+An alpha edit must not retroactively recalculate an already accepted Wvmg (**proposed lifecycle policy, still subject to G1**). The suggested behavior is to discard pending VMG acquisition and apply the user's new alpha only at the next accepted tack reference. Post-gun Course mismatch must retain existing withholding rather than silently changing the race origin. Exact interaction with the tactical engine's current resets, checkpoint recovery and reference history requires a reviewed lifecycle matrix. No G1 closure or ADR acceptance is implied.
 
 ## Alternatives
 
