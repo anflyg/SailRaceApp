@@ -126,14 +126,17 @@ try {
     console.log('OBS: samma Bundle ID som befintliga TackWise Race. En installation kan ersätta en befintlig app; säkerställ lokal racedatabackup innan du fortsätter.')
     if (process.env.TACKWISE_NATIVE_TEST_BUILD) throw new Error('Isolerade native-test assets får inte kombineras med Phase 2-testbygget.')
   }
-  console.log(`Kontroller klara. Kör ${phase2VmgTest ? 'Phase 2 DEV-webbbygge' : 'produktionsbygge'} och Capacitor sync…`)
+  console.log(`Kontroller klara. Kör ${phase2VmgTest ? 'Phase 2 DEV-webbbygge och Capacitor copy' : 'produktionsbygge och Capacitor sync'}…`)
   run('npm', ['run', 'build'], { env: phase2VmgTest ? { ...process.env, NODE_ENV: 'development' } : process.env })
-  run('npx', ['cap', 'sync', 'ios'])
+  // Phase 1/2 add no native plugin dependencies. Copy preserves the checked-in
+  // Swift package manifest; `cap sync` regenerates Package.swift (iOS v15 -> v16).
+  // Keep the full sync path for the ordinary npm run ios command.
+  run('npx', ['cap', phase2VmgTest ? 'copy' : 'sync', 'ios'])
 
   const changedBySync = protectedFiles.filter((relative) =>
     !equalSnapshot(before.get(relative), snapshot(relative)) && !isExpectedCapacitorSyncChange(relative))
   if (changedBySync.length) {
-    throw new Error(`Capacitor sync ändrade skyddade lokala/native-filer. Installationen stoppades; kontrollera ändringarna innan du fortsätter:\n  ${changedBySync.join('\n  ')}`)
+    throw new Error(`Capacitor ${phase2VmgTest ? 'copy' : 'sync'} ändrade skyddade lokala/native-filer. Installationen stoppades; kontrollera ändringarna innan du fortsätter:\n  ${changedBySync.join('\n  ')}`)
   }
   const statusAfterSync = gitStatus()
   const unexpected = statusAfterSync.split('\n').filter(Boolean).filter((line) => {
