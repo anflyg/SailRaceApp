@@ -52,7 +52,9 @@ npm ci
 npm run ios:vmg-test
 ```
 
-This explicit opt-in runs a **development Vite bundle** (`NODE_ENV=development`) before Capacitor sync, then the existing signed Xcode Debug build, device installation and launch. It is **not TestFlight or a production release**. The ordinary `npm run ios` still builds the production bundle, in which the Phase 2 VMG path stays disabled. If the signing certificate/profile is missing, the test command stops and reports that blocker; it does not request new provisioning updates.
+This explicit opt-in runs a **development Vite bundle** (`NODE_ENV=development`) and uses **Capacitor copy** (not sync) to preserve the existing Swift Package.swift/native dependency manifest. Then it runs the existing signed Xcode Debug build, device installation and launch. It is **not TestFlight or a production release**. The ordinary `npm run ios` still builds the production bundle, in which the Phase 2 VMG path stays disabled. If the signing certificate/profile is missing, the test command stops and reports that blocker; it does not request new provisioning updates.
+
+**If a prior attempt ran `cap sync` and stopped on `ios/App/CapApp-SPM/Package.swift`:** inspect `git diff -- ios/App/CapApp-SPM/Package.swift` in this worktree. Only if the file contains *exclusively* the Capacitor-generated iOS platform bump and no intentional local native change, restore that one file with `git restore -- ios/App/CapApp-SPM/Package.swift` before retrying. Never reset other native files or run a blanket `git restore .`.
 
 **Before installation:** the test uses the existing iOS Bundle ID `com.anflyg.sailraceapp`, not a parallel test identity. Installing may update/replace an existing TackWise Race installation and affect its local data. Back up/retain any important unsynced recordings first. Do not uninstall the app or change signing, bundle identity, entitlements or cloud environment as an automatic workaround. This test does not approve new GPS uploads or backend switches.
 
