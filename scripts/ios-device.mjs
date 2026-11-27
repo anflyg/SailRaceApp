@@ -9,6 +9,12 @@ import { isExpectedCapacitorSyncChange } from './ios-device-safety.mjs'
 import { resolveAppProductPath } from './ios-device-build.mjs'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
+// Explicit opt-in for the Phase 2 physical-device development build. Ordinary npm run ios is unchanged.
+const phase2VmgTest = process.argv.slice(2).length === 1 && process.argv[2] === '--phase2-vmg-test'
+if (process.argv.slice(2).length > 0 && !phase2VmgTest) {
+  console.error('Okänt argument. Använd npm run ios eller npm run ios:vmg-test.')
+  process.exit(2)
+}
 const project = path.join(root, 'ios/App/App.xcodeproj')
 const plist = path.join(root, 'ios/App/App/Info.plist')
 const generatedPaths = [
@@ -90,7 +96,10 @@ try {
   const beforeStatus = gitStatus()
   console.log(`Repository: ${root}\nBranch: ${branch}\nCommit: ${commit}\nGit-status:\n${beforeStatus || '(ren)'}`)
 
-  if (process.platform !== 'darwin') throw new Error('npm run ios kräver macOS med Xcode.')
+  if (process.platform !== 'darwin') throw new Error('iPhone-testbygget kräver macOS med Xcode och lokal utvecklingssignering.')
+  if (phase2VmgTest && (!exists('src/domain/raceVmgWind.ts') || !readFileSync(path.join(root, 'src/app/AppShell.tsx'), 'utf8').includes('localRaceVmgEnabled(import.meta.env.DEV)'))) {
+    throw new Error('Phase 2 VMG-kod saknas i denna checkout. Bygg från PR #86:s branch (med Fas 1 inbakad).')
+  }
   if (!existsSync(project)) throw new Error(`Xcode-projektet saknas: ${project}`)
   if (!existsSync(plist)) throw new Error(`iOS Info.plist saknas: ${plist}`)
   run('xcodebuild', ['-version'])
@@ -112,8 +121,13 @@ try {
 
   const protectedFiles = [...new Set([...nativeFiles, ...generatedPaths])]
   const before = new Map(protectedFiles.map((relative) => [relative, snapshot(relative)]))
-  console.log('Kontroller klara. Kör produktionsbygge och Capacitor sync…')
-  run('npm', ['run', 'build'])
+  if (phase2VmgTest) {
+    console.log('FAS 1 + 2: LOKALT DEV-TEST. VMG i Fas 2 aktiveras genom NODE_ENV=development i webbbygget. Ingen release/archive/TestFlight.')
+    console.log('OBS: samma Bundle ID som befintliga TackWise Race. En installation kan ersätta en befintlig app; säkerställ lokal racedatabackup innan du fortsätter.')
+    if (process.env.TACKWISE_NATIVE_TEST_BUILD) throw new Error('Isolerade native-test assets får inte kombineras med Phase 2-testbygget.')
+  }
+  console.log(`Kontroller klara. Kör ${phase2VmgTest ? 'Phase 2 DEV-webbbygge' : 'produktionsbygge'} och Capacitor sync…`)
+  run('npm', ['run', 'build'], { env: phase2VmgTest ? { ...process.env, NODE_ENV: 'development' } : process.env })
   run('npx', ['cap', 'sync', 'ios'])
 
   const changedBySync = protectedFiles.filter((relative) =>
@@ -142,7 +156,8 @@ try {
   const appPath = resolveAppProductPath(buildSettings, 'App')
   const buildLog = xcodebuild([
     ...buildArguments,
-    '-allowProvisioningUpdates',
+    // The DEV test must not silently create/update profiles in the Apple account.
+    ...(phase2VmgTest ? [] : ['-allowProvisioningUpdates']),
     'build',
   ])
   if (!existsSync(appPath)) throw new Error(`Xcode build ilmoitti onnistumisesta, mutta sovelluspakettia ei löytynyt: ${appPath}`)
@@ -154,8 +169,8 @@ try {
     if (/install app|install/i.test(error.message)) throw new Error(`Appen byggdes men kunde inte installeras på ${selected.name}. Kontrollera enhetslås, kabel och utvecklingssignering.\n${error.message}`)
     throw new Error(`Appen installerades inte eller kunde inte startas på ${selected.name}.\n${error.message}`)
   }
-  console.log(`TackWise Race Debug installerades och startades på ${selected.name}. Ingen arkivering eller uppladdning utfördes.`)
+  console.log(`TackWise Race ${phase2VmgTest ? 'Phase 1+2 DEV-test' : 'Debug'} installerades och startades på ${selected.name}. Ingen arkivering eller uppladdning utfördes.`)
 } catch (error) {
-  console.error(`npm run ios: ${error instanceof Error ? error.message : String(error)}`)
+  console.error(`${phase2VmgTest ? 'npm run ios:vmg-test' : 'npm run ios'}: ${error instanceof Error ? error.message : String(error)}`)
   process.exitCode = 1
 }
