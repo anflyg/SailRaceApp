@@ -94,3 +94,18 @@ Next safe action: review this stacked draft and the conservative recovery fallba
 keep production blocked until separately approved recovery and logger parity are
 implemented. Resolve the export fixture issue separately. Perform the deferred
 physical-device/on-water acceptance after Phases 1 and 2; do not release by implication.
+
+## Physical iPhone test build command (prepared; not yet installed)
+
+The owner requested an on-device Phase 1+2 testing build before on-water acceptance. This branch now provides:
+
+```sh
+npm ci
+npm run ios:vmg-test
+```
+
+Run from the **Phase 2 worktree** on the Mac with Xcode and an unlocked/trusted, connected physical iPhone. The command uses the existing `scripts/ios-device.mjs` checks/signing/install/launch workflow, with explicit `--phase2-vmg-test` opt-in. Unlike ordinary `npm run ios`, it uses `NODE_ENV=development npm run build` so the `import.meta.env.DEV` live VMG gate is enabled in the copied iPhone web bundle; native Xcode remains **Debug**. The normal production path is unchanged. No release/archive/TestFlight/upload/provider configuration change is involved.
+
+**Important:** Existing bundle ID `com.anflyg.sailraceapp` is retained. Installing on the owner's device may replace the existing app and endanger local-only race recordings; preserve them before running. The opt-in mode does **not** request provisioning changes automatically. If signing/profile configuration prevents the build, report the exact blocker rather than altering entitlement/team/bundle ID. Do not use the separate synthetic-only M6c native-test assets.
+
+**Environment limit:** This GitHub edit was prepared from a Linux environment with no `xcodebuild`, Apple signing certificates or attached iPhone. The signed device build and installation **have not been executed or verified** in this follow-up. Prior simulator Build and Run evidence above remains valid only for its recorded commit and test configuration. Run the command on the Mac and report the actual outcome before claiming a deployable phone build.
