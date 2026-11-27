@@ -159,8 +159,7 @@ try {
   const appPath = resolveAppProductPath(buildSettings, 'App')
   const buildLog = xcodebuild([
     ...buildArguments,
-    // The DEV test must not silently create/update profiles in the Apple account.
-    ...(phase2VmgTest ? [] : ['-allowProvisioningUpdates']),
+    '-allowProvisioningUpdates',
     'build',
   ])
   if (!existsSync(appPath)) throw new Error(`Xcode build ilmoitti onnistumisesta, mutta sovelluspakettia ei löytynyt: ${appPath}`)
