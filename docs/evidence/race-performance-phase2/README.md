@@ -109,3 +109,9 @@ Run from the **Phase 2 worktree** on the Mac with Xcode and an unlocked/trusted,
 **Important:** Existing bundle ID `com.anflyg.sailraceapp` is retained. Installing on the owner's device may replace the existing app and endanger local-only race recordings; preserve them before running. The opt-in mode does **not** request provisioning changes automatically. If signing/profile configuration prevents the build, report the exact blocker rather than altering entitlement/team/bundle ID. Do not use the separate synthetic-only M6c native-test assets.
 
 **Environment limit:** This GitHub edit was prepared from a Linux environment with no `xcodebuild`, Apple signing certificates or attached iPhone. The signed device build and installation **have not been executed or verified** in this follow-up. Prior simulator Build and Run evidence above remains valid only for its recorded commit and test configuration. Run the command on the Mac and report the actual outcome before claiming a deployable phone build.
+
+## Follow-up: protected Package.swift after Capacitor sync
+
+First real Mac invocation successfully built the DEV Vite assets, then `npx cap sync ios` regenerated `ios/App/CapApp-SPM/Package.swift` and the existing protective native-file guard correctly stopped before signing/installation. No signed iPhone build result was produced. For this Phase 1+2 test only, the command now uses `npx cap copy ios` (web assets/config without plugin package regeneration); ordinary `npm run ios` retains sync. Commit `387c3d1` adds the fix.
+
+**Before rerun:** in the same Phase 2 worktree inspect `git diff -- ios/App/CapApp-SPM/Package.swift`; if and only if it is just the unwanted generated platform bump and contains no deliberate native edit, run `git restore -- ios/App/CapApp-SPM/Package.swift`. Never overwrite other local work. Then fast-forward the branch and retry `npm run ios:vmg-test`. A signed-device build and installation are still pending.
