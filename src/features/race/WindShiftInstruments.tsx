@@ -87,7 +87,7 @@ export function WindShiftDots({ validReference, output }: InstrumentProps) {
   return (
     <div className="wind-tack-cues">
       <div className="wind-cue-dots header" aria-label={t('sailing.header')}>
-        {renderDots(validReference ? output.headerDots : 0)}
+        {renderDots(validReference ? output.headerDots : 0, true)}
       </div>
       <div className="wind-cue-dots lift" aria-label={t('sailing.lift')}>
         {renderDots(validReference ? output.liftDots : 0)}
@@ -124,9 +124,9 @@ export function WindShiftScale({ validReference, output, windHeadingDegrees }: W
   )
 }
 
-function renderDots(activeCount: number) {
+function renderDots(activeCount: number, fromCenterOnLeft = false) {
   return [0, 1, 2].map((index) => (
-    <span key={index} className={`wind-cue-dot ${index < activeCount ? 'active' : ''}`} />
+    <span key={index} className={`wind-cue-dot ${(fromCenterOnLeft ? index >= 3 - activeCount : index < activeCount) ? 'active' : ''}`} />
   ))
 }
 
