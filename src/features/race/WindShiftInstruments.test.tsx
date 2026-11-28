@@ -45,6 +45,28 @@ describe('permanent wind instrument display', () => {
     expect(html).toContain('wind-shift-center-tick')
   })
 
+  it('fills red header dots from the center outward while preserving green lift order', () => {
+    const header = instrumentAt(125)
+    const lift = instrumentAt(145)
+    const headerHtml = render(header, true, 180)
+    const liftHtml = render(lift, true, 180)
+    const headerGroup = headerHtml.split('wind-cue-dots header')[1].split('wind-cue-dots lift')[0]
+    const liftGroup = liftHtml.split('wind-cue-dots lift')[1].split('wind-shift-scale')[0]
+    expect(header.headerDots).toBe(1)
+    expect(lift.liftDots).toBe(1)
+    expect([...headerGroup.matchAll(/class="wind-cue-dot( active)?"/g)].map((match) => Boolean(match[1]))).toEqual([false, false, true])
+    expect([...liftGroup.matchAll(/class="wind-cue-dot( active)?"/g)].map((match) => Boolean(match[1]))).toEqual([true, false, false])
+  })
+
+  it('keeps red header dots center-out for two and three active dots', () => {
+    for (const [count, expected] of [[2, [false, true, true]], [3, [true, true, true]]] as const) {
+      const current = instrumentAt(125)
+      const html = render({ ...current, headerDots: count }, true, 180)
+      const group = html.split('wind-cue-dots header')[1].split('wind-cue-dots lift')[0]
+      expect([...group.matchAll(/class="wind-cue-dot( active)?"/g)].map((match) => Boolean(match[1]))).toEqual(expected)
+    }
+  })
+
   it('shows the existing starboard lift and header output in the correct groups', () => {
     const lift = instrumentAt(145)
     const header = instrumentAt(125)

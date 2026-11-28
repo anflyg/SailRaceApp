@@ -13,6 +13,7 @@ import type { CompassDisplayMode } from '../../services/appSettingsStorage'
 import type { CourseState, FilteredGpsReading, Race, RollPitchValues } from '../../types'
 
 interface RaceDashboardViewProps {
+  liveRaceVmg?: { value: number | null }
   course: CourseState
   gps: FilteredGpsReading
   rollPitch?: RollPitchValues | null
@@ -27,6 +28,7 @@ interface RaceDashboardViewProps {
 
 export function RaceDashboardView({
   course,
+  liveRaceVmg,
   gps,
   heading = NO_TACTICAL_HEADING,
   rollPitch = null,
@@ -64,13 +66,15 @@ export function RaceDashboardView({
   const hasDisplayCourse = courseHeading !== null
   const matchesRace = !raceReference || (isUsableWindReference(raceReference.course?.windDirectionDegrees, raceReference.windMeasurement, raceReference.id) &&
     isUsableWindReference(course.windHeadingDegrees, raceReference.windMeasurement, raceReference.id))
-  const reason = course.windHeadingDegrees === null ? 'sailing.vmgMissingWind' :
+  const legacyReason = course.windHeadingDegrees === null ? 'sailing.vmgMissingWind' :
     course.windMeasurement && course.windMeasurement.referenceFrame !== 'true-north' ? 'sailing.vmgNorth' :
     !windReferenceCompatible ? 'sailing.vmgQuality' :
     !matchesRace ? 'sailing.vmgRaceMismatch' : !freshVmgCourse ? 'sailing.vmgGps' : null
-  const velocityMadeGood = windReferenceCompatible && matchesRace && freshVmgCourse && speedKnots !== null && gps.courseDegrees !== null && course.windHeadingDegrees !== null
+  const legacyVelocityMadeGood = windReferenceCompatible && matchesRace && freshVmgCourse && speedKnots !== null && gps.courseDegrees !== null && course.windHeadingDegrees !== null
     ? calculateVelocityMadeGood(speedKnots, gps.courseDegrees, course.windHeadingDegrees)
     : null
+  const velocityMadeGood = liveRaceVmg ? (freshVmgCourse ? liveRaceVmg.value : null) : legacyVelocityMadeGood
+  const reason = liveRaceVmg ? (velocityMadeGood === null ? legacyReason ?? 'sailing.vmgRaceMismatch' : null) : legacyReason
   const velocityValue = velocityMadeGood !== null ? formatSignedKnots(velocityMadeGood) : '--'
   const velocityLabel = t('sailing.vmgWind')
   const velocityClassName = course.windHeadingDegrees !== null ? 'velocity-mode-vmg' : 'velocity-mode-unset'

@@ -43,6 +43,23 @@ TackWise Race is the iPhone product in the TackWise sailing-instrument suite, bu
    Xcode manually instead, run `npm run cap:sync` followed by
    `npm run cap:open:ios`.
 
+## Phase 1 + Phase 2 physical-iPhone development test
+
+To test both unmerged race-performance phases on one **personally connected iPhone** using the existing Apple Development signing identity, check out branch `feat/race-performance-phase2` (which includes Phase 1). On the Mac with Xcode, connect/unlock and trust the iPhone, then run:
+
+```sh
+npm ci
+npm run ios:vmg-test
+```
+
+This explicit opt-in runs a **development Vite bundle** (`NODE_ENV=development`) and uses **Capacitor copy** (not sync) to preserve the existing Swift Package.swift/native dependency manifest. Then it runs the existing signed Xcode Debug build, device installation and launch. It is **not TestFlight or a production release**. The ordinary `npm run ios` still builds the production bundle, in which the Phase 2 VMG path stays disabled. If the signing certificate/profile is missing, the test command stops and reports that blocker; it does not request new provisioning updates.
+
+**If a prior attempt ran `cap sync` and stopped on `ios/App/CapApp-SPM/Package.swift`:** inspect `git diff -- ios/App/CapApp-SPM/Package.swift` in this worktree. Only if the file contains *exclusively* the Capacitor-generated iOS platform bump and no intentional local native change, restore that one file with `git restore -- ios/App/CapApp-SPM/Package.swift` before retrying. Never reset other native files or run a blanket `git restore .`.
+
+**Before installation:** the test uses the existing iOS Bundle ID `com.anflyg.sailraceapp`, not a parallel test identity. Installing may update/replace an existing TackWise Race installation and affect its local data. Back up/retain any important unsynced recordings first. Do not uninstall the app or change signing, bundle identity, entitlements or cloud environment as an automatic workaround. This test does not approve new GPS uploads or backend switches.
+
+What to check on the phone: start a new local race, approve Course wind, pass the gun, compare frozen VMG on steady steering versus the unchanged moving tactical marker; change manual tack angle; re-establish one eligible tack; verify GPS/HDG loss, late first Course wind, R/S, A/B capture, TTL/BURN, and background/Continue restrictions. A restart currently **withholds development VMG by design** pending approved persistence. Record findings locally without GPS traces, accounts, tokens or real location in GitHub. Physical/on-water verification is still required before release.
+
 ## Notes
 
 - Xcode Cloud runs `ios/App/ci_scripts/ci_post_clone.sh` before Swift package
