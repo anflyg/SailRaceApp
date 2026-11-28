@@ -87,24 +87,11 @@ export function CourseSetupView({
   const referenceLabel = t(({ 'course-axis': 'course.courseReference', 'start-line': 'course.startLineReference', 'north-fallback': 'course.north' } as const)[displayReference.kind] as TranslationKey)
   const failed = windMeasurementStatus === 'error' || windMeasurementStatus === 'unavailable' || windMeasurementStatus === 'unstable'
   const measurementForDisplay = lastMeasurement ?? course.windMeasurement
-  const windAssessment = assessWindReference(course.windHeadingDegrees, measurementForDisplay)
   const qualityKey = ({ good: 'course.qualityGood', ok: 'course.qualityQuestionable', poor: 'course.qualityPoor', unstable: 'course.qualityUnstable', unknown: 'course.qualityUnknown' } as const)[measurementForDisplay?.quality ?? 'unknown']
   const windMeasurementSummary = measurementForDisplay
     ? `${t('course.windSet')}: ${formatDegrees(measurementForDisplay.headingDegrees)} · ${t('course.quality')}: ${t(qualityKey)} · ${t('course.source')}: ${measurementForDisplay.selectedHeadingSource}`
     : null
   const isMeasuringWind = windMeasurementStatus === 'measuring'
-
-  const formatMeasurementValue = (value: number | null | undefined, digits = 1) =>
-    typeof value === 'number' && Number.isFinite(value)
-      ? value.toFixed(digits).replace('.', language === 'sv' ? ',' : '.')
-      : '—'
-  const measurementValues = measurementForDisplay
-    ? t('course.windMeasurementValues', {
-      direction: `${formatMeasurementValue(measurementForDisplay.headingDegrees)}°`,
-      spread: `${formatMeasurementValue(measurementForDisplay.spreadDegrees, 2)}°`,
-      quality: t(qualityKey),
-    })
-    : null
 
   const handleWindArrowClick = async () => {
     if (course.windHeadingDegrees !== null) {
@@ -116,14 +103,6 @@ export function CourseSetupView({
 
     const measuredHeading = await measureWindHeading()
 
-    if (measuredHeading !== null) {
-      onWindHeadingChange(normalizeDegrees(measuredHeading.headingDegrees))
-      onWindMeasurement(measuredHeading)
-    }
-  }
-
-  const handleMeasureAgain = async () => {
-    const measuredHeading = await measureWindHeading()
     if (measuredHeading !== null) {
       onWindHeadingChange(normalizeDegrees(measuredHeading.headingDegrees))
       onWindMeasurement(measuredHeading)
@@ -195,16 +174,6 @@ export function CourseSetupView({
         ) : null}
         {failed && course.windMeasurement ? <p role="status">{language === 'sv' ? 'Ommätningen misslyckades. Tidigare vind gäller tills en ny mätning godkänns.' : 'Remeasurement failed. The previous wind remains in use until a new measurement is approved.'}</p> : null}
         {diagnostics && failed ? <WindFailureDiagnostics diagnostics={diagnostics} /> : null}
-        {windAssessment.usable ? (
-          <div className="course-wind-feedback approved" role="status" aria-live="polite">
-            <strong className="course-wind-feedback-title">{t('course.windApproved')}</strong>
-            {measurementValues ? <p className="course-wind-measurement-values">{measurementValues}</p> : null}
-            {measurementForDisplay ? <p>{t('course.windSampleNorth', { count: String(measurementForDisplay.sampleCount), north: measurementForDisplay.referenceFrame === 'true-north' ? t('course.windNorthTrue') : measurementForDisplay.referenceFrame === 'magnetic-north' ? t('course.windNorthMagnetic') : t('course.windNorthUnknown') })}</p> : null}
-            <p className="course-wind-feedback-note">{t('course.windStabilityAccuracyHelp')}</p>
-            <p className="course-wind-feedback-note">{t('course.windGpsSeparate')}</p>
-            <button type="button" className="wind-remeasure-button" onClick={handleMeasureAgain} disabled={isMeasuringWind}>{t('course.windMeasureAgain')}</button>
-          </div>
-        ) : null}
         <div className="course-display-debug" aria-label={t('course.debug')}>
           {windMeasurementSummary ? (
             <span>{windMeasurementSummary}</span>

@@ -66,12 +66,17 @@ describe('wind VMG acceptance feedback in Course', () => {
     expect(html).toContain(language === 'sv' ? 'geografisk nord' : 'true north')
     expect(html).toContain(language === 'sv' ? 'För få giltiga' : 'Too few valid')
   })
-  it('clearly approves a good, consistent true-north measurement and separates the GPS check', () => {
+  it('keeps an approved measurement without rendering the removed VMG panel', () => {
     const html = renderCourse({ ...emptyCourse, windHeadingDegrees: 350.1, windMeasurement: measurement() })
-    expect(html).toContain('GODKÄND FÖR VMG')
-    expect(html).toContain('GPS-kurs och GPS-fart kontrolleras separat')
-    expect(html).toContain('Stabilitet/spridning 0,62°')
-    expect(html).toContain('Mät igen')
+    expect(html).not.toContain('GODKÄND FÖR VMG')
+    expect(html).not.toContain('APPROVED FOR VMG')
+    expect(html).not.toContain('GPS-kurs och GPS-fart kontrolleras separat')
+    expect(html).not.toContain('Stabilitet/spridning 0,62°')
+    expect(html).not.toContain('Mät igen')
+    expect(html).not.toContain('Measure again')
+    expect(html).not.toContain('course-wind-feedback')
+    expect(html).toContain('wind-arrow-button set')
+    expect(html).toContain('course-display-debug')
   })
 
   it('omits rejected wind feedback in English', () => {
@@ -105,18 +110,20 @@ describe('wind VMG acceptance feedback in Course', () => {
     expect(html).toContain('wind-arrow-button')
   })
 
-  it('accepts a short saved result with the new model', () => {
+  it('keeps a short saved result with the new model without adding a panel', () => {
     const html = renderCourse({ ...emptyCourse, windHeadingDegrees: 350.1, windMeasurement: measurement({ sampleCount: 12 }) })
-    expect(html).toContain('class="course-wind-feedback approved"')
+    expect(html).not.toContain('course-wind-feedback')
+    expect(html).toContain('wind-arrow-button set')
   })
 
-  it('shows the saved acceptance status after a recovered race restores its wind metadata', () => {
+  it('preserves restored wind metadata without rendering the removed panel', () => {
     // Recovery restores the persisted course and windMeasurement into CourseState.
     const restoredCourse = { ...emptyCourse, windHeadingDegrees: 350.1, windMeasurement: measurement() }
     const html = renderCourse(restoredCourse)
-    expect(html).toContain('GODKÄND FÖR VMG')
-    expect(html).toContain('350,1°')
-    expect(html).toContain('Spridning')
+    expect(html).not.toContain('GODKÄND FÖR VMG')
+    expect(html).not.toContain('Mät igen')
+    expect(html).not.toContain('course-wind-feedback')
+    expect(html).toContain('Vind satt: 350°')
   })
 
   it('rejects inconsistent saved direction and measurement metadata', () => {

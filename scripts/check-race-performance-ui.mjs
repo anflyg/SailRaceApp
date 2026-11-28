@@ -15,7 +15,7 @@ try {
   page.on('pageerror', error => errors.push(error.message))
   for (const width of [320, 390, 430]) {
     for (const scale of [1, 1.4]) {
-      await page.setViewportSize({ width, height: width === 320 ? 568 : 932 })
+      await page.setViewportSize({ width, height: width === 320 && scale === 1 ? 568 : 932 })
       await page.goto('http://127.0.0.1:5193/?manual=1&view=race')
       await page.locator('.speed-secondary-row').waitFor()
       await page.locator('.aster-race-splash').waitFor({ state: 'detached' })
@@ -23,11 +23,14 @@ try {
       const bounds = await page.evaluate(() => {
         const rect = selector => { const r = document.querySelector(selector).getBoundingClientRect(); return { x: r.x, y: r.y, right: r.right, bottom: r.bottom, width: r.width, height: r.height } }
         const style = getComputedStyle(document.querySelector('.speed-secondary-row'))
-        return { roll: rect('.sailing-roll'), pitch: rect('.sailing-pitch'), caption: rect('.speed-caption'), speed: rect('.speed-with-attitude .metric-value'), dots: rect('.wind-tack-cues'), border: style.borderWidth, background: style.backgroundColor, scroll: document.documentElement.scrollWidth }
+        const metricValues = document.querySelectorAll('.metric-box .metric-value')
+        const speedValue = metricValues[0]
+        const headingValue = metricValues[1]
+        return { roll: rect('.sailing-roll'), pitch: rect('.sailing-pitch'), speed: rect('.speed-with-attitude .metric-value'), speedLabel: rect('.speed-with-attitude .metric-label'), dots: rect('.wind-tack-cues'), speedFontSize: getComputedStyle(speedValue).fontSize, headingFontSize: getComputedStyle(headingValue).fontSize, border: style.borderWidth, background: style.backgroundColor, scroll: document.documentElement.scrollWidth }
       })
-      assert(bounds.roll.right <= bounds.caption.x && bounds.caption.right <= bounds.pitch.x)
-      assert(bounds.roll.bottom <= bounds.speed.y && bounds.pitch.bottom <= bounds.speed.y)
-      assert(bounds.speed.bottom <= bounds.dots.y)
+      assert(bounds.roll.bottom <= bounds.speed.y && bounds.pitch.bottom <= bounds.speed.y, JSON.stringify({ width, scale, ...bounds }))
+      assert(bounds.speed.bottom <= bounds.speedLabel.y && bounds.speedLabel.bottom <= bounds.dots.y)
+      assert.equal(bounds.speedFontSize, bounds.headingFontSize)
       assert(bounds.roll.x >= 0 && bounds.pitch.right <= width && bounds.scroll <= width)
       assert.equal(bounds.border, '0px')
       assert.equal(bounds.background, 'rgba(0, 0, 0, 0)')
@@ -66,6 +69,8 @@ try {
     window.phase1('course')
   })
   await page.getByText('B end favored, 6°', { exact: false }).waitFor()
+  assert.equal(await page.locator('.course-wind-feedback').count(), 0)
+  assert.equal(await page.getByRole('button', { name: 'Mät igen' }).count(), 0)
   await page.screenshot({ path: `${out}/course-advantage.png`, fullPage: true })
   await page.evaluate(() => window.phase1('course', { windHeadingDegrees: 90 }))
   assert.equal(await page.locator('.start-advantage').count(), 0)

@@ -85,10 +85,10 @@ export function RaceDashboardView({
         <div className="metric-box speed-with-attitude" aria-label={t('sailing.speed')}>
           <div className="speed-secondary-row">
             <span className="sailing-roll"><small>R</small> {rollPitch && Number.isFinite(rollPitch.rollDegrees) ? formatSignedDegrees(rollPitch.rollDegrees) : '—'}</span>
-            <span className="speed-caption">{t('sailing.speed')}</span>
             <span className="sailing-pitch"><small>S</small> {rollPitch && Number.isFinite(rollPitch.pitchDegrees) ? formatSignedDegrees(rollPitch.pitchDegrees) : '—'}</span>
           </div>
           <span className="metric-value">{speedKnots !== null ? formatKnots(speedKnots) : '--'}</span>
+          <span className="metric-label">{t('sailing.speed')}</span>
         </div>
 
         <WindShiftDots validReference={matchingWindReference && freshDisplayCourse} output={windInstrumentOutput} />

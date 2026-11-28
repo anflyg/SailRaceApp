@@ -411,55 +411,12 @@ button:focus-visible {
   text-align: center;
 }
 
-.course-wind-feedback {
-  display: grid;
-  gap: 5px;
-  padding: 8px 10px;
-  border: 1px solid var(--theme-border-strong);
-  border-inline-start-width: 4px;
-  border-radius: 6px;
-  background: var(--theme-panel-background);
-  color: var(--theme-text);
-  text-align: left;
-}
-
-.course-wind-feedback.approved {
-  border-inline-start-color: var(--theme-green);
-}
-
-.course-wind-feedback-title {
-  font-size: 0.92rem;
-  font-weight: 800;
-  line-height: 1.2;
-}
-
-.course-wind-feedback-note,
-.course-wind-measurement-values {
+.course-wind-feedback-note {
   margin: 0;
   color: var(--theme-text);
   font-size: 0.82rem;
   font-weight: 600;
   line-height: 1.3;
-}
-
-.course-wind-measurement-values {
-  font-variant-numeric: tabular-nums;
-}
-
-.wind-remeasure-button {
-  width: fit-content;
-  min-width: 44px;
-  min-height: 44px;
-  padding: 7px 14px;
-  border: 1px solid var(--theme-blue);
-  border-radius: 6px;
-  background: var(--theme-panel-background);
-  color: var(--theme-blue);
-  font-weight: 800;
-}
-
-.wind-remeasure-button:disabled {
-  opacity: 0.6;
 }
 
 @media (max-width: 520px) {
@@ -815,7 +772,7 @@ button:focus-visible {
 }
 
 .race-grid.with-wind-cues {
-  grid-template-rows: minmax(0, 1fr) clamp(38px, 5.5dvh, 48px) minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1.12fr) clamp(38px, 5.5dvh, 48px) minmax(0, 0.94fr) minmax(0, 0.94fr);
   gap: 5px;
 }
 
@@ -2867,13 +2824,12 @@ button:focus-visible {
   background: rgba(255, 255, 255, 0.94);
 }
 
-.app-shell .race-view .speed-with-attitude { grid-template-rows: auto minmax(0, 1fr); }
-.speed-secondary-row { display: grid; grid-template-columns: 1fr auto 1fr; align-items: baseline; gap: 8px; padding-inline: 12px; color: var(--theme-text-muted); font-size: 1rem; }
-.speed-secondary-row small, .speed-caption { font-size: .76rem; }
+.app-shell .race-view .speed-with-attitude { grid-template-rows: auto minmax(0, 1fr) auto; row-gap: 4px; }
+.speed-secondary-row { display: grid; grid-template-columns: 1fr 1fr; align-items: baseline; gap: 8px; padding-inline: 12px; color: var(--theme-text-muted); font-size: 1rem; }
+.speed-secondary-row small { font-size: .76rem; }
 .sailing-pitch { text-align: right; }
 .sailing-roll, .sailing-pitch { white-space: nowrap; }
 .bow-distance-setting { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .bow-distance-setting input { width: 5rem; font-size: 1rem; }
-.speed-caption { text-transform: uppercase; font-weight: 650; letter-spacing: .04em; }
 /* This grid row must grow with wrapped capture guidance on native WebKit. */
 .setup-view > .course-status { min-height: max-content; }

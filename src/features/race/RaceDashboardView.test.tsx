@@ -236,7 +236,7 @@ describe('tactical heading source', () => {
 })
 
 describe('restored calibrated attitude', () => {
-  it('flanks FART with signed existing R/S before the speed value and keeps missing placeholders', () => {
+  it('places FART below the large speed value and keeps signed R/S above it', () => {
     const render = (rollPitch: { rollDegrees: number; pitchDegrees: number } | null) => renderToStaticMarkup(
       <LanguageProvider language="sv" setLanguage={() => {}}><RaceDashboardView course={course} gps={gps}
         compassDisplayMode="normal" laylineAlphaDegrees={90} rollPitch={rollPitch} /></LanguageProvider>)
@@ -245,9 +245,9 @@ describe('restored calibrated attitude', () => {
     const html = render(calibrated)
     expect(html).toContain('<small>R</small> -6°')
     expect(html).toContain('<small>S</small> +18°')
-    expect(html.indexOf('sailing-roll')).toBeLessThan(html.indexOf('speed-caption'))
-    expect(html.indexOf('speed-caption')).toBeLessThan(html.indexOf('sailing-pitch'))
-    expect(html.indexOf('sailing-pitch')).toBeLessThan(html.indexOf('metric-value'))
+    expect(html.indexOf('sailing-roll')).toBeLessThan(html.indexOf('sailing-pitch'))
+    expect(html.indexOf('sailing-pitch')).toBeLessThan(html.indexOf('class="metric-value">5,5'))
+    expect(html).toContain('<span class="metric-value">5,5</span><span class="metric-label">Fart</span>')
     expect(render(calculateRollPitchRelativeToCalibration(attitude, null))).toContain('<small>R</small> —')
     expect(render(calculateRollPitchRelativeToCalibration({ ...attitude, pitchDegrees: null }, { rollDegrees: 10, pitchDegrees: 20 }))).toContain('<small>S</small> —')
     expect(render(null)).toContain('<small>S</small> —')
