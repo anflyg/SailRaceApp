@@ -9,7 +9,7 @@
 Keep distinct values with distinct purposes:
 
 - **Initial wind (W0):** the first race-bound approved true-north wind capture, normally before the start. **If none was approved by the gun, the first valid Course wind measurement afterward may establish W0 once** (Decision 11). Use W0 as the first live wind-VMG reference and preserve it as the fixed origin of the wind-shift scale after establishment.
-- **Tactical wind-shift estimate (Wtactical):** retain the existing continuously updated HDG/tack/half-tack-angle estimate for the six red/green lift/header indicators and the green wind-shift scale marker. This estimate is not directly fed to VMG. Keep all current instrument presentation, colors, gates, thresholds, and behavior unchanged.
+- **Tactical wind-shift estimate (Wtactical):** retain the existing continuously updated HDG/tack/half-tack-angle estimate for the six red/green lift/header indicators. The red/green dots continue to use Wtactical with their existing real-time tactical behavior. Wtactical is not directly fed to VMG or to the green scale marker.
 - **Accepted VMG wind (Wvmg):** initialize to W0, then replace only at successful stable-tack reference establishment. Hold its most recently accepted value until the next successful calibration. Normal steering corrections between calibrations must not move Wvmg.
 
 Live VMG continues to use reliable **GPS SOG and COG**, not boat HDG, in `SOG_knots * cos(COG - Wvmg)`. Keep the existing GPS freshness/reliability guards and unavailable behavior. Initial wind must still pass the existing native true-north/quality gate.
@@ -24,7 +24,7 @@ Use the **existing** post-gun, upwind-only stable-tack acquisition; do not intro
    - Starboard: `normalize(meanHDG + alpha / 2)`.
    - Port: `normalize(meanHDG - alpha / 2)`.
 4. Freeze that Wvmg until the next eligible stable-tack reference is successfully accepted. Rejecting a reference, tacking, reaching/downwind sailing, or losing HDG must **not** rewrite Wvmg.
-5. Keep W0 and the tactical wind-shift estimator separate. Do not alter the current red/green dots or green scale marker to follow Wvmg.
+5. Keep W0 and Wtactical separate. Red/green dots continue following Wtactical. The green scale marker follows accepted Wvmg relative to fixed W0 only as specified in Decision 12; it does not track steering or other live Wtactical changes.
 
 This is a **course-derived estimate**, not an independently measured instantaneous wind direction. Errors from inconsistent sailing angle, compass bias, leeway, or wind changes during sampling remain possible and require on-water verification.
 
@@ -42,7 +42,7 @@ The exact confidence criteria, treatment of wind shifts between the two legs, an
 
 ## Decision 4 — No changes to the live wind/VMG presentation
 
-Retain the existing **wind/VMG instrumentation and presentation** in Sailing: main FART/RIKTNING/VMG figures, six lift/header dots, wind-shift scale, captions, colors and wind-specific interactions. The VMG decision changes only the **underlying wind-reference calculation**, not the way VMG or wind shifts are shown.
+Retain the existing Sailing presentation: main FART/RIKTNING/VMG figures, six lift/header dots, wind-shift scale, captions, colors and wind-specific interactions. The green marker behavior is specifically governed by Decision 12; red/green dots retain their existing Wtactical behavior. No other Sailing presentation changes are included.
 
 The only new wind-calibration-related presentation is **post-race tack-angle feedback in Settings and Analysis**. No live wind/VMG badges, labels, extra VMG values, or new wind controls are approved. The separate owner decision below to restore **R/S (roll/pitch)** to Sailing is an explicit, independent addition. Its placement and style were specified by the owner on 2026-11-26.
 
@@ -61,7 +61,7 @@ Analysis should be able to explain **how the wind direction evolved**, which win
 Intended observations include:
 
 - W0 and a timestamped history of **accepted Wvmg recalibrations** (heading, tack, quality/evidence).
-- Sufficient, minimized observations of tactical wind-shift evolution for meaningful post-race analysis; accepted Wvmg history alone is **not** equivalent to the continuously displayed green wind-shift marker.
+- Sufficient, minimized observations of tactical wind-shift evolution for meaningful post-race analysis; accepted Wvmg history alone is **not** equivalent to the continuously evolving Wtactical estimate needed to analyze the red/green dots.
 - The accepted stable per-tack heading means and relevant quality/time information needed for post-race tack-angle comparison.
 - The wind direction used for each recorded GPS sample's VMG, so app and web analysis use the **same** reference rather than silently disagreeing.
 
@@ -167,12 +167,22 @@ The following are **explicit product-level confirmations** to decisions D1–D10
 
 - Until a usable reference is approved, continue showing VMG unavailable (placeholder); do not fabricate wind from GPS COG, compass HDG, or the sailor's configured tack angle alone.
 - Once the first post-gun Course wind measurement passes the existing native frame/quality requirements, **bind it once to that race as its W0**, establish initial **Wvmg = W0**, and permit wind VMG from then onward subject to existing reliable GPS SOG/COG, speed and freshness gates. The usual stable upwind tack process may subsequently update Wvmg.
-- W0 is the **first valid race-bound origin**, whether approved before or after the gun; once established, preserve the fixed tactical wind-shift scale origin. A later Course wind edit is **not automatically a new W0**. Preserve the prior mismatch/quality protections until the separate post-gun editing policy is reviewed.
+- W0 is the **first valid race-bound origin**, whether approved before or after the gun; once established, preserve W0 as the fixed wind-shift scale origin; the green marker uses the accepted Wvmg-to-W0 difference under Decision 12. A later Course wind edit is **not automatically a new W0**. Preserve the prior mismatch/quality protections until the separate post-gun editing policy is reviewed.
 - **No retroactive VMG:** GPS observations recorded before the late origin became effective remain uncalibrated/unavailable for wind VMG. Never backfill old samples with the later wind or silently rewrite the original gun-time race snapshot, start timestamp or previously stored immutable artifacts.
 - The technical design must explicitly model **a gun-time race snapshot with missing wind and a distinct, later time-stamped race-bound first-origin acceptance**. Verify restart/Continue, other Course edits, account/session boundaries and local/cloud versioning so the late origin cannot leak across races.
 - This is a **product approval of late activation**, not approval of a particular persisted event schema, checkpoint strategy, API format, deployment or production enablement. The precise binding/recovery design and its privacy/GDPR/CRA/contract implications remain G1/G3 review items. Keep ADR-010 **PROPOSED** until those reviews.
 
 **Expected acceptance examples:** (1) Gun with no approved wind, valid approved Course measurement afterward => Wvmg initially equals that measurement and VMG can become available with fresh eligible GPS. (2) No approved wind => no VMG. (3) Late failed/magnetic/mock measurement => no activation. (4) Samples before late establishment stay without VMG after recovery/export. (5) Repeating the same accepted origin is idempotent; later incompatible Course measurements do not overwrite it.
+
+
+## Decision 12 — Keep W0 scale origin and move the green marker on accepted Wvmg (2026-11-28)
+
+**Owner-approved product behavior:** Keep W0 fixed as the wind-shift scale origin. The green marker displays `shortestAngle(Wvmg - W0)`, clamped to the existing ±30° scale. Update its position only when a new stable-tack Wvmg calibration is accepted; otherwise retain the last accepted position, including on reaching and downwind legs. Since Wvmg initializes from W0, the initial marker position is 0°.
+
+- The six red/green lift/header dots continue to use Wtactical and retain their existing real-time tactical behavior.
+- Live VMG continues to use Wvmg.
+- Do not change any other Sailing presentation, including the marker's existing scale, colors, labels, layout, dot calculations, or wind-specific interactions.
+- This supersedes the earlier Wtactical-based green-marker decision in Decision 1 and related proposed wording. It does not accept ADR-010 or authorize implementation, persistence, collection, release or deployment.
 
 ## Further approved decisions
 

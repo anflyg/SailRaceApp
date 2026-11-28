@@ -4,7 +4,7 @@
 
 ## Purpose and scope
 
-Enable an owner to understand which approved wind and eligibility underpinned each recorded VMG and the approximate evolution of the displayed tactical marker; support comparable accepted tack references without storing continuous HDG or motion. Treat all of this as personal race data, even without coordinates. Keep W0, Wvmg and Wtactical separate. Preserve the existing gun snapshot and all existing GPS recording decisions; this proposal adds no GPS cadence, native motion stream, roll/pitch, debug matrix, tracking, live telemetry, analytics, owner identifier or cloud dependency to race operation. A bounded sampled tactical series cannot reconstruct motion between observations or assert true wind; validate its usefulness before collecting it.
+Enable an owner to understand which approved wind and eligibility underpinned each recorded VMG, derive the green marker from W0 and accepted Wvmg references, and approximate Wtactical evolution shown by the red/green dots; support comparable accepted tack references without storing continuous HDG or motion. Treat all of this as personal race data, even without coordinates. Keep W0, Wvmg and Wtactical separate. Preserve the existing gun snapshot and all existing GPS recording decisions; this proposal adds no GPS cadence, native motion stream, roll/pitch, debug matrix, tracking, live telemetry, analytics, owner identifier or cloud dependency to race operation. A bounded sampled tactical series cannot reconstruct motion between observations or assert true wind; validate its usefulness before collecting it.
 
 ## Candidate raw format and exact field inventory
 

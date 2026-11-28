@@ -24,13 +24,13 @@ The acceptance criteria are specifications for future tasks, **not tests reporte
 
 ### D1 — Three wind references
 
-**Decided:** W0 is the first approved race-bound wind and fixed tactical-scale origin, normally present at the gun but allowed as a **first post-gun Course acceptance when missing** (Decision 11); Wtactical retains current instrument behavior; Wvmg starts at W0 and changes only on accepted stable-tack references. VMG uses GPS SOG/COG.
+**Decided:** W0 is the first approved race-bound wind and fixed wind-scale origin, normally present at the gun but allowed as a **first post-gun Course acceptance when missing** (Decision 11); Wtactical retains existing real-time red/green dot behavior; Wvmg starts at W0 and changes only on accepted stable-tack references. Under Decision 12, the green scale marker displays the clamped shortest-angle difference Wvmg−W0 and moves only on accepted calibration. VMG uses GPS SOG/COG.
 
 **Proposed design:** Own a race-scoped VMG reducer above tab lifetimes in AppShell, alongside the tactical engine. Separate the immutable gun-time wind snapshot (which may lack wind) from a once-bound post-gun W0 origin: accepting the first later valid Course wind enables future VMG without mutating past records or silently overwriting W0. Emit a discrete reference-accepted output from `collectReference`, including a monotonically increasing local acceptance sequence. Consume each acceptance once; never copy the continuously changing `estimatedWindHeadingDegrees` into Wvmg. Keep the tactical reducer's calculations/output unchanged. Wvmg carries provenance back to the approved W0; do not forge a native wind-capture measurement for derived wind or pass Wvmg to the existing W0 equality gate. Use a separate derived-reference validator plus the existing GPS gates.
 
 **Contract/dependency:** No remote schema needed for a pure reducer, but production logger integration depends on D6 lineage review. Preserve `course.windDirectionDegrees` as the original gun-time Course snapshot; a late W0 is a separate origin and must not rewrite it.
 
-**Acceptance D1:** For W0=180°, alpha=90°, accepting starboard mean=135° sets Wvmg=180°; later HDG=145° may move Wtactical but leaves Wvmg=180°. At SOG=6 kn and COG=150°, VMG is approximately 5.196152 kn; changing HDG alone cannot change it. A port mean of 235° later accepts Wvmg=190°. Invalid/magnetic/mock W0 never enables wind VMG. Circular means of 359° and 1° resolve near 0°, never 180°.
+**Acceptance D1:** For W0=180°, alpha=90°, accepting starboard mean=135° sets Wvmg=180° and leaves the green marker at 0°; later HDG=145° may move Wtactical and the red/green dots but leaves Wvmg and marker unchanged. Accepting port mean=235° then sets Wvmg=190° and moves the green marker to +10°. At SOG=6 kn and COG=150°, VMG is approximately 5.196152 kn; changing HDG alone cannot change it. Invalid/magnetic/mock W0 never enables wind VMG. Circular means of 359° and 1° resolve near 0°, never 180°.
 
 ### D2 — Single-tack recalibration
 
@@ -58,13 +58,13 @@ Two headings alone cannot separate a wind shift from a changed sailing angle. Wt
 
 ### D4 — Preserve live wind/VMG presentation
 
-**Decided:** Figures, dots, scale, captions, colors and wind-specific interactions stay unchanged. Only D8 adds R/S independently.
+**Decided:** Figures, red/green dots, scale presentation, captions, colors and wind-specific interactions stay unchanged except for Decision 12: the green marker follows accepted Wvmg relative to fixed W0. Only D8 adds R/S independently.
 
-**Proposed design:** Change the VMG input seam only. Reuse existing formatting/unavailable reasons. Keep instrument output, degrees-per-dot stepper, compass interactions and scale origin independent of Wvmg. Capture fixed-input baseline screenshots before implementation; compare wind/VMG regions separately from the authorized R/S region.
+**Proposed design:** Change the VMG input seam only. Reuse existing formatting/unavailable reasons. Keep the existing tactical dot output, degrees-per-dot stepper, compass interactions and fixed W0 scale origin. Update only the green marker position when accepted Wvmg changes. Capture fixed-input baseline screenshots before implementation; compare wind/VMG regions separately from the authorized R/S region.
 
 **Contract/dependency:** No contract change from presentation. D1/D2 calculation changes must pass this regression gate.
 
-**Acceptance D4:** Under identical sensor traces, old and new tactical outputs match at each step. No extra VMG value, wind badge/control or live feedback appears. Original labels/colors/indicator order and scale remain unchanged, including withheld VMG and ±30° clamp. Check supported widths, translations and existing interactions.
+**Acceptance D4:** Under identical sensor traces, red/green dot outputs match the existing tactical behavior at each step; the green marker changes only at accepted Wvmg updates. No extra VMG value, wind badge/control or live feedback appears. Original labels/colors/indicator order and scale remain unchanged, including withheld VMG and ±30° clamp. Check supported widths, translations and existing interactions.
 
 ### D5 — Offline state, fallback and recovery
 
